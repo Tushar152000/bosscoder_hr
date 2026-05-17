@@ -1,0 +1,220 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Dark navy theme (Razorpay-payroll-inspired) ─────────────────────────── */
+:root {
+  /* Background gradient anchors */
+  --bg: 12 16 36;        /* navy-900 / #0c1024 */
+  --bg-soft: 7 10 24;    /* navy-950 / #070a18 */
+  --fg: 234 236 240;     /* near-white */
+  --muted: 148 158 187;  /* muted slate-blue */
+  --border: 33 41 71;    /* hairline */
+  --card: 20 26 53;      /* navy-800 / #141a35 */
+  --card-elevated: 29 36 71; /* navy-700 */
+  --accent: 99 91 255;   /* accent-500 */
+}
+
+html,
+body {
+  background: rgb(var(--bg));
+  color: rgb(var(--fg));
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Subtle global gradient — gives the app a depth lift without being noisy. */
+body {
+  background:
+    radial-gradient(1200px 600px at 90% -10%, rgba(99, 91, 255, 0.06), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(56, 89, 255, 0.05), transparent 60%),
+    rgb(var(--bg));
+  background-attachment: fixed;
+}
+
+@layer utilities {
+  .text-muted {
+    color: rgb(var(--muted));
+  }
+  .border-default {
+    border-color: rgb(var(--border));
+  }
+  .bg-card {
+    background: rgb(var(--card));
+  }
+  .bg-card-elevated {
+    background: rgb(var(--card-elevated));
+  }
+}
+
+/* Smooth, subtle transition on every interactive surface that doesn't already
+ * specify its own transition. */
+button,
+a,
+[role='button'] {
+  transition: color 150ms ease-out, background-color 150ms ease-out,
+    border-color 150ms ease-out, opacity 150ms ease-out, transform 150ms ease-out,
+    box-shadow 150ms ease-out;
+}
+
+:focus-visible {
+  outline: none;
+}
+
+/* ─── Offer letter A4 preview + print rules ──────────────────────────────── */
+:root {
+  --offer-pad-top: 50mm;
+  --offer-pad-bottom: 38mm;
+  --offer-pad-x: 22mm;
+}
+
+.offer-content {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 11pt;
+  line-height: 1.55;
+  color: #111;
+}
+
+.offer-measure {
+  position: absolute;
+  left: -99999px;
+  top: 0;
+  width: calc(210mm - var(--offer-pad-x) * 2);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.offer-pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12mm;
+}
+
+.offer-page {
+  box-sizing: border-box;
+  position: relative;
+  width: 210mm;
+  height: 297mm;
+  overflow: hidden;
+  background-color: #ffffff;
+  border-radius: 4px;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.offer-page-bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 210mm;
+  height: 297mm;
+  z-index: 0;
+  user-select: none;
+  pointer-events: none;
+}
+
+.offer-body {
+  box-sizing: border-box;
+  position: relative;
+  z-index: 1;
+  width: 210mm;
+  height: 297mm;
+  padding: var(--offer-pad-top) var(--offer-pad-x) var(--offer-pad-bottom)
+    var(--offer-pad-x);
+  overflow: hidden;
+}
+
+.offer-page-counter {
+  position: absolute;
+  bottom: 4mm;
+  right: 6mm;
+  z-index: 2;
+  font-size: 9px;
+  color: #94a3b8;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .offer-page,
+  .offer-page * {
+    visibility: visible;
+  }
+  .no-print {
+    display: none !important;
+  }
+
+  @page {
+    size: 210mm 297mm;
+    margin: 0;
+  }
+
+  html,
+  body {
+    background: #ffffff !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .offer-pages {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    width: 210mm;
+  }
+
+  .offer-page {
+    box-sizing: border-box !important;
+    display: block;
+    position: relative;
+    width: 210mm !important;
+    height: 297mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    overflow: hidden;
+    page-break-after: always;
+    page-break-inside: avoid;
+    break-after: page;
+    break-inside: avoid;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .offer-page:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+
+  .offer-page-bg {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 210mm !important;
+    height: 297mm !important;
+    max-width: 210mm !important;
+    max-height: 297mm !important;
+  }
+
+  .offer-body {
+    box-sizing: border-box !important;
+    width: 210mm !important;
+    height: 297mm !important;
+    padding: var(--offer-pad-top) var(--offer-pad-x) var(--offer-pad-bottom)
+      var(--offer-pad-x) !important;
+    overflow: hidden !important;
+  }
+
+  table,
+  tr,
+  h1,
+  h2,
+  h3 {
+    page-break-inside: avoid;
+  }
+}

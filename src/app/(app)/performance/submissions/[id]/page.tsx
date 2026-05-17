@@ -1,0 +1,120 @@
+import Link from 'next/link';
+import { notFound, redirect } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
+import { requireUser } from '@/lib/auth/guard';
+import {
+  canEditSubmission,
+  canViewSubmission,
+} from '@/lib/auth/review-access';
+import {
+  findSelfEvalForCycleAndSubject,
+  getSubmission,
+} from '@/lib/firestore/review-submissions';
+import {
+  emptyManagerEvalInput,
+  emptySelfEvalInput,
+  type ManagerEvalInput,
+  type SelfEvalInput,
+} from '@/types/review';
+import { SelfEvalForm } from '@/components/performance/self-eval-form';
+import { SelfEvalReadOnly } from '@/components/performance/self-eval-readonly';
+import { ManagerEvalForm } from '@/components/performance/manager-eval-form';
+import { writeAuditLog } from '@/lib/audit';
+
+interface Props {
+  params: Promise<{ id: string }>;
+}
+
+export const metadata = { title: 'Review form' };
+
+export default async function SubmissionPage({ params }: Props) {
+  const user = await requireUser();
+  const { id } = await params;
+
+  const sub = await getSubmission(id, { decryptNotes: true });
+  if (!sub) notFound();
+
+  if (!(await canViewSubmission(user, sub))) {
+    redirect('/performance');
+  }
+  const editable = await canEditSubmission(user, sub);
+
+  if (sub.kind === 'manager' && sub.managerNotes) {
+    await writeAuditLog({
+      actorUid: user.uid,
+      actorEmail: user.email,
+      action: 'review.read',
+      resource: { type: 'review_submission', id: sub.submissionId },
+      metadata: { kind: 'manager', subject: sub.subjectEmployeeId },
+    });
+  }
+
+  if (sub.kind === 'self') {
+    const initial: SelfEvalInput = sub.selfAnswers
+      ? { answers: { ...emptySelfEvalInput().answers, ...sub.selfAnswers } }
+      : emptySelfEvalInput();
+
+    return (
+      <div className="mx-auto max-w-3xl space-y-6">
+        <Link
+          href={`/performance/cycles/${sub.cycleId}`}
+          className="inline-flex items-center gap-1 text-sm text-muted hover:text-white"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to {sub.cycleName}
+        </Link>
+
+        <SelfEvalForm
+          submissionId={sub.submissionId}
+          cycleName={sub.cycleName}
+          subjectName={sub.subjectName}
+          subjectDepartment={sub.subjectDepartment}
+          initial={initial}
+          status={sub.status}
+          submittedAt={sub.submittedAt}
+          canEdit={editable}
+        />
+      </div>
+    );
+  }
+
+  // ── manager-eval ──
+  const initial: ManagerEvalInput = sub.managerRatings
+    ? {
+        ratings: sub.managerRatings,
+        notes: sub.managerNotes,
+      }
+    : emptyManagerEvalInput();
+
+  // Pull the matching self-eval so we can render it above the rating form —
+  // gives the manager the employee's reflection in front of them.
+  const pairedSelfEval = await findSelfEvalForCycleAndSubject(
+    sub.cycleId,
+    sub.subjectEmployeeId
+  );
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-6">
+      <Link
+        href={`/performance/cycles/${sub.cycleId}`}
+        className="inline-flex items-center gap-1 text-sm text-muted hover:text-white"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to {sub.cycleName}
+      </Link>
+
+      <SelfEvalReadOnly selfEval={pairedSelfEval} subjectName={sub.subjectName} />
+
+      <ManagerEvalForm
+        submissionId={sub.submissionId}
+        cycleName={sub.cycleName}
+        subjectName={sub.subjectName}
+        subjectDepartment={sub.subjectDepartment}
+        initial={initial}
+        status={sub.status}
+        submittedAt={sub.submittedAt}
+        canEdit={editable}
+      />
+    </div>
+  );
+}

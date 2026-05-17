@@ -1,0 +1,28 @@
+node_modules
+.next
+.git
+.gitignore
+
+# Local env — secrets injected at runtime via Secret Manager. Production
+# public config lives in .env.production (which IS copied into the image).
+.env
+.env.local
+.env.*.local
+.env.local.example
+
+# Dev / docs
+README.md
+PLAN.md
+DEPLOY.md
+*.md
+load-tests
+*.log
+.vscode
+.idea
+.DS_Store
+.tsbuildinfo
+tsconfig.tsbuildinfo
+coverage
+service-account*.json
+*.pem
+*.key
