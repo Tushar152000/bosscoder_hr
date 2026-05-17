@@ -1,29 +1,24 @@
 'use client';
 
 import { useMemo, useState, useTransition } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
-import { Field } from '@/components/ui/field';
-import { Select } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
+import { CalendarPlus, Check, ChevronDown, Sparkles } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { buildCycleName, type Cadence } from '@/types/review';
 import { createCycleAction } from '@/app/(app)/performance/actions';
 
 const MONTHS = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
 ];
+
+// Indian FY order: April → March
+const FY_MONTH_ORDER = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
+
+const CURRENT_YEAR = new Date().getFullYear();
+const YEAR_OPTIONS = Array.from({ length: 7 }, (_, i) => CURRENT_YEAR - 1 + i);
 
 interface Props {
   defaultYear: number;
@@ -33,7 +28,7 @@ interface Props {
 
 export function NewCycleForm({ defaultYear, defaultMonth, defaultQuarter }: Props) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
   const [cadence, setCadence] = useState<Cadence>('monthly');
   const [month, setMonth] = useState<number>(defaultMonth);
   const [quarter, setQuarter] = useState<number>(defaultQuarter);
@@ -48,7 +43,7 @@ export function NewCycleForm({ defaultYear, defaultMonth, defaultQuarter }: Prop
         quarter: cadence === 'quarterly' ? quarter : null,
         year,
       }),
-    [cadence, month, quarter, year]
+    [cadence, month, quarter, year],
   );
 
   function onSubmit(e: React.FormEvent) {
@@ -71,68 +66,182 @@ export function NewCycleForm({ defaultYear, defaultMonth, defaultQuarter }: Prop
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
-      {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
-          {error}
-        </div>
-      )}
-      <Card>
-        <CardHeader>
-          <CardTitle>Cycle details</CardTitle>
-        </CardHeader>
-        <CardBody className="grid gap-4 sm:grid-cols-2">
-          <Field label="Cadence" required>
-            <Select value={cadence} onChange={(e) => setCadence(e.target.value as Cadence)}>
-              <option value="monthly">Monthly</option>
-              <option value="quarterly">Quarterly</option>
-            </Select>
-          </Field>
-          <Field label="Year" required>
-            <Input
-              type="number"
-              min={2024}
-              max={2100}
-              value={year}
-              onChange={(e) => setYear(Number(e.target.value) || defaultYear)}
-              required
-            />
-          </Field>
-          {cadence === 'monthly' ? (
-            <Field label="Month" required className="sm:col-span-2">
-              <Select value={month} onChange={(e) => setMonth(Number(e.target.value))}>
-                {MONTHS.map((m, i) => (
-                  <option key={m} value={i + 1}>
-                    {m}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          ) : (
-            <Field label="Quarter" required className="sm:col-span-2">
-              <Select value={quarter} onChange={(e) => setQuarter(Number(e.target.value))}>
-                {[1, 2, 3, 4].map((q) => (
-                  <option key={q} value={q}>
-                    Q{q}
-                  </option>
-                ))}
-              </Select>
-            </Field>
+    <form onSubmit={onSubmit}>
+      <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-[1.6fr_1fr]">
+
+
+        <div className="rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-card">
+    
+          <div className="mb-4 flex items-center gap-2.5 border-b border-[#E2E8F0] pb-3">
+            <div className="grid h-7 w-7 shrink-0 place-items-center rounded-md bg-[#EBF3FE]">
+              <CalendarPlus className="h-[15px] w-[15px] text-[#0C447C]" />
+            </div>
+            <div>
+              <p className="text-[14px] font-medium text-slate-900">Cycle details</p>
+              <p className="text-[11px] text-slate-500">
+                Pick a cadence and period — name is generated for you.
+              </p>
+            </div>
+          </div>
+
+
+          <div className="mb-4 grid grid-cols-2 gap-2">
+            {(['monthly', 'quarterly'] as Cadence[]).map((c) => {
+              const active = cadence === c;
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCadence(c)}
+                  className={cn(
+                    'rounded-md border p-2.5 text-left transition',
+                    active
+                      ? 'border-[#0C447C] bg-[#EBF3FE]'
+                      : 'border-[#E2E8F0] bg-white hover:border-[#CBD5E1]',
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <span
+                      className={cn(
+                        'text-[13px] font-medium capitalize',
+                        active ? 'text-[#0C447C]' : 'text-slate-900',
+                      )}
+                    >
+                      {c}
+                    </span>
+                    <span
+                      className={cn(
+                        'flex h-3.5 w-3.5 items-center justify-center rounded-full',
+                        active ? 'bg-[#0C447C]' : 'border border-[#E2E8F0] bg-white',
+                      )}
+                    >
+                      {active && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
+                    </span>
+                  </div>
+                  <p
+                    className={cn(
+                      'mt-1 text-[11px]',
+                      active ? 'text-[#0C447C]' : 'text-slate-500',
+                    )}
+                  >
+                    {c === 'monthly'
+                      ? '12 cycles per year · short forms'
+                      : '4 cycles per year · deeper reviews'}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+
+
+          <div className="grid grid-cols-2 gap-3">
+  
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12px] font-medium text-slate-700">
+                Year <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                <select
+                  value={year}
+                  onChange={(e) => setYear(Number(e.target.value))}
+                  required
+                  className="h-10 w-full appearance-none rounded-md border border-[#E2E8F0] bg-white px-3 text-[13px] text-slate-900 focus:border-[#0C447C] focus:outline-none focus:ring-2 focus:ring-[#0C447C]/20"
+                >
+                  {YEAR_OPTIONS.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+              </div>
+            </div>
+
+      
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12px] font-medium text-slate-700">
+                {cadence === 'monthly' ? 'Month' : 'Quarter'}{' '}
+                <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                {cadence === 'monthly' ? (
+                  <select
+                    value={month}
+                    onChange={(e) => setMonth(Number(e.target.value))}
+                    required
+                    className="h-10 w-full appearance-none rounded-md border border-[#E2E8F0] bg-white px-3 text-[13px] text-slate-900 focus:border-[#0C447C] focus:outline-none focus:ring-2 focus:ring-[#0C447C]/20"
+                  >
+                    {FY_MONTH_ORDER.map((m) => (
+                      <option key={m} value={m}>
+                        {MONTHS[m - 1]}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <select
+                    value={quarter}
+                    onChange={(e) => setQuarter(Number(e.target.value))}
+                    required
+                    className="h-10 w-full appearance-none rounded-md border border-[#E2E8F0] bg-white px-3 text-[13px] text-slate-900 focus:border-[#0C447C] focus:outline-none focus:ring-2 focus:ring-[#0C447C]/20"
+                  >
+                    {[1, 2, 3, 4].map((q) => (
+                      <option key={q} value={q}>
+                        Q{q}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+              </div>
+            </div>
+          </div>
+
+          {/* Cycle name preview */}
+          <div className="mt-4 flex items-center gap-2 rounded-md border border-[#B5D4F4] bg-[#EBF3FE] px-3 py-2">
+            <Sparkles className="h-[13px] w-[13px] shrink-0 text-[#0C447C]" />
+            <p className="text-[12px] text-[#185FA5]">
+              Cycle name will be{' '}
+              <strong className="font-medium text-[#0C447C]">{previewName}</strong>.
+            </p>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div className="mt-3 rounded-md border border-[#FAC8C6] bg-[#FAECE7] px-3 py-2.5 text-[12px] text-[#993C1D]">
+              {error}
+            </div>
           )}
-        </CardBody>
-      </Card>
+        </div>
 
-      <div className="rounded-md border border-default bg-card px-4 py-3 text-sm">
-        Cycle name will be <span className="font-medium">{previewName}</span>.
-      </div>
+        <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-card lg:sticky lg:top-6 lg:self-start h-full">
+          <p className="mb-3 text-[10px] font-medium tracking-[1px] text-slate-400 uppercase">
+            What happens next
+          </p>
+          <ol className="flex flex-col gap-2.5">
+            {[
+              <>Cycle is created in <strong className="font-medium">Draft</strong> state.</>,
+              <>You&apos;ll land on the cycle page where you can review and open it.</>,
+              <>Opening assigns forms to every active employee and their manager, and sends an email notification.</>,
+            ].map((text, i) => (
+              <li key={i} className="flex items-start gap-2.5">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#EBF3FE] text-[12px] font-medium text-[#0C447C]">
+                  {i + 1}
+                </span>
+                <span className="text-[14px] leading-snug text-slate-700">{text}</span>
+              </li>
+            ))}
+          </ol>
 
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={() => router.back()} disabled={pending}>
-          Cancel
-        </Button>
-        <Button type="submit" disabled={pending}>
-          {pending ? 'Creating…' : 'Create cycle'}
-        </Button>
+          <div className="mt-4 flex flex-col gap-2 border-t border-[#E2E8F0] pt-4">
+            <Button type="submit" variant="primary" className="w-full" isLoading={isPending}>
+              {!isPending && 'Create cycle'}
+            </Button>
+            <Button variant="secondary" className="w-full" asChild>
+              <Link href="/performance">Cancel</Link>
+            </Button>
+          </div>
+        </div>
+
       </div>
     </form>
   );

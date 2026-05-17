@@ -239,7 +239,7 @@ export function RolesForm({
                   checked={checked}
                   onChange={() => toggleRole(r)}
                   disabled={isSelf}
-                  className="mt-0.5 h-4 w-4 rounded border-default text-brand-600 focus:ring-brand-500"
+                  className="mt-0.5 h-4 w-4 rounded border-default text-[#0C447C]-600 focus:ring-[#0C447C]-500"
                 />
                 <div>
                   <div className="text-sm font-medium capitalize">{r}</div>
@@ -284,7 +284,7 @@ export function RolesForm({
                   checked={checked}
                   onChange={() => togglePerm(p)}
                   disabled={isSelf}
-                  className="mt-0.5 h-4 w-4 rounded border-default text-brand-600 focus:ring-brand-500"
+                  className="mt-0.5 h-4 w-4 rounded border-default text-[#0C447C]-600 focus:ring-[#0C447C]-500"
                 />
                 <div className="flex-1">
                   <div className="flex items-center gap-2">

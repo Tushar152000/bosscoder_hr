@@ -125,12 +125,12 @@ export function ManagerEvalForm({
             </Field>
           ))}
 
-          <div className="rounded-md border-2 border-brand-200 bg-brand-50 px-4 py-3">
+          <div className="rounded-md border-2 border-[#0C447C]-200 bg-[#0C447C]-50 px-4 py-3">
             <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-brand-900">Overall Rating</span>
-              <span className="text-2xl font-bold text-brand-700">{overall.toFixed(2)}</span>
+              <span className="text-sm font-semibold text-[#0C447C]-900">Overall Rating</span>
+              <span className="text-2xl font-bold text-[#0C447C]-700">{overall.toFixed(2)}</span>
             </div>
-            <p className="mt-1 text-xs text-brand-900/70">
+            <p className="mt-1 text-xs text-[#0C447C]-900/70">
               Auto-computed average of the five ratings above.
             </p>
           </div>

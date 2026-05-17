@@ -14,6 +14,7 @@ export type AuditAction =
   | 'permission.update'
   | 'review_cycle.create'
   | 'review_cycle.close'
+  | 'review_cycle.nudge'
   | 'review.submit'
   | 'review.read'
   | 'offer.create'

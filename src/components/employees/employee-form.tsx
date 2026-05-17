@@ -205,7 +205,7 @@ export function EmployeeForm({ mode, initial, employeeId, managers, canEditSensi
                           : form.managedDepartments.filter((x) => x !== d);
                         set('managedDepartments', next);
                       }}
-                      className="h-4 w-4 rounded border-default text-brand-600 focus:ring-brand-500"
+                      className="h-4 w-4 rounded border-default text-[#0C447C]-600 focus:ring-[#0C447C]-500"
                     />
                     <span>{d}</span>
                   </label>

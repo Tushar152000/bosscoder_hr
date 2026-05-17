@@ -1,28 +1,16 @@
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { ArrowLeft, Pencil } from 'lucide-react';
+import { ArrowLeft, Home, ChevronRight, Lock, Pencil } from 'lucide-react';
 import { requireUser } from '@/lib/auth/guard';
-import {
-  canEditEmployees,
-  canViewEmployee,
-  canViewSensitiveFor,
-} from '@/lib/auth/employee-access';
-import {
-  getEmployeeById,
-  getEmployeeFull,
-  listEmployees,
-} from '@/lib/firestore/employees';
+import { canEditEmployees, canViewEmployee, canViewSensitiveFor } from '@/lib/auth/employee-access';
+import { getEmployeeById, getEmployeeFull, listEmployees } from '@/lib/firestore/employees';
 import { writeAuditLog } from '@/lib/audit';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardBody, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { initials } from '@/lib/utils';
 import { formatDate } from '@/lib/format';
-import {
-  DeactivateEmployeeButton,
-  DeleteEmployeeButton,
-} from '@/components/employees/employee-actions';
-import type { EmployeeFull, EmployeeStatus } from '@/types/employee';
+import { colorForName } from '@/lib/directory/colors';
+import { DeactivateEmployeeButton, DeleteEmployeeButton } from '@/components/employees/employee-actions';
+import type { EmployeeFull, EmployeeStatus, EmploymentType } from '@/types/employee';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -40,9 +28,7 @@ export default async function EmployeeDetailPage({ params }: Props) {
   const employee = await getEmployeeById(id);
   if (!employee) notFound();
 
-  if (!(await canViewEmployee(user, employee))) {
-    redirect('/directory');
-  }
+  if (!(await canViewEmployee(user, employee))) redirect('/directory');
 
   let sensitive: EmployeeFull | null = null;
   if (await canViewSensitiveFor(user, employee)) {
@@ -59,43 +45,56 @@ export default async function EmployeeDetailPage({ params }: Props) {
 
   const manager = employee.managerId ? await getEmployeeById(employee.managerId) : null;
   const directReports = await listEmployees({ managerId: employee.employeeId, status: 'any', limit: 200 });
+  const canEdit = canEditEmployees(user);
+  const avatarColor = colorForName(employee.displayName);
 
   return (
-    <div className="space-y-6">
-      <Link
-        href="/directory"
-        className="inline-flex items-center gap-1 text-sm text-muted hover:text-white"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back to directory
-      </Link>
+    <div className="py-5 space-y-5">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-1.5 text-[12px] text-slate-400">
+        <Home size={12} />
+        <Link href="/" className="hover:text-slate-600 transition">Home</Link>
+        <ChevronRight size={11} />
+        <Link href="/directory" className="hover:text-slate-600 transition">Directory</Link>
+        <ChevronRight size={11} />
+        <span className="text-slate-900">{employee.displayName}</span>
+      </div>
 
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="grid h-14 w-14 place-items-center rounded-full bg-accent-500/15 text-base font-semibold text-accent-200 ring-1 ring-accent-500/30">
-            {initials(employee.displayName, employee.email)}
-          </div>
-          <div>
-            <h1 className="text-2xl font-semibold">{employee.displayName}</h1>
-            <p className="text-sm text-muted">
-              {employee.designation} · {employee.department}
-            </p>
-            <div className="mt-2 flex items-center gap-2">
-              <StatusBadge status={employee.status} />
-              <Badge variant="muted">{employee.employmentType}</Badge>
-              {employee.userUid && <Badge variant="brand">Portal user linked</Badge>}
+      {/* Header card */}
+      <div className="bg-white border border-slate-200/70 rounded-xl p-5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div
+              className="w-14 h-14 rounded-full flex items-center justify-center text-[17px] font-semibold text-white shrink-0"
+              style={{ backgroundColor: avatarColor }}
+            >
+              {initials(employee.displayName, employee.email)}
+            </div>
+            <div>
+              <h1 className="text-[18px] font-semibold text-slate-900">{employee.displayName}</h1>
+              <p className="text-[12px] text-slate-500 mt-0.5">
+                {employee.designation} · {employee.department}
+              </p>
+              <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                <StatusBadge status={employee.status} />
+                <TypeBadge type={employee.employmentType} />
+                {employee.userUid && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#E6F1FB] text-[#0C447C]">
+                    Portal linked
+                  </span>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {canEditEmployees(user) && (
-            <>
-              <Button asChild variant="outline" size="sm">
-                <Link href={`/directory/${employee.employeeId}/edit`}>
-                  <Pencil className="h-4 w-4" />
-                  Edit
-                </Link>
-              </Button>
+          {canEdit && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <Link
+                href={`/directory/${employee.employeeId}/edit`}
+                className="flex items-center gap-1.5 bg-white border border-slate-200/70 rounded-lg px-3 py-1.5 text-[12px] font-medium text-slate-700 hover:bg-slate-50 transition"
+              >
+                <Pencil size={12} />
+                Edit
+              </Link>
               {employee.active && (
                 <DeactivateEmployeeButton
                   employeeId={employee.employeeId}
@@ -106,27 +105,33 @@ export default async function EmployeeDetailPage({ params }: Props) {
                 employeeId={employee.employeeId}
                 displayName={employee.displayName}
               />
-            </>
+            </div>
           )}
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-6 lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Profile</CardTitle>
-            </CardHeader>
-            <CardBody className="grid gap-4 sm:grid-cols-2">
+      {/* Main grid */}
+      <div className="grid lg:grid-cols-[1fr_280px] gap-5 items-start">
+        {/* Left column */}
+        <div className="space-y-4">
+          {/* Profile */}
+          <div className="bg-white border border-slate-200/70 rounded-xl p-5">
+            <p className="text-[13px] font-medium text-slate-900 mb-4">Profile</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
               <DataRow label="Work email" value={employee.email} />
-              <DataRow label="Personal email" value={employee.personalEmail} />
-              <DataRow label="Phone" value={employee.phone} />
+              {employee.personalEmail && (
+                <DataRow label="Personal email" value={employee.personalEmail} />
+              )}
+              <DataRow label="Phone" value={employee.phone ?? '—'} />
               <DataRow label="Joining date" value={formatDate(employee.joiningDate)} />
               <DataRow
-                label="Manager"
+                label="Reporting manager"
                 value={
                   manager ? (
-                    <Link href={`/directory/${manager.employeeId}`} className="text-accent-300 hover:underline">
+                    <Link
+                      href={`/directory/${manager.employeeId}`}
+                      className="text-[#0C447C] hover:underline"
+                    >
                       {manager.displayName}
                     </Link>
                   ) : (
@@ -134,58 +139,86 @@ export default async function EmployeeDetailPage({ params }: Props) {
                   )
                 }
               />
-              <DataRow
-                label="Exit date"
-                value={formatDate(employee.exitDate)}
-              />
-            </CardBody>
-          </Card>
+              {employee.exitDate && (
+                <DataRow label="Exit date" value={formatDate(employee.exitDate)} />
+              )}
+            </div>
+          </div>
 
+          {/* Sensitive section */}
           {sensitive ? (
             <SensitiveCards sensitive={sensitive} />
           ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>Sensitive details</CardTitle>
-                <CardDescription>
-                  Compensation, bank, identity, and address are encrypted.{' '}
-                  {employee.userUid === user.uid
-                    ? 'Loading your own…'
-                    : 'You don’t have permission to view them.'}
-                </CardDescription>
-              </CardHeader>
-            </Card>
+            <div className="bg-white border border-slate-200/70 rounded-xl p-5">
+              <div className="flex items-center gap-3 p-4 bg-[#FAFAF7] border border-slate-200/70 rounded-lg">
+                <Lock size={15} className="text-slate-400 shrink-0" />
+                <div>
+                  <p className="text-[12px] font-medium text-slate-700">
+                    Sensitive fields are encrypted
+                  </p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Compensation, bank, identity and address are visible to HR &amp; founders only.
+                  </p>
+                </div>
+              </div>
+            </div>
           )}
         </div>
 
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Direct reports</CardTitle>
-              <CardDescription>{directReports.length} people</CardDescription>
-            </CardHeader>
-            <CardBody className="space-y-2">
-              {directReports.length === 0 ? (
-                <p className="text-sm text-muted">None.</p>
-              ) : (
-                directReports.map((r) => (
+        {/* Right column */}
+        <div className="space-y-4">
+          {/* Direct reports */}
+          <div className="bg-white border border-slate-200/70 rounded-xl p-5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[13px] font-medium text-slate-900">Direct reports</p>
+              {directReports.length > 0 && (
+                <span className="text-[11px] text-slate-400">{directReports.length}</span>
+              )}
+            </div>
+            {directReports.length === 0 ? (
+              <p className="text-[12px] text-slate-400">No direct reports.</p>
+            ) : (
+              <div className="space-y-0.5">
+                {directReports.map((r) => (
                   <Link
                     key={r.employeeId}
                     href={`/directory/${r.employeeId}`}
-                    className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-white/[0.04]"
+                    className="flex items-center gap-2.5 rounded-lg px-2 py-2 hover:bg-slate-50 transition group"
                   >
-                    <div className="grid h-8 w-8 place-items-center rounded-full bg-accent-500/15 text-xs font-semibold text-accent-200 ring-1 ring-accent-500/30">
+                    <div
+                      className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold text-white shrink-0"
+                      style={{ backgroundColor: colorForName(r.displayName) }}
+                    >
                       {initials(r.displayName, r.email)}
                     </div>
                     <div className="min-w-0">
-                      <div className="text-sm font-medium">{r.displayName}</div>
-                      <div className="truncate text-xs text-muted">{r.designation}</div>
+                      <p className="text-[12px] font-medium text-slate-900 group-hover:text-[#0C447C] transition truncate">
+                        {r.displayName}
+                      </p>
+                      <p className="text-[11px] text-slate-400 truncate">{r.designation}</p>
                     </div>
                   </Link>
-                ))
-              )}
-            </CardBody>
-          </Card>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Managed departments */}
+          {employee.managedDepartments.length > 0 && (
+            <div className="bg-white border border-slate-200/70 rounded-xl p-5">
+              <p className="text-[13px] font-medium text-slate-900 mb-3">Manages departments</p>
+              <div className="flex flex-wrap gap-1.5">
+                {employee.managedDepartments.map((d) => (
+                  <span
+                    key={d}
+                    className="px-2 py-1 bg-[#FAFAF7] border border-slate-200/70 rounded-md text-[11px] text-slate-700"
+                  >
+                    {d}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -193,94 +226,135 @@ export default async function EmployeeDetailPage({ params }: Props) {
 }
 
 function StatusBadge({ status }: { status: EmployeeStatus }) {
-  if (status === 'active') return <Badge variant="success">Active</Badge>;
-  if (status === 'on-notice') return <Badge variant="warning">On notice</Badge>;
-  return <Badge variant="muted">Left</Badge>;
+  if (status === 'active')
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#E1F5EE] text-[#0F6E56]">
+        Active
+      </span>
+    );
+  if (status === 'on-notice')
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700">
+        On notice
+      </span>
+    );
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-500">
+      Left
+    </span>
+  );
 }
 
-function DataRow({ label, value }: { label: string; value: React.ReactNode }) {
+function TypeBadge({ type }: { type: EmploymentType }) {
+  if (type === 'full-time')
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#E6F1FB] text-[#0C447C]">
+        Full-time
+      </span>
+    );
+  if (type === 'contractor')
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-600">
+        Contractor
+      </span>
+    );
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-[#EEEDFE] text-[#534AB7]">
+      Intern
+    </span>
+  );
+}
+
+function DataRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div>
-      <p className="text-xs uppercase tracking-wide text-muted">{label}</p>
-      <p className="mt-1 text-sm">{value || '—'}</p>
+      <p className="text-[11px] uppercase tracking-wider text-slate-400">{label}</p>
+      <div className="mt-1 text-[13px] text-slate-900">{value || '—'}</div>
     </div>
   );
 }
 
+const DECRYPTED_BADGE = (
+  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 border border-amber-100">
+    Decrypted
+  </span>
+);
+
 function SensitiveCards({ sensitive }: { sensitive: EmployeeFull }) {
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Compensation</CardTitle>
-            <Badge variant="warning">Decrypted</Badge>
-          </div>
-          <CardDescription>This read was logged to the audit log.</CardDescription>
-        </CardHeader>
-        <CardBody className="grid gap-4 sm:grid-cols-3">
-          <DataRow label="CTC" value={sensitive.compensation.ctc} />
-          <DataRow label="Salary" value={sensitive.compensation.salary} />
-          <DataRow label="Bonus" value={sensitive.compensation.bonus} />
-        </CardBody>
-      </Card>
+    <div className="space-y-4">
+      <div className="bg-white border border-slate-200/70 rounded-xl p-5">
+        <div className="flex items-center justify-between mb-1">
+          <p className="text-[13px] font-medium text-slate-900">Compensation</p>
+          {DECRYPTED_BADGE}
+        </div>
+        <p className="text-[11px] text-slate-400 mb-4">This read was logged to the audit log.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <DataRow
+            label="Annual CTC"
+            value={sensitive.compensation.ctc ? `₹${sensitive.compensation.ctc}` : '—'}
+          />
+          <DataRow
+            label="Fixed salary"
+            value={sensitive.compensation.salary ? `₹${sensitive.compensation.salary}` : '—'}
+          />
+          <DataRow
+            label="Variable / Bonus"
+            value={sensitive.compensation.bonus ? `₹${sensitive.compensation.bonus}` : '—'}
+          />
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Bank details</CardTitle>
-            <Badge variant="warning">Decrypted</Badge>
-          </div>
-        </CardHeader>
-        <CardBody className="grid gap-4 sm:grid-cols-3">
-          <DataRow label="Account number" value={sensitive.bank.accountNumber} />
-          <DataRow label="IFSC" value={sensitive.bank.ifsc} />
-          <DataRow label="Beneficiary name" value={sensitive.bank.beneficiaryName} />
-        </CardBody>
-      </Card>
+      <div className="bg-white border border-slate-200/70 rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-[13px] font-medium text-slate-900">Bank details</p>
+          {DECRYPTED_BADGE}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <DataRow label="Account number" value={sensitive.bank.accountNumber ?? '—'} />
+          <DataRow label="IFSC" value={sensitive.bank.ifsc ?? '—'} />
+          <DataRow label="Beneficiary name" value={sensitive.bank.beneficiaryName ?? '—'} />
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Identity & personal</CardTitle>
-            <Badge variant="warning">Decrypted</Badge>
-          </div>
-        </CardHeader>
-        <CardBody className="grid gap-4 sm:grid-cols-3">
-          <DataRow label="PAN" value={sensitive.identity.pan} />
-          <DataRow label="Aadhaar" value={sensitive.identity.aadhaar} />
-          <DataRow label="DOB" value={sensitive.dob} />
-        </CardBody>
-      </Card>
+      <div className="bg-white border border-slate-200/70 rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-[13px] font-medium text-slate-900">Identity &amp; personal</p>
+          {DECRYPTED_BADGE}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <DataRow label="PAN" value={sensitive.identity.pan ?? '—'} />
+          <DataRow label="Aadhaar (last 4)" value={sensitive.identity.aadhaar ?? '—'} />
+          <DataRow label="Date of birth" value={sensitive.dob ?? '—'} />
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Address</CardTitle>
-            <Badge variant="warning">Decrypted</Badge>
-          </div>
-        </CardHeader>
-        <CardBody className="grid gap-4 sm:grid-cols-2">
-          <DataRow label="Line 1" value={sensitive.address.line1} />
-          <DataRow label="Line 2" value={sensitive.address.line2} />
-          <DataRow label="City" value={sensitive.address.city} />
-          <DataRow label="State" value={sensitive.address.state} />
-          <DataRow label="Pincode" value={sensitive.address.pincode} />
-        </CardBody>
-      </Card>
+      <div className="bg-white border border-slate-200/70 rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-[13px] font-medium text-slate-900">Address</p>
+          {DECRYPTED_BADGE}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <DataRow label="Line 1" value={sensitive.address.line1 ?? '—'} />
+          {sensitive.address.line2 && (
+            <DataRow label="Line 2" value={sensitive.address.line2} />
+          )}
+          <DataRow label="City" value={sensitive.address.city ?? '—'} />
+          <DataRow label="State" value={sensitive.address.state ?? '—'} />
+          <DataRow label="Pincode" value={sensitive.address.pincode ?? '—'} />
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Emergency contact</CardTitle>
-            <Badge variant="warning">Decrypted</Badge>
-          </div>
-        </CardHeader>
-        <CardBody className="grid gap-4 sm:grid-cols-2">
-          <DataRow label="Name" value={sensitive.emergencyContact.name} />
-          <DataRow label="Phone" value={sensitive.emergencyContact.phone} />
-        </CardBody>
-      </Card>
-    </>
+      <div className="bg-white border border-slate-200/70 rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-[13px] font-medium text-slate-900">Emergency contact</p>
+          {DECRYPTED_BADGE}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <DataRow label="Name" value={sensitive.emergencyContact.name ?? '—'} />
+          <DataRow label="Phone" value={sensitive.emergencyContact.phone ?? '—'} />
+        </div>
+      </div>
+    </div>
   );
 }

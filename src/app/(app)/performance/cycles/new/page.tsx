@@ -1,6 +1,6 @@
-import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { redirect } from 'next/navigation';
+import { ChevronRight, Home } from 'lucide-react';
 import { requireUser } from '@/lib/auth/guard';
 import { canManageCycles } from '@/lib/auth/review-access';
 import { NewCycleForm } from '@/components/performance/new-cycle-form';
@@ -13,22 +13,30 @@ export default async function NewCyclePage() {
 
   const now = new Date();
   return (
-    <div className="mx-auto max-w-xl space-y-6">
-      <div>
-        <Link
-          href="/performance"
-          className="inline-flex items-center gap-1 text-sm text-muted hover:text-white"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to performance
+    <div className="px-4 py-6">
+      {/* Breadcrumb */}
+      <nav className="mb-4 flex items-center gap-1.5 text-[14px] text-slate-400">
+        <Link href="/" className="flex items-center gap-1 hover:text-slate-600 transition">
+          <Home className="h-3 w-3" />
+          Home
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold">New review cycle</h1>
-        <p className="mt-1 text-sm text-muted">
-          Pick monthly or quarterly. After creating the cycle, click{' '}
-          <span className="font-medium">Open cycle</span> to assign forms to every active employee
-          and their manager.
+        <ChevronRight className="h-2.5 w-2.5" />
+        <Link href="/performance" className="hover:text-slate-600 transition">
+          Performance
+        </Link>
+        <ChevronRight className="h-2.5 w-2.5" />
+        <span className="text-slate-600">New cycle</span>
+      </nav>
+
+
+      <div className="mb-6">
+        <h1 className="text-[24px] font-medium text-slate-900">Open a new review cycle</h1>
+        <p className="mt-1 text-[14px] text-slate-500">
+          Cycles assign forms to every active employee and their manager. You can save as a draft
+          and open it later.
         </p>
       </div>
+
       <NewCycleForm
         defaultYear={now.getUTCFullYear()}
         defaultMonth={now.getUTCMonth() + 1}

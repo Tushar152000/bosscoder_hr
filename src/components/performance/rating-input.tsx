@@ -40,7 +40,7 @@ export function RatingInput({
               className={cn(
                 'h-9 w-9 rounded-md border text-sm font-semibold transition-colors',
                 active
-                  ? 'border-brand-600 bg-brand-600 text-white'
+                  ? 'border-[#0C447C]-600 bg-[#0C447C]-600 text-white'
                   : 'border-default bg-card text-white hover:border-white/20 hover:bg-white/[0.04]',
                 disabled && 'opacity-50 cursor-not-allowed'
               )}
@@ -62,7 +62,7 @@ export function RatingInput({
             if (!Number.isNaN(n)) onChange(Math.min(5, Math.max(1, n)));
           }}
           disabled={disabled}
-          className="ml-2 h-9 w-20 rounded-md border border-default bg-card px-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+          className="ml-2 h-9 w-20 rounded-md border border-default bg-card px-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#0C447C]-500"
         />
       </div>
       <p className="text-xs text-muted">

@@ -41,8 +41,7 @@ export function LoginButton() {
         const j = await res1.json().catch(() => ({}));
         throw new Error(j.error || 'Sign-in rejected');
       }
-      // Force a fresh ID token so the latest custom claims (roles/perms) are embedded
-      // in the session cookie we mint on the second exchange.
+
       const refreshed = await cred.user.getIdToken(true);
       await fetch('/api/auth/session', {
         method: 'POST',
@@ -60,7 +59,7 @@ export function LoginButton() {
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <Button onClick={signIn} disabled={loading} className="w-full">
+      <Button onClick={signIn} disabled={loading} className="w-full bg-[#1371FF] hover:bg-blue-800">
         {loading ? 'Signing in…' : 'Continue with Google'}
       </Button>
       {error && <p className="text-sm text-red-600">{error}</p>}

@@ -57,7 +57,7 @@ export function Topbar({
             className="h-8 w-8 rounded-full"
           />
         ) : (
-          <div className="grid h-8 w-8 place-items-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">
+          <div className="grid h-8 w-8 place-items-center rounded-full bg-[#0C447C]-100 text-xs font-semibold text-[#0C447C]-700">
             {initials(user.displayName, user.email)}
           </div>
         )}

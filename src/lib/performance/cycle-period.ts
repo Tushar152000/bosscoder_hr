@@ -78,3 +78,63 @@ export function parseMonthParam(v: string | undefined): number | null {
   if (!Number.isFinite(n) || n < 1 || n > 12) return null;
   return n;
 }
+
+/**
+ * Derive Indian fiscal year string for a cycle.
+ * Months 1–3 (Jan–Mar) belong to the previous FY.
+ * e.g. "April 2025" → "FY 2025-26", "January 2026" → "FY 2025-26".
+ */
+export function cycleFY(c: ReviewCycle): string | null {
+  const { year, month, quarter } = c;
+  if (!year) return null;
+  const startMonth = month ?? (quarter != null ? (quarter - 1) * 3 + 1 : null);
+  const fyYear = startMonth == null || startMonth >= 4 ? year : year - 1;
+  return `FY ${fyYear}-${String(fyYear + 1).slice(-2)}`;
+}
+
+/** Distinct FY strings from cycles, descending (newest first). */
+export function availableFYs(cycles: ReviewCycle[]): string[] {
+  const set = new Set<string>();
+  for (const c of cycles) {
+    const fy = cycleFY(c);
+    if (fy) set.add(fy);
+  }
+  return [...set].sort((a, b) => b.localeCompare(a));
+}
+
+/** Parse `'FY 2025-26'` → same string; bad/missing → null. */
+export function parseFYParam(v: string | undefined): string | null {
+  if (!v) return null;
+  return /^FY \d{4}-\d{2}$/.test(v) ? v : null;
+}
+
+/**
+ * Compute the effective deadline for a cycle.
+ * Closed cycles → closedAt. Open monthly cycles → last day of that month.
+ * Open quarterly cycles → last day of the last month in the quarter.
+ * Fallback → openedAt + 30/90 days.
+ */
+export function computeCycleDeadline(c: ReviewCycle): Date | null {
+  if (c.status === 'closed') return c.closedAt ?? null;
+  const p = cyclePeriod(c);
+  if (p.year && p.months.length > 0) {
+    const lastMonth = p.months[p.months.length - 1];
+    // new Date(year, lastMonth, 0) = last day of lastMonth (months are 0-indexed in JS)
+    return new Date(p.year, lastMonth, 0, 23, 59, 59);
+  }
+  if (c.openedAt) {
+    const days = c.cadence === 'quarterly' ? 90 : 30;
+    return new Date(c.openedAt.getTime() + days * 864e5);
+  }
+  return null;
+}
+
+/** Parse status param. Maps UI alias 'scheduled' → 'draft'. */
+export function parseStatusFilter(
+  v: string | undefined,
+): ReviewCycle['status'] | null {
+  if (v === 'open') return 'open';
+  if (v === 'closed') return 'closed';
+  if (v === 'scheduled') return 'draft';
+  return null;
+}

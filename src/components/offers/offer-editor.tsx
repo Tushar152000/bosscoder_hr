@@ -492,7 +492,7 @@ export function OfferEditor({
                           checked={data.includePf}
                           onChange={(e) => set('includePf', e.target.checked)}
                           disabled={readOnly}
-                          className="mt-0.5 h-4 w-4 rounded border-default text-brand-600 focus:ring-brand-500"
+                          className="mt-0.5 h-4 w-4 rounded border-default text-[#0C447C]-600 focus:ring-[#0C447C]-500"
                         />
                         <span>
                           Include PF in salary table
@@ -534,7 +534,7 @@ export function OfferEditor({
                             set('includeBstIncentives', e.target.checked)
                           }
                           disabled={readOnly}
-                          className="mt-0.5 h-4 w-4 rounded border-default text-brand-600 focus:ring-brand-500"
+                          className="mt-0.5 h-4 w-4 rounded border-default text-[#0C447C]-600 focus:ring-[#0C447C]-500"
                         />
                         <span>
                           BST Sales — performance-based incentives addendum
@@ -545,7 +545,7 @@ export function OfferEditor({
                       </label>
                     )}
 
-                    <div className="rounded-md bg-brand-50/50 px-3 py-2 text-xs">
+                    <div className="rounded-md bg-[#0C447C]-50/50 px-3 py-2 text-xs">
                       <span className="text-muted">Total CTC preview: </span>
                       <span className="font-semibold tabular-nums">
                         ₹{formatINR(totalCtcPreview)}

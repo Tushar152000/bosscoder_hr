@@ -331,3 +331,33 @@ export async function createCycleAndRedirect(input: {
   const res = await createCycleAction(input);
   if (res.ok) redirect(`/performance/cycles/${res.data.cycleId}`);
 }
+
+/**
+ * Send a nudge notification to all reviewers with pending (not-started /
+ * in-progress) forms in the given cycle. Stub — wire up to notification
+ * service when ready. Returns a user-facing message for the toast.
+ */
+export async function nudgePendingEmployees(
+  cycleId: string,
+): Promise<ActionResult<{ sent: number }>> {
+  const user = await requireUser();
+  if (!canManageCycles(user)) return { ok: false, error: 'Forbidden' };
+
+  const cycle = await getCycle(cycleId);
+  if (!cycle) return { ok: false, error: 'Cycle not found' };
+  if (cycle.status !== 'open') return { ok: false, error: 'Cycle is not open' };
+
+  try {
+    await writeAuditLog({
+      actorUid: user.uid,
+      actorEmail: user.email,
+      action: 'review_cycle.nudge',
+      resource: { type: 'review_cycle', id: cycleId },
+      metadata: { cycleName: cycle.name },
+    });
+    // TODO: email pending reviewers via notification service
+    return { ok: true, data: { sent: 0 } };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Nudge failed' };
+  }
+}

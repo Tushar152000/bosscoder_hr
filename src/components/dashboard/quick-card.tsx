@@ -37,7 +37,7 @@ export function QuickCard({
     <Link
       href={href}
       className={cn(
-        'bg-white border border-slate-200/70 rounded-xl p-[18px] flex flex-col gap-3.5',
+        'bg-white border border-slate-200/70 rounded-[16px] p-[18px] flex flex-col gap-3.5 w-full',
         'hover:border-slate-300 hover:shadow-sm transition-all duration-150',
         comingSoon && 'opacity-90 pointer-events-none'
       )}

@@ -6,10 +6,6 @@ import {
   type ReviewSubmission,
 } from '@/types/review';
 
-/**
- * Server component — admin view of all manager-eval rows for a cycle.
- * Sortable will come later; for now ordered by department + name.
- */
 export function ManagerRatingTable({
   submissions,
   cycleStatus,
@@ -17,69 +13,79 @@ export function ManagerRatingTable({
   submissions: ReviewSubmission[];
   cycleStatus: 'draft' | 'open' | 'closed';
 }) {
-  const managerSubs = submissions.filter((s) => s.kind === 'manager');
+  const rows = submissions.filter((s) => s.kind === 'manager');
 
-  if (managerSubs.length === 0) {
+  if (rows.length === 0) {
     return (
-      <p className="text-sm text-muted">
+      <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-5 text-[13px] text-slate-500">
         No manager-eval entries{' '}
-        {cycleStatus === 'draft' ? 'yet — open the cycle to assign reviews.' : 'available.'}
-      </p>
+        {cycleStatus === 'draft' ? '— open the cycle to assign reviews.' : 'available.'}
+      </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-default bg-card">
-      <table className="w-full text-left text-sm">
-        <thead className="bg-white/[0.03] text-xs uppercase tracking-wide text-muted">
+    <div className="overflow-x-auto rounded-xl border border-[#E2E8F0] bg-white shadow-card">
+      <table className="w-full min-w-[720px] text-left">
+        <thead className="border-b border-[#E2E8F0] bg-[#F8FAFC] text-[10px] font-medium uppercase tracking-[0.5px] text-slate-400">
           <tr>
-            <th className="px-4 py-3">Name</th>
-            <th className="px-4 py-3">Department</th>
-            <th className="px-4 py-3">Reviewer</th>
+            <th className="px-4 py-2.5">Employee</th>
+            <th className="px-4 py-2.5">Department</th>
+            <th className="px-4 py-2.5">Reviewer</th>
             {MANAGER_RATING_KEYS.map((k) => (
-              <th key={k} className="px-3 py-3 text-center">
+              <th key={k} className="px-3 py-2.5 text-center">
                 {MANAGER_RATING_LABELS[k]}
               </th>
             ))}
-            <th className="px-4 py-3 text-center">Overall</th>
-            <th className="px-4 py-3">Status</th>
+            <th className="px-4 py-2.5 text-center">Overall</th>
+            <th className="px-4 py-2.5">Status</th>
           </tr>
         </thead>
         <tbody>
-          {managerSubs.map((s) => {
+          {rows.map((s) => {
             const ratings = s.managerRatings;
             const overall = s.managerOverallRating;
             return (
-              <tr key={s.submissionId} className="border-t border-default hover:bg-white/[0.03]">
-                <td className="px-4 py-3 font-medium">
-                  <Link href={`/performance/submissions/${s.submissionId}`} className="hover:underline">
+              <tr
+                key={s.submissionId}
+                className="border-t border-[#E2E8F0] transition hover:bg-[#F8FAFC]"
+              >
+                <td className="px-4 py-3">
+                  <Link
+                    href={`/performance/submissions/${s.submissionId}`}
+                    className="text-[13px] font-medium text-slate-900 hover:text-[#0C447C] hover:underline"
+                  >
                     {s.subjectName}
                   </Link>
                 </td>
-                <td className="px-4 py-3 text-xs text-muted">{s.subjectDepartment}</td>
-                <td className="px-4 py-3 text-xs">{s.reviewerName}</td>
+                <td className="px-4 py-3 text-[12px] text-slate-500">{s.subjectDepartment}</td>
+                <td className="px-4 py-3 text-[12px] text-slate-700">{s.reviewerName}</td>
                 {MANAGER_RATING_KEYS.map((k) => (
-                  <td key={k} className="px-3 py-3 text-center text-sm tabular-nums">
+                  <td key={k} className="px-3 py-3 text-center text-[13px] tabular-nums text-slate-700">
                     {ratings ? ratings[k].toFixed(1) : '—'}
                   </td>
                 ))}
-                <td
-                  className={cn(
-                    'px-4 py-3 text-center text-base tabular-nums font-bold',
-                    overall == null
-                      ? 'text-muted'
-                      : overall <= 2
-                      ? 'text-emerald-300'
-                      : overall <= 3
-                      ? 'text-white'
-                      : overall <= 4
-                      ? 'text-amber-300'
-                      : 'text-red-300'
+                <td className="px-4 py-3 text-center">
+                  {overall != null ? (
+                    <span
+                      className={cn(
+                        'text-[14px] font-semibold tabular-nums',
+                        overall <= 2
+                          ? 'text-[#0F6E56]'
+                          : overall <= 3
+                          ? 'text-slate-900'
+                          : overall <= 4
+                          ? 'text-[#854F0B]'
+                          : 'text-[#993C1D]',
+                      )}
+                    >
+                      {overall.toFixed(2)}
+                    </span>
+                  ) : (
+                    <span className="text-[13px] text-slate-400">—</span>
                   )}
-                >
-                  {overall != null ? overall.toFixed(2) : '—'}
                 </td>
-                <td className="px-4 py-3 text-xs">
+                <td className="px-4 py-3">
                   <StatusPill status={s.status} />
                 </td>
               </tr>
@@ -92,15 +98,15 @@ export function ManagerRatingTable({
 }
 
 function StatusPill({ status }: { status: ReviewSubmission['status'] }) {
-  const map: Record<ReviewSubmission['status'], { label: string; className: string }> = {
-    'not-started': { label: 'Not started', className: 'bg-white/10 text-white ring-1 ring-white/10' },
-    'in-progress': { label: 'In progress', className: 'bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/30' },
-    submitted: { label: 'Submitted', className: 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30' },
-    locked: { label: 'Locked', className: 'bg-white/5 text-muted ring-1 ring-white/10' },
+  const map: Record<ReviewSubmission['status'], { label: string; cls: string }> = {
+    submitted:     { label: 'Submitted',   cls: 'bg-[#E1F5EE] text-[#0F6E56]' },
+    'in-progress': { label: 'In progress', cls: 'bg-[#FAEEDA] text-[#854F0B]' },
+    'not-started': { label: 'Not started', cls: 'bg-[#F8FAFC] text-slate-500 border border-[#E2E8F0]' },
+    locked:        { label: 'Locked',      cls: 'bg-[#F8FAFC] text-slate-500 border border-[#E2E8F0]' },
   };
-  const { label, className } = map[status];
+  const { label, cls } = map[status];
   return (
-    <span className={cn('inline-flex rounded-full px-2 py-0.5 text-xs font-medium', className)}>
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${cls}`}>
       {label}
     </span>
   );

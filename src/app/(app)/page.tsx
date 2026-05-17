@@ -46,7 +46,6 @@ export default async function HomePage({
     year: 'numeric',
   });
 
-  // Role helpers — roles are lowercase strings: 'founder' | 'hr' | 'manager' | 'employee'
   const canViewDirectory = user.roles.some((r) =>
     (['founder', 'hr', 'manager'] as string[]).includes(r)
   );
@@ -56,12 +55,10 @@ export default async function HomePage({
   const displayName  = me?.displayName ?? user.displayName ?? user.email;
 
   return (
-    // -mx-6 escapes the layout's px-6 so the grid spans full container width
-    <div className="-mx-6">
+    <div className="relative overflow-hidden ">
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] min-h-[calc(100vh-3.5rem)]">
 
-        {/* ── LEFT: main content ── */}
-        <div className="px-6 lg:px-10 py-8 space-y-7">
+        <div className="py-8 space-y-7 flex md:flex-row flex-col  w-full xl:justify-between">
 
           {forbidden && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
@@ -69,7 +66,7 @@ export default async function HomePage({
             </div>
           )}
 
-          {/* Greeting */}
+          <div className="flex flex-col">
           <header>
             <h1 className="text-[22px] font-medium text-slate-900">
               Good {timeOfDay}, {firstName} 👋
@@ -77,12 +74,11 @@ export default async function HomePage({
             <p className="text-[13px] text-slate-500 mt-1">{dateLabel}</p>
           </header>
 
-          {/* Quick access cards */}
           <section>
             <p className="text-[11px] font-medium tracking-[1.2px] text-slate-400 mb-3">
               QUICK ACCESS
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               {canViewDirectory && (
                 <QuickCard
                   href="/directory"
@@ -137,27 +133,28 @@ export default async function HomePage({
                 />
               )}
 
-              {user.permissions.includes('manage_offer_letters') && (
-                <QuickCard
-                  href="/offers"
-                  icon={FileText}
-                  iconBg="#FEF3E7"
-                  iconColor="#B45309"
-                  title="Offer letters"
-                  description="Generate and manage candidate offer letters"
-                />
-              )}
+              <QuickCard
+                href={user.permissions.includes('manage_offer_letters') ? '/offers' : '/'}
+                icon={FileText}
+                iconBg="#FEF3E7"
+                iconColor="#B45309"
+                title="Offer letters"
+                description="Generate and manage candidate offer letters"
+                comingSoon={!user.permissions.includes('manage_offer_letters')}
+              />
             </div>
           </section>
+          </div>
+
+  
+        
         </div>
 
-        {/* ── RIGHT: profile panel ── */}
-        <aside className="bg-white border-l border-slate-200/70 px-6 py-8 lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] lg:overflow-y-auto">
+     
+        <aside className="bg-white border-l border-slate-200/70 px-6 py-8  lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] lg:overflow-y-auto">
           <p className="text-[11px] font-medium tracking-[1.2px] text-slate-400 mb-4">
             MY PROFILE
           </p>
-
-          {/* Avatar */}
           <div className="flex flex-col items-center text-center">
             {user.photoURL ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -179,7 +176,7 @@ export default async function HomePage({
           </div>
 
           {/* Details card */}
-          {me && (
+          {me ? (
             <div className="mt-5 bg-[#FAFAF7] border border-slate-200/70 rounded-lg p-3.5 divide-y divide-slate-200/70">
               <DetailRow label="Employee ID" value={me.employeeId} mono />
               <DetailRow label="Designation" value={me.designation} />
@@ -200,6 +197,15 @@ export default async function HomePage({
               {me.joiningDate && (
                 <DetailRow label="Joined" value={formatDate(me.joiningDate)} />
               )}
+            </div>
+          ) : (
+            <div className="mt-5 bg-[#FAFAF7] border border-slate-200/70 rounded-lg p-3.5 text-center">
+              <p className="text-[11px] text-slate-400">
+                Employee profile not linked yet.
+              </p>
+              <p className="text-[10px] text-slate-400 mt-0.5">
+                Contact HR to link your account.
+              </p>
             </div>
           )}
 

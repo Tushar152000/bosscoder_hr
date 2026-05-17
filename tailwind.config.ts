@@ -6,7 +6,10 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          50: '#eef4ff',
+          DEFAULT: '#0C447C',
+          hover:   '#0a3a6a',
+          soft:    '#EBF3FE',
+          50:  '#eef4ff',
           100: '#dae6ff',
           200: '#bcd2ff',
           300: '#8db5ff',
@@ -16,6 +19,14 @@ const config: Config = {
           700: '#1934c4',
           800: '#172d9b',
           900: '#172a78',
+        },
+        surface: {
+          DEFAULT: '#FFFFFF',
+          muted:   '#F8FAFC',
+        },
+        divider: {
+          DEFAULT: '#E2E8F0',
+          strong:  '#CBD5E1',
         },
   
         navy: {
@@ -43,7 +54,7 @@ const config: Config = {
           800: '#2f2998',
           900: '#1f1d6b',
         },
-        // Bosscoder primary brand tokens.
+        
         bosscoder: {
           blue: '#1371FF',
           dark: '#202658',
@@ -77,6 +88,8 @@ const config: Config = {
         tile: '0 1px 0 0 rgba(255,255,255,0.04) inset, 0 1px 2px 0 rgba(0,0,0,0.4)',
         'tile-hover':
           '0 1px 0 0 rgba(255,255,255,0.08) inset, 0 4px 12px 0 rgba(0,0,0,0.5)',
+        card: '0 1px 3px 0 rgba(0,0,0,0.06), 0 1px 2px -1px rgba(0,0,0,0.04)',
+        'card-hover': '0 4px 16px 0 rgba(0,0,0,0.08), 0 1px 4px 0 rgba(0,0,0,0.04)',
       },
     },
   },

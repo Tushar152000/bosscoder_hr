@@ -3,7 +3,6 @@
 import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Trash2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { useDialog } from '@/components/ui/modal';
 import {
   deactivateEmployeeAction,
@@ -23,9 +22,9 @@ export function DeactivateEmployeeButton({
   return (
     <>
       {dialog}
-      <Button
-        variant="outline"
-        size="sm"
+      <button
+        type="button"
+        disabled={pending}
         onClick={async () => {
           const ok = await confirm({
             title: `Mark ${displayName} as left?`,
@@ -35,14 +34,15 @@ export function DeactivateEmployeeButton({
           if (!ok) return;
           start(async () => {
             const res = await deactivateEmployeeAction(employeeId);
-            if (!res.ok) await alert({ title: 'Could not update employee', body: res.error, intent: 'danger' });
+            if (!res.ok)
+              await alert({ title: 'Could not update employee', body: res.error, intent: 'danger' });
             router.refresh();
           });
         }}
-        disabled={pending}
+        className="bg-white border border-slate-200/70 rounded-lg px-3 py-1.5 text-[12px] font-medium text-slate-700 hover:bg-slate-50 transition disabled:opacity-60"
       >
         {pending ? 'Saving…' : 'Mark as left'}
-      </Button>
+      </button>
     </>
   );
 }
@@ -60,9 +60,9 @@ export function DeleteEmployeeButton({
   return (
     <>
       {dialog}
-      <Button
-        variant="danger"
-        size="sm"
+      <button
+        type="button"
+        disabled={pending}
         onClick={async () => {
           const result = await promptText({
             title: `Delete ${displayName}?`,
@@ -82,11 +82,11 @@ export function DeleteEmployeeButton({
             router.refresh();
           });
         }}
-        disabled={pending}
+        className="flex items-center gap-1.5 bg-red-50 border border-red-200 rounded-lg px-3 py-1.5 text-[12px] font-medium text-red-700 hover:bg-red-100 transition disabled:opacity-60"
       >
-        <Trash2 className="h-4 w-4" />
+        <Trash2 size={12} />
         {pending ? 'Deleting…' : 'Delete'}
-      </Button>
+      </button>
     </>
   );
 }

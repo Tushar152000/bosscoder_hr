@@ -44,6 +44,7 @@ body {
   .bg-card-elevated {
     background: rgb(var(--card-elevated));
   }
+
 }
 
 /* Smooth, subtle transition on every interactive surface that doesn't already
