@@ -1,3 +1,4 @@
+clear
 # Deployment runbook — `hr.bosscoderacademy.com`
 
 Target architecture:

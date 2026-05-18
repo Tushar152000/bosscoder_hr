@@ -55,30 +55,20 @@ export default async function SubmissionPage({ params }: Props) {
       : emptySelfEvalInput();
 
     return (
-      <div className="mx-auto max-w-3xl space-y-6">
-        <Link
-          href={`/performance/cycles/${sub.cycleId}`}
-          className="inline-flex items-center gap-1 text-sm text-muted hover:text-white"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to {sub.cycleName}
-        </Link>
-
-        <SelfEvalForm
-          submissionId={sub.submissionId}
-          cycleName={sub.cycleName}
-          subjectName={sub.subjectName}
-          subjectDepartment={sub.subjectDepartment}
-          initial={initial}
-          status={sub.status}
-          submittedAt={sub.submittedAt}
-          canEdit={editable}
-        />
-      </div>
+      <SelfEvalForm
+        submissionId={sub.submissionId}
+        cycleId={sub.cycleId}
+        cycleName={sub.cycleName}
+        subjectName={sub.subjectName}
+        subjectDepartment={sub.subjectDepartment}
+        initial={initial}
+        status={sub.status}
+        submittedAt={sub.submittedAt}
+        canEdit={editable}
+      />
     );
   }
 
-  // ── manager-eval ──
   const initial: ManagerEvalInput = sub.managerRatings
     ? {
         ratings: sub.managerRatings,
@@ -86,8 +76,6 @@ export default async function SubmissionPage({ params }: Props) {
       }
     : emptyManagerEvalInput();
 
-  // Pull the matching self-eval so we can render it above the rating form —
-  // gives the manager the employee's reflection in front of them.
   const pairedSelfEval = await findSelfEvalForCycleAndSubject(
     sub.cycleId,
     sub.subjectEmployeeId

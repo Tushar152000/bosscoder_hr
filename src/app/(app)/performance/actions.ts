@@ -220,15 +220,16 @@ export async function closeCycleAction(cycleId: string): Promise<ActionResult> {
   }
 }
 
-const selfInputSchema = z.object({
-  answers: z.object({
-    contributions: z.string().min(1, 'Required').max(8000),
-    upcomingDeliverables: z.string().min(1, 'Required').max(8000),
-    culturalPillars: z.string().min(1, 'Required').max(8000),
-    biggestChallenge: z.string().min(1, 'Required').max(8000),
-    learnedOrImproved: z.string().min(1, 'Required').max(8000),
-  }),
-});
+const selfAnswers = (required: boolean) =>
+  z.object({
+    contributions: required ? z.string().min(1, 'Required').max(8000) : z.string().max(8000),
+    upcomingDeliverables: required ? z.string().min(1, 'Required').max(8000) : z.string().max(8000),
+    culturalPillars: required ? z.string().min(1, 'Required').max(8000) : z.string().max(8000),
+    biggestChallenge: required ? z.string().min(1, 'Required').max(8000) : z.string().max(8000),
+    learnedOrImproved: required ? z.string().min(1, 'Required').max(8000) : z.string().max(8000),
+  });
+
+const selfInputSchema = (required: boolean) => z.object({ answers: selfAnswers(required) });
 
 const managerRatingSchema = z.coerce.number().min(1).max(5);
 const managerInputSchema = z.object({
@@ -253,7 +254,7 @@ export async function saveSelfEvalAction(args: {
   if (sub.kind !== 'self') return { ok: false, error: 'Wrong form kind' };
   if (!(await canEditSubmission(user, sub))) return { ok: false, error: 'Forbidden' };
 
-  const parsed = selfInputSchema.safeParse(args.input);
+  const parsed = selfInputSchema(args.submit).safeParse(args.input);
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalid input' };
   }
