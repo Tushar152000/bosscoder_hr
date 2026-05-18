@@ -74,8 +74,8 @@ export default async function HomePage({
             <p className="text-[13px] text-slate-500 mt-1">{dateLabel}</p>
           </header>
 
-          <section>
-            <p className="text-[11px] font-medium tracking-[1.2px] text-slate-400 mb-3">
+          <section className='mt-4'>
+            <p className="text-[14px] font-semibold tracking-[1.2px] text-slate-500 mb-3">
               QUICK ACCESS
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
@@ -134,13 +134,12 @@ export default async function HomePage({
               )}
 
               <QuickCard
-                href={user.permissions.includes('manage_offer_letters') ? '/offers' : '/'}
+                href="/offers"
                 icon={FileText}
                 iconBg="#FEF3E7"
                 iconColor="#B45309"
                 title="Offer letters"
                 description="Generate and manage candidate offer letters"
-                comingSoon={!user.permissions.includes('manage_offer_letters')}
               />
             </div>
           </section>
@@ -157,7 +156,6 @@ export default async function HomePage({
           </p>
           <div className="flex flex-col items-center text-center">
             {user.photoURL ? (
-              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={user.photoURL}
                 alt=""
@@ -175,7 +173,6 @@ export default async function HomePage({
             )}
           </div>
 
-          {/* Details card */}
           {me ? (
             <div className="mt-5 bg-[#FAFAF7] border border-slate-200/70 rounded-lg p-3.5 divide-y divide-slate-200/70">
               <DetailRow label="Employee ID" value={me.employeeId} mono />
@@ -209,7 +206,6 @@ export default async function HomePage({
             </div>
           )}
 
-          {/* Notifications */}
           <div className="mt-6">
             <p className="text-[11px] font-medium tracking-[1.2px] text-slate-400 mb-3">
               NOTIFICATIONS
