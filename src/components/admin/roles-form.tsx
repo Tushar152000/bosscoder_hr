@@ -2,9 +2,21 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardBody, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import {
+  Shield,
+  Key,
+  AlertTriangle,
+  AlertCircle,
+  RotateCcw,
+  RefreshCw,
+  Check,
+  ArrowLeftRight,
+  Minus,
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { formatDate, formatDateTime } from '@/lib/format';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { CopyButton } from '@/components/ui/copy-button';
 import { useDialog } from '@/components/ui/modal';
 import {
   PERMISSIONS,
@@ -13,6 +25,7 @@ import {
   type Permission,
   type Role,
 } from '@/lib/auth/roles';
+import { ROLE_META, PERMISSION_META } from '@/lib/roles/meta';
 import {
   deleteUserAccountAction,
   setUserActiveAction,
@@ -23,49 +36,28 @@ interface Props {
   uid: string;
   email: string;
   displayName: string | null;
+  photoURL: string | null;
   initialRoles: Role[];
   initialPermissions: Permission[];
   active: boolean;
   isSelf: boolean;
+  createdAt: string | null;
+  lastLoginAt: string | null;
 }
 
-const ROLE_DESCRIPTIONS: Record<Role, string> = {
-  founder: 'Full access. All permissions auto-granted on assignment.',
-  hr: 'HR ops — manage employees, run review cycles, generate offer letters.',
-  manager: 'Sees their org-tree subtree on the directory.',
-  employee: 'Default. Sees the directory, can fill their own self-eval.',
-};
+function arraysEqual<T extends string>(a: T[], b: T[]): boolean {
+  if (a.length !== b.length) return false;
+  const sa = [...a].sort();
+  const sb = [...b].sort();
+  return sa.every((v, i) => v === sb[i]);
+}
 
-const PERMISSION_LABELS: Record<Permission, { label: string; hint: string }> = {
-  view_compensation: {
-    label: 'View compensation',
-    hint: 'Read salary / CTC / bonus on employee profiles.',
-  },
-  view_personal_documents: {
-    label: 'View personal documents',
-    hint: 'Read PAN, Aadhaar, address, DOB, emergency contact.',
-  },
-  manage_employees: {
-    label: 'Manage employees',
-    hint: 'Create / edit / deactivate employee records.',
-  },
-  manage_review_cycles: {
-    label: 'Manage review cycles',
-    hint: 'Create, open, and close performance review cycles.',
-  },
-  manage_offer_letters: {
-    label: 'Manage offer letters',
-    hint: 'Create, edit, and download offer letters for new hires and interns.',
-  },
-  manage_roles: {
-    label: 'Manage roles',
-    hint: 'Assign roles & permissions on this page. Powerful — keep tight.',
-  },
-  view_audit_log: {
-    label: 'View audit log',
-    hint: 'See the full history of privileged reads and admin changes.',
-  },
-};
+function firstRoleThatGrants(roles: Role[], perm: Permission): string {
+  for (const r of roles) {
+    if (defaultPermissionsForRoles([r]).includes(perm)) return ROLE_META[r].label;
+  }
+  return 'role';
+}
 
 export function RolesForm({
   uid,
@@ -75,22 +67,24 @@ export function RolesForm({
   initialPermissions,
   active,
   isSelf,
+  createdAt,
+  lastLoginAt,
 }: Props) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [roles, setRoles] = useState<Role[]>(initialRoles);
   const [perms, setPerms] = useState<Permission[]>(initialPermissions);
   const [error, setError] = useState<string | null>(null);
-  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [savedMsg, setSavedMsg] = useState<string | null>(null);
+  const [savedRoles, setSavedRoles] = useState<Role[]>(initialRoles);
+  const [savedPerms, setSavedPerms] = useState<Permission[]>(initialPermissions);
   const { confirm, promptText, dialog } = useDialog();
 
-  const dirty =
-    !arraysEqual(roles, initialRoles) || !arraysEqual(perms, initialPermissions);
-
-  const defaultPermsForCurrentRoles = useMemo(
-    () => defaultPermissionsForRoles(roles),
-    [roles]
-  );
+  const defaultPerms = useMemo(() => defaultPermissionsForRoles(roles), [roles]);
+  const isDirty = !arraysEqual(roles, savedRoles) || !arraysEqual(perms, savedPerms);
+  const overrideCount = PERMISSIONS.filter(
+    (p) => perms.includes(p) !== defaultPerms.includes(p)
+  ).length;
 
   function toggleRole(r: Role) {
     setRoles((prev) => (prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]));
@@ -102,239 +96,442 @@ export function RolesForm({
     setPerms(defaultPermissionsForRoles(roles));
   }
 
-  function save(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSave() {
     setError(null);
     start(async () => {
       const res = await updateUserRolesAction({ uid, roles, permissions: perms });
-      if (!res.ok) {
-        setError(res.error);
-        return;
-      }
-      setSavedAt(new Date().toISOString());
+      if (!res.ok) { setError(res.error); return; }
+      setSavedRoles(roles);
+      setSavedPerms(perms);
+      const firstName = displayName?.split(' ')[0] ?? email.split('@')[0];
+      setSavedMsg(
+        `Saved. Custom claims refreshed. ${firstName} will pick up new permissions on next sign-in (within 1 hour).`
+      );
+      setTimeout(() => setSavedMsg(null), 5000);
       router.refresh();
     });
   }
 
-  async function toggleActive() {
+  async function handleToggleActive() {
     const ok = await confirm({
       title: active ? `Deactivate ${email}?` : `Reactivate ${email}?`,
       body: active
-        ? 'They will be signed out immediately and can no longer log in until reactivated.'
-        : 'They will be able to sign in again with their existing account.',
+        ? 'Kills all sessions immediately. Record stays — you can reactivate later.'
+        : 'Restores access. User can sign in again on their next attempt.',
       confirmLabel: active ? 'Deactivate' : 'Reactivate',
       intent: active ? 'danger' : 'default',
     });
     if (!ok) return;
     start(async () => {
       const res = await setUserActiveAction(uid, !active);
-      if (!res.ok) {
-        setError(res.error);
-        return;
-      }
+      if (!res.ok) { setError(res.error); return; }
       router.refresh();
     });
   }
 
-  async function deleteAccount() {
+  async function handleDelete() {
+    const firstName = displayName?.split(' ')[0] ?? email.split('@')[0];
     const result = await promptText({
-      title: `Delete portal account for ${email}?`,
+      title: `Delete ${firstName}'s account?`,
       body: (
         <>
-          This removes their <code className="rounded bg-white/10 px-1 py-0.5 text-[11px] text-white">hr_users</code> record AND their Firebase Auth user.
-          Any review submissions they&apos;re the reviewer of will keep the name + email but lose the linked uid.
+          <p className="text-[13px] text-slate-600 leading-relaxed">
+            This removes the Firestore doc and Firebase Auth user. They could still sign back in
+            (creating a fresh employee record) unless you also remove their email from{' '}
+            <code className="font-mono text-[11px] bg-slate-100 px-1 py-0.5 rounded">
+              FOUNDER_EMAILS
+            </code>{' '}
+            /{' '}
+            <code className="font-mono text-[11px] bg-slate-100 px-1 py-0.5 rounded">
+              ALLOWED_AUTH_DOMAINS
+            </code>
+            .
+          </p>
+          <div className="mt-3 bg-[#FAECE7] border border-[#F1BCB7] rounded-md p-3 flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 text-[#993C1D] mt-0.5 shrink-0" />
+            <p className="text-[12px] text-[#993C1D] font-medium">This is irreversible.</p>
+          </div>
         </>
       ),
       expected: 'DELETE',
-      confirmLabel: 'Delete permanently',
+      placeholder: 'Type DELETE to confirm',
+      confirmLabel: 'Delete account',
       intent: 'danger',
     });
     if (result !== 'DELETE') return;
     start(async () => {
       const res = await deleteUserAccountAction(uid);
-      if (!res.ok) {
-        setError(res.error);
-        return;
-      }
+      if (!res.ok) { setError(res.error); return; }
       router.push('/admin/roles');
       router.refresh();
     });
   }
 
   return (
-    <form onSubmit={save} className="space-y-6">
+    <>
       {dialog}
-      {isSelf && (
-        <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          You can&apos;t edit your own roles or permissions. Ask another admin to make changes for
-          you.
-        </div>
-      )}
+
       {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+        <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-[12px] text-red-800">
           {error}
         </div>
       )}
+      {savedMsg && (
+        <div className="mb-3 rounded-lg border border-emerald-200 bg-[#E1F5EE] px-4 py-3 text-[12px] text-[#0F6E56]">
+          {savedMsg}
+        </div>
+      )}
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Account</CardTitle>
-            {!active && <Badge variant="danger">Deactivated</Badge>}
-          </div>
-          <CardDescription>
-            {displayName ? `${displayName} · ` : ''}
-            {email}
-          </CardDescription>
-        </CardHeader>
-        <CardBody className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              type="button"
-              variant={active ? 'outline' : 'default'}
-              onClick={toggleActive}
-              disabled={pending || isSelf}
-            >
-              {active ? 'Deactivate user' : 'Reactivate user'}
-            </Button>
-            <Button
-              type="button"
-              variant="danger"
-              onClick={deleteAccount}
-              disabled={pending || isSelf}
-            >
-              Delete account…
-            </Button>
-          </div>
-          <p className="text-xs text-muted">
-            <span className="font-medium">Deactivate</span> revokes all sessions but keeps the
-            user record so you can re-enable later.{' '}
-            <span className="font-medium">Delete account</span> removes the user record AND the
-            Firebase Auth user — irreversible. They could still sign back in (creating a fresh
-            employee record) unless you also remove their email from{' '}
-            <code className="text-xs">FOUNDER_EMAILS</code> /{' '}
-            <code className="text-xs">ALLOWED_AUTH_DOMAINS</code>.
-          </p>
-        </CardBody>
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-3">
+        {/* ── Main column ── */}
+        <main className="flex flex-col gap-2.5">
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Roles</CardTitle>
-          <CardDescription>
-            Pick one or more. Multiple roles are union — e.g. an HR who also manages a team can
-            have <code className="text-xs">[hr, manager]</code>.
-          </CardDescription>
-        </CardHeader>
-        <CardBody className="grid gap-2 sm:grid-cols-2">
-          {ROLES.map((r) => {
-            const checked = roles.includes(r);
-            return (
-              <label
-                key={r}
-                className="flex cursor-pointer items-start gap-3 rounded-md border border-default bg-card px-3 py-2 hover:border-white/20 hover:bg-white/[0.03]"
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => toggleRole(r)}
-                  disabled={isSelf}
-                  className="mt-0.5 h-4 w-4 rounded border-default text-[#0C447C]-600 focus:ring-[#0C447C]-500"
-                />
-                <div>
-                  <div className="text-sm font-medium capitalize">{r}</div>
-                  <div className="text-xs text-muted">{ROLE_DESCRIPTIONS[r]}</div>
+          {/* Roles card */}
+          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <div className="flex items-center gap-2.5 pb-3 border-b border-slate-100 mb-3.5">
+              <div className="w-6 h-6 rounded-md bg-[#E6F1FB] flex items-center justify-center shrink-0">
+                <Shield className="h-3.5 w-3.5 text-[#0C447C]" />
+              </div>
+              <div>
+                <p className="text-[13px] font-medium text-slate-900">Roles</p>
+                <p className="text-[10px] text-slate-500 mt-0.5">
+                  Multi-select.{' '}
+                  <code className="font-mono bg-[#F4F7FA] px-1 py-0.5 rounded text-[10px]">
+                    [hr, manager]
+                  </code>{' '}
+                  is valid for someone who runs HR and a team.
+                </p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {ROLES.map((r) => {
+                const checked = roles.includes(r);
+                const meta = ROLE_META[r];
+                const Icon = meta.icon;
+                return (
+                  <label
+                    key={r}
+                    htmlFor={`role-${r}`}
+                    aria-label={`${checked ? 'Remove' : 'Add'} ${meta.label} role`}
+                    className={cn(
+                      'border rounded-md px-3 py-2.5 cursor-pointer flex items-start gap-2 transition select-none',
+                      checked ? 'bg-[#E6F1FB] border-[#0C447C]' : 'bg-white border-slate-200 hover:border-slate-300',
+                      isSelf && 'opacity-60 cursor-not-allowed'
+                    )}
+                  >
+                    <input
+                      id={`role-${r}`}
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => !isSelf && toggleRole(r)}
+                      disabled={isSelf}
+                      className="sr-only"
+                    />
+                    <div
+                      className={cn(
+                        'w-3.5 h-3.5 rounded-[3px] flex-shrink-0 mt-0.5 flex items-center justify-center transition',
+                        checked ? 'bg-[#0C447C]' : 'bg-white border border-slate-300'
+                      )}
+                    >
+                      {checked && <Check className="h-[9px] w-[9px] text-white" />}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <Icon
+                          className="h-[13px] w-[13px] shrink-0"
+                          style={{ color: meta.pillColor }}
+                        />
+                        <span
+                          className={cn(
+                            'text-[12px] font-medium',
+                            checked ? 'text-[#0C447C]' : 'text-slate-900'
+                          )}
+                        >
+                          {meta.label}
+                        </span>
+                      </div>
+                      <p
+                        className={cn(
+                          'text-[10px] mt-0.5 leading-snug',
+                          checked ? 'text-[#185FA5]' : 'text-slate-500'
+                        )}
+                      >
+                        {meta.description}
+                      </p>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Permissions card */}
+          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 mb-3.5 gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-6 h-6 rounded-md bg-[#FAEEDA] flex items-center justify-center shrink-0">
+                  <Key className="h-3.5 w-3.5 text-[#854F0B]" />
                 </div>
-              </label>
-            );
-          })}
-        </CardBody>
-      </Card>
+                <div className="min-w-0">
+                  <p className="text-[13px] font-medium text-slate-900">Permissions</p>
+                  <p className="text-[10px] text-slate-500 mt-0.5">
+                    Granular overrides. Role defaults are pre-checked — uncheck to revoke or check extras.
+                  </p>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={applyRoleDefaults}
+                disabled={isSelf}
+                className="shrink-0"
+              >
+                <RefreshCw className="h-3 w-3" />
+                Reset to defaults
+              </Button>
+            </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Permissions</CardTitle>
+            <div className="flex flex-col gap-1.5">
+              {PERMISSIONS.map((p) => {
+                const checked = perms.includes(p);
+                const isDefault = defaultPerms.includes(p);
+                const meta = PERMISSION_META[p];
+
+                let statusPill: React.ReactNode = null;
+                if (checked && isDefault) {
+                  statusPill = (
+                    <span className="inline-flex items-center text-[9px] font-medium text-slate-500 bg-[#F4F7FA] px-1.5 py-0.5 rounded-full">
+                      default for {firstRoleThatGrants(roles, p)}
+                    </span>
+                  );
+                } else if (checked && !isDefault) {
+                  statusPill = (
+                    <span className="inline-flex items-center gap-1 text-[9px] font-medium text-[#854F0B] bg-[#FAEEDA] px-1.5 py-0.5 rounded-full">
+                      <ArrowLeftRight className="h-[9px] w-[9px]" />
+                      override
+                    </span>
+                  );
+                } else if (!checked && isDefault) {
+                  statusPill = (
+                    <span className="inline-flex items-center gap-1 text-[9px] font-medium text-[#993C1D] bg-[#FAECE7] px-1.5 py-0.5 rounded-full">
+                      <Minus className="h-[9px] w-[9px]" />
+                      revoked
+                    </span>
+                  );
+                }
+
+                return (
+                  <label
+                    key={p}
+                    htmlFor={`perm-${p}`}
+                    aria-label={`${checked ? 'Revoke' : 'Grant'} ${meta.label} permission`}
+                    className={cn(
+                      'border rounded-md px-3 py-2 cursor-pointer flex items-start gap-2.5 transition select-none',
+                      checked
+                        ? 'bg-white border-[#0C447C] shadow-[0_1px_2px_rgba(12,68,124,0.05)]'
+                        : 'bg-white border-slate-200 hover:border-slate-300',
+                      isSelf && 'opacity-60 cursor-not-allowed'
+                    )}
+                  >
+                    <input
+                      id={`perm-${p}`}
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => !isSelf && togglePerm(p)}
+                      disabled={isSelf}
+                      className="sr-only"
+                    />
+                    <div
+                      className={cn(
+                        'w-3.5 h-3.5 rounded-[3px] flex-shrink-0 mt-0.5 flex items-center justify-center transition',
+                        checked ? 'bg-[#0C447C]' : 'bg-white border border-slate-300'
+                      )}
+                    >
+                      {checked && <Check className="h-[9px] w-[9px] text-white" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[11px] font-medium text-slate-900 font-mono">
+                          {meta.label}
+                        </span>
+                        {statusPill}
+                        {meta.founderOnly && (
+                          <span className="inline-flex items-center text-[9px] font-medium text-[#854F0B] bg-[#FAEEDA] px-1.5 py-0.5 rounded-full">
+                            founder only
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-slate-500 mt-0.5">{meta.description}</p>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        </main>
+
+        {/* ── Sidebar ── */}
+        <aside className="flex flex-col gap-2.5">
+
+          {/* Effective access */}
+          <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-sm">
+            <p className="text-[10px] font-medium tracking-[1px] text-slate-400 uppercase mb-2">
+              EFFECTIVE ACCESS
+            </p>
+            <div className="flex items-baseline gap-1.5 mb-2">
+              <span className="text-[22px] font-medium text-slate-900">{perms.length}</span>
+              <span className="text-[11px] text-slate-500">of 7 permissions</span>
+            </div>
+            <div className="h-[3px] bg-[#F4F7FA] rounded-full mb-2.5">
+              <div
+                className="h-full bg-[#0C447C] rounded-full transition-all"
+                style={{ width: `${(perms.length / 7) * 100}%` }}
+              />
+            </div>
+            {overrideCount > 0 && (
+              <div className="bg-[#FAEEDA] border border-[#FAC775] rounded-[5px] px-2 py-1.5 flex items-center gap-1.5">
+                <ArrowLeftRight className="h-3 w-3 text-[#854F0B] shrink-0" />
+                <p className="text-[10px] text-[#854F0B]">
+                  <strong className="font-medium">
+                    {overrideCount} manual override{overrideCount !== 1 ? 's' : ''}
+                  </strong>{' '}
+                  vs role defaults
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Danger zone */}
+          <div className="bg-white border border-slate-200 rounded-xl p-3.5 shadow-sm">
+            <div className="flex items-center gap-1.5 mb-1">
+              <AlertTriangle className="h-3.5 w-3.5 text-[#993C1D]" />
+              <p className="text-[12px] font-medium text-[#993C1D]">Danger zone</p>
+            </div>
+            <p className="text-[10px] text-slate-500 mb-3 leading-relaxed">
+              Account-level actions for this user. Both are recorded in the audit log.
+            </p>
+
+            {/* Deactivate / Reactivate */}
+            <div className="pb-2.5 mb-2.5 border-b border-slate-100">
+              <p className="text-[11px] font-medium text-slate-900 mb-0.5">
+                {active ? 'Deactivate user' : 'Reactivate user'}
+              </p>
+              <p className="text-[10px] text-slate-500 leading-snug mb-2">
+                {active
+                  ? 'Kills all sessions immediately. Record stays — you can reactivate later.'
+                  : 'Restores access. User can sign in again on their next attempt.'}
+              </p>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="w-full"
+                disabled={pending || isSelf}
+                onClick={handleToggleActive}
+              >
+                {!active && <RotateCcw className="h-3 w-3" />}
+                {active ? 'Deactivate' : 'Reactivate'}
+              </Button>
+            </div>
+
+            {/* Delete */}
+            <div>
+              <p className="text-[11px] font-medium text-[#993C1D] mb-0.5">Delete account</p>
+              <p className="text-[10px] text-slate-500 leading-snug mb-2">
+                Removes Firestore doc + Firebase Auth user. Irreversible.
+              </p>
+              <Button
+                type="button"
+                variant="danger"
+                size="sm"
+                className="w-full"
+                disabled={pending || isSelf}
+                onClick={handleDelete}
+              >
+                Delete account…
+              </Button>
+            </div>
+          </div>
+
+          {/* Metadata */}
+          <div className="bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+            <p className="text-[10px] font-medium tracking-[1px] text-slate-400 uppercase mb-1.5">
+              METADATA
+            </p>
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] text-slate-500">UID</span>
+                <div className="flex items-center gap-1">
+                  <span className="font-mono text-[10px] font-medium text-slate-900">
+                    {uid.slice(0, 8)}…{uid.slice(-4)}
+                  </span>
+                  <CopyButton value={uid} />
+                </div>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] text-slate-500">Created</span>
+                <span className="text-[10px] font-medium text-slate-900">
+                  {createdAt ? formatDate(new Date(createdAt)) : '—'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] text-slate-500">Last sign-in</span>
+                <span className="text-[10px] font-medium text-slate-900 text-right">
+                  {lastLoginAt ? formatDateTime(new Date(lastLoginAt)) : '—'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      {/* Sticky save bar — only when dirty */}
+      {isDirty && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="sticky bottom-0 z-20 mt-2.5 bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 shadow-[0_-2px_8px_rgba(12,68,124,0.06)] flex items-center justify-between gap-4"
+        >
+          <div className="flex items-center gap-1.5 text-[11px] text-slate-600">
+            <AlertCircle className="h-3 w-3 text-[#854F0B] shrink-0" />
+            <span>
+              Unsaved changes
+              {overrideCount > 0 && (
+                <>
+                  {' · '}
+                  <strong className="font-medium">{overrideCount}</strong>
+                  {' permission override'}
+                  {overrideCount !== 1 ? 's' : ''}
+                </>
+              )}
+            </span>
+          </div>
+          <div className="flex gap-1.5">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={pending}
+              onClick={() => {
+                setRoles(savedRoles);
+                setPerms(savedPerms);
+              }}
+            >
+              Discard
+            </Button>
             <Button
               type="button"
               size="sm"
-              variant="outline"
-              onClick={applyRoleDefaults}
+              isLoading={pending}
+              onClick={handleSave}
               disabled={isSelf}
             >
-              Reset to role defaults
+              Save & sync claims
             </Button>
           </div>
-          <CardDescription>
-            Permissions are checked individually. Founder/HR roles auto-grant the right set —
-            override here only if needed.
-          </CardDescription>
-        </CardHeader>
-        <CardBody className="space-y-2">
-          {PERMISSIONS.map((p) => {
-            const checked = perms.includes(p);
-            const isDefault = defaultPermsForCurrentRoles.includes(p);
-            return (
-              <label
-                key={p}
-                className="flex cursor-pointer items-start gap-3 rounded-md border border-default bg-card px-3 py-2 hover:border-white/20 hover:bg-white/[0.03]"
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => togglePerm(p)}
-                  disabled={isSelf}
-                  className="mt-0.5 h-4 w-4 rounded border-default text-[#0C447C]-600 focus:ring-[#0C447C]-500"
-                />
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium">{PERMISSION_LABELS[p].label}</span>
-                    {isDefault && (
-                      <span className="text-[10px] uppercase tracking-wide text-muted">
-                        role default
-                      </span>
-                    )}
-                  </div>
-                  <div className="text-xs text-muted">{PERMISSION_LABELS[p].hint}</div>
-                </div>
-              </label>
-            );
-          })}
-        </CardBody>
-      </Card>
-
-      <div className="sticky bottom-0 -mx-6 flex items-center justify-between gap-2 border-t border-default bg-card px-6 py-3">
-        <p className="text-xs text-muted">
-          {savedAt
-            ? 'Saved. Custom claims refreshed.'
-            : dirty
-            ? 'Unsaved changes.'
-            : 'No changes.'}
-        </p>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
-              setRoles(initialRoles);
-              setPerms(initialPermissions);
-            }}
-            disabled={pending || !dirty || isSelf}
-          >
-            Discard
-          </Button>
-          <Button type="submit" disabled={pending || !dirty || isSelf}>
-            {pending ? 'Saving…' : 'Save'}
-          </Button>
         </div>
-      </div>
-    </form>
+      )}
+    </>
   );
-}
-
-function arraysEqual<T extends string>(a: T[], b: T[]): boolean {
-  if (a.length !== b.length) return false;
-  const sa = [...a].sort();
-  const sb = [...b].sort();
-  return sa.every((v, i) => v === sb[i]);
 }

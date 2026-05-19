@@ -5,6 +5,8 @@ import {
   Mail,
   FileText,
   ClipboardCheck,
+  Bell,
+  Settings,
 } from 'lucide-react';
 import Link from 'next/link';
 import { requireUser } from '@/lib/auth/guard';
@@ -15,6 +17,7 @@ import {
 } from '@/lib/firestore/employees';
 import { QuickCard } from '@/components/dashboard/quick-card';
 import { initials } from '@/lib/utils';
+import { colorForName } from '@/lib/directory/colors';
 import { formatDate } from '@/lib/format';
 
 export const metadata = { title: 'Home' };
@@ -52,175 +55,201 @@ export default async function HomePage({
   const isFounder = user.roles.includes('founder');
 
   const userInitials = initials(user.displayName, user.email);
-  const displayName  = me?.displayName ?? user.displayName ?? user.email;
+  const displayName = me?.displayName ?? user.displayName ?? user.email;
+  const avatarBg = colorForName(displayName);
 
   return (
-    <div className="relative overflow-hidden ">
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] min-h-[calc(100vh-3.5rem)]">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] min-h-[calc(100vh-3.5rem)]">
 
-        <div className="py-8 space-y-7 flex md:flex-row flex-col  w-full xl:justify-between">
+      <div className="py-8 md:pr-10 pr-4 flex flex-col gap-8 min-w-0">
 
-          {forbidden && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-              You don&apos;t have permission to view that page.
-            </div>
-          )}
-
-          <div className="flex flex-col">
-          <header>
-            <h1 className="text-[22px] font-medium text-slate-900">
-              Good {timeOfDay}, {firstName} 👋
-            </h1>
-            <p className="text-[13px] text-slate-500 mt-1">{dateLabel}</p>
-          </header>
-
-          <section className='mt-4'>
-            <p className="text-[14px] font-semibold tracking-[1.2px] text-slate-500 mb-3">
-              QUICK ACCESS
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-              {canViewDirectory && (
-                <QuickCard
-                  href="/directory"
-                  icon={Users}
-                  iconBg="#E6F1FB"
-                  iconColor="#0C447C"
-                  title="Employee directory"
-                  description="Browse teams and reporting lines"
-                  badge="Manager access"
-                  badgeTone="info"
-                />
-              )}
-
-              <QuickCard
-                href="/performance"
-                icon={TrendingUp}
-                iconBg="#E1F5EE"
-                iconColor="#0F6E56"
-                title="Performance evaluation"
-                description="Ratings, goals and self-evaluation"
-              />
-
-              <QuickCard
-                href="/"
-                icon={PieChart}
-                iconBg="#EEEDFE"
-                iconColor="#534AB7"
-                title="ESOPs"
-                description="Vested grants and statements"
-              />
-
-              <QuickCard
-                href="/"
-                icon={Mail}
-                iconBg="#F1EFE8"
-                iconColor="#5F5E5A"
-                title="Bosscoder newsletter"
-                description="Company updates and stories"
-                comingSoon
-              />
-
-              {isPeopleManager && (
-                <QuickCard
-                  href="/performance"
-                  icon={ClipboardCheck}
-                  iconBg="#E6F1FB"
-                  iconColor="#0C447C"
-                  title="Team evaluation"
-                  description="Review and rate your team's performance"
-                  badge={`${directReports.length} ${directReports.length === 1 ? 'report' : 'reports'}`}
-                  badgeTone="info"
-                />
-              )}
-
-              <QuickCard
-                href="/offers"
-                icon={FileText}
-                iconBg="#FEF3E7"
-                iconColor="#B45309"
-                title="Offer letters"
-                description="Generate and manage candidate offer letters"
-              />
-            </div>
-          </section>
+        {forbidden && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-700">
+            You don&apos;t have permission to view that page.
           </div>
+        )}
 
-  
-        
+        <div>
+          <h1 className="text-[22px] font-semibold text-slate-900 tracking-tight">
+            Good {timeOfDay}, {firstName} 👋
+          </h1>
+          <p className="text-[13px] text-slate-400 mt-1">{dateLabel}</p>
         </div>
 
-     
-        <aside className="bg-white border-l border-slate-200/70 px-6 py-8  lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] lg:overflow-y-auto">
-          <p className="text-[11px] font-medium tracking-[1.2px] text-slate-400 mb-4">
-            MY PROFILE
+        {/* Quick access */}
+        <section>
+          <p className="text-[10px] font-semibold tracking-[1.4px] uppercase text-slate-400 mb-3">
+            Quick access
           </p>
-          <div className="flex flex-col items-center text-center">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+            {canViewDirectory && (
+              <QuickCard
+                href="/directory"
+                icon={Users}
+                iconBg="#E6F1FB"
+                iconColor="#0C447C"
+                title="Employee directory"
+                description="Browse teams and reporting lines"
+                badge="Manager access"
+                badgeTone="info"
+              />
+            )}
+
+            <QuickCard
+              href="/performance"
+              icon={TrendingUp}
+              iconBg="#E1F5EE"
+              iconColor="#0F6E56"
+              title="Performance evaluation"
+              description="Ratings, goals and self-evaluation"
+            />
+
+            <QuickCard
+              href="/"
+              icon={PieChart}
+              iconBg="#EEEDFE"
+              iconColor="#534AB7"
+              title="ESOPs"
+              description="Vested grants and statements"
+              comingSoon
+            />
+
+            <QuickCard
+              href="/"
+              icon={Mail}
+              iconBg="#F1EFE8"
+              iconColor="#5F5E5A"
+              title="Bosscoder newsletter"
+              description="Company updates and stories"
+              comingSoon
+            />
+
+            {isPeopleManager && (
+              <QuickCard
+                href="/performance"
+                icon={ClipboardCheck}
+                iconBg="#E6F1FB"
+                iconColor="#0C447C"
+                title="Team evaluation"
+                description="Review and rate your team's performance"
+                badge={`${directReports.length} ${directReports.length === 1 ? 'report' : 'reports'}`}
+                badgeTone="info"
+              />
+            )}
+
+            <QuickCard
+              href="/"
+              icon={FileText}
+              iconBg="#FEF3E7"
+              iconColor="#B45309"
+              title="Offer letters"
+              description="Generate and manage candidate offer letters"
+              comingSoon
+            />
+          </div>
+        </section>
+      </div>
+
+      {/* ── Profile aside ── */}
+      <aside className="bg-white border-l border-slate-200/70 px-6 py-8 lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] lg:overflow-y-auto flex flex-col">
+
+        <p className="text-[10px] font-semibold tracking-[1.4px] uppercase text-slate-400 mb-5">
+          My profile
+        </p>
+
+        {/* Avatar + name */}
+        <div className="flex items-center gap-3 mb-5">
+          <div className="relative shrink-0">
             {user.photoURL ? (
+              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={user.photoURL}
                 alt=""
                 referrerPolicy="no-referrer"
-                className="w-[76px] h-[76px] rounded-full object-cover"
+                className="w-[52px] h-[52px] rounded-full object-cover ring-2 ring-white shadow-sm"
               />
             ) : (
-              <div className="w-[76px] h-[76px] rounded-full bg-[#0C447C] flex items-center justify-center text-white text-[24px] font-medium">
+              <div
+                className="w-[52px] h-[52px] rounded-full flex items-center justify-center text-white text-[18px] font-semibold ring-2 ring-white shadow-sm"
+                style={{ background: avatarBg }}
+              >
                 {userInitials}
               </div>
             )}
-            <p className="mt-3 text-[15px] font-medium text-slate-900">{displayName}</p>
+            <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full bg-emerald-400 border-2 border-white" />
+          </div>
+
+          <div className="min-w-0">
+            <p className="text-[14px] font-semibold text-slate-900 truncate">{displayName}</p>
             {me?.designation && (
-              <p className="mt-0.5 text-[12px] text-slate-500">{me.designation}</p>
+              <p className="text-[11px] text-slate-500 mt-0.5 truncate">{me.designation}</p>
+            )}
+            {user.roles.length > 0 && (
+              <p className="text-[10px] text-slate-400 mt-0.5 capitalize">
+                {user.roles[0]}
+              </p>
             )}
           </div>
+        </div>
 
-          {me ? (
-            <div className="mt-5 bg-[#FAFAF7] border border-slate-200/70 rounded-lg p-3.5 divide-y divide-slate-200/70">
-              <DetailRow label="Employee ID" value={me.employeeId} mono />
-              <DetailRow label="Designation" value={me.designation} />
-              {!isFounder && me.department && (
-                <DetailRow label="Department" value={me.department} />
-              )}
-              {!isFounder && reportingManager && (
-                <DetailRow
-                  label="Reports to"
-                  value={reportingManager.displayName}
-                  prefix={
-                    <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-[#0C447C] text-white text-[8px] font-medium mr-1.5 shrink-0">
-                      {initials(reportingManager.displayName, reportingManager.email).slice(0, 1)}
-                    </span>
-                  }
-                />
-              )}
-              {me.joiningDate && (
-                <DetailRow label="Joined" value={formatDate(me.joiningDate)} />
-              )}
-            </div>
-          ) : (
-            <div className="mt-5 bg-[#FAFAF7] border border-slate-200/70 rounded-lg p-3.5 text-center">
-              <p className="text-[11px] text-slate-400">
-                Employee profile not linked yet.
-              </p>
-              <p className="text-[10px] text-slate-400 mt-0.5">
-                Contact HR to link your account.
-              </p>
-            </div>
-          )}
-
-          <div className="mt-6">
-            <p className="text-[11px] font-medium tracking-[1.2px] text-slate-400 mb-3">
-              NOTIFICATIONS
-            </p>
-            <p className="text-[12px] text-slate-400 py-2">You&apos;re all caught up</p>
-            <Link
-              href="/"
-              className="text-[11px] text-[#0C447C] underline underline-offset-2 mt-1 inline-block"
-            >
-              View all
-            </Link>
+        {/* Profile detail card */}
+        {me ? (
+          <div className="bg-[#FAFAF7] border border-slate-200/70 rounded-xl p-3.5 divide-y divide-slate-200/50 mb-5">
+            <DetailRow label="Employee ID" value={me.employeeId} mono />
+            <DetailRow label="Designation" value={me.designation} />
+            {!isFounder && me.department && (
+              <DetailRow label="Department" value={me.department} />
+            )}
+            {!isFounder && reportingManager && (
+              <DetailRow
+                label="Reports to"
+                value={reportingManager.displayName}
+                prefix={
+                  <span
+                    className="inline-flex items-center justify-center w-4 h-4 rounded-full text-white text-[8px] font-semibold mr-1.5 shrink-0"
+                    style={{ background: colorForName(reportingManager.displayName ?? reportingManager.email) }}
+                  >
+                    {initials(reportingManager.displayName, reportingManager.email).slice(0, 1)}
+                  </span>
+                }
+              />
+            )}
+            {me.joiningDate && (
+              <DetailRow label="Joined" value={formatDate(me.joiningDate)} />
+            )}
           </div>
-        </aside>
+        ) : (
+          <div className="bg-[#FAFAF7] border border-slate-200/70 rounded-xl p-4 text-center mb-5">
+            <p className="text-[11px] text-slate-500 font-medium">Profile not linked</p>
+            <p className="text-[10px] text-slate-400 mt-0.5">Contact HR to link your account.</p>
+          </div>
+        )}
 
-      </div>
+        {/* Notifications */}
+        <div className="mb-5">
+          <p className="text-[10px] font-semibold tracking-[1.4px] uppercase text-slate-400 mb-3">
+            Notifications
+          </p>
+          <div className="flex flex-col items-center justify-center py-6 gap-2">
+            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
+              <Bell className="h-4 w-4 text-slate-400" />
+            </div>
+            <p className="text-[11px] text-slate-400">No new notifications</p>
+          </div>
+        </div>
+
+        {/* Bottom settings link */}
+        <div className="mt-auto pt-4 border-t border-slate-100">
+          <Link
+            href="/settings"
+            className="flex items-center gap-2 text-[12px] text-slate-500 hover:text-slate-900 transition-colors group"
+          >
+            <Settings className="h-3.5 w-3.5 text-slate-400 group-hover:text-slate-600 transition-colors" />
+            Account settings
+          </Link>
+        </div>
+      </aside>
+
     </div>
   );
 }

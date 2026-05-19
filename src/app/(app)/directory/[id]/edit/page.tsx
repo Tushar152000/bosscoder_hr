@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { Home, ChevronRight } from 'lucide-react';
 import { requireUser } from '@/lib/auth/guard';
 import { canEditEmployees, canViewSensitiveFor } from '@/lib/auth/employee-access';
 import {
@@ -12,6 +12,8 @@ import {
 } from '@/lib/firestore/employees';
 import { writeAuditLog } from '@/lib/audit';
 import { EmployeeForm } from '@/components/employees/employee-form';
+import { initials } from '@/lib/utils';
+import { colorForName } from '@/lib/directory/colors';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -66,18 +68,47 @@ export default async function EditEmployeePage({ params }: Props) {
   }
 
   const managers = await listEmployees({ status: 'active', limit: 500 });
+  const avatarColor = colorForName(employee.displayName);
+  const userInitials = initials(employee.displayName, employee.email);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div>
+    <div className="py-5 space-y-5">
+      {/* Breadcrumb */}
+      <nav className="flex items-center gap-1.5 text-[12px] text-slate-400">
+        <Home size={12} />
+        <Link href="/" className="hover:text-slate-600 transition">Home</Link>
+        <ChevronRight size={11} />
+        <Link href="/directory" className="hover:text-slate-600 transition">Directory</Link>
+        <ChevronRight size={11} />
+        <Link href={`/directory/${employee.employeeId}`} className="hover:text-slate-600 transition truncate max-w-[160px]">
+          {employee.displayName}
+        </Link>
+        <ChevronRight size={11} />
+        <span className="text-slate-700 font-medium">Edit</span>
+      </nav>
+
+      {/* Header */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <div className="flex items-center gap-3">
+          <div
+            className="w-11 h-11 rounded-full flex items-center justify-center text-[14px] font-semibold text-white shrink-0"
+            style={{ backgroundColor: avatarColor }}
+          >
+            {userInitials}
+          </div>
+          <div>
+            <h1 className="text-[19px] font-semibold text-slate-900">{employee.displayName}</h1>
+            <p className="text-[12px] text-slate-500 mt-0.5">
+              {employee.designation} · {employee.department}
+            </p>
+          </div>
+        </div>
         <Link
           href={`/directory/${employee.employeeId}`}
-          className="inline-flex items-center gap-1 text-sm text-muted hover:text-white"
+          className="flex items-center gap-1.5 bg-white border border-slate-200/70 rounded-lg px-3 py-1.5 text-[12px] font-medium text-slate-700 hover:bg-slate-50 transition"
         >
-          <ArrowLeft className="h-4 w-4" />
-          Back to {employee.displayName}
+          ← Back to profile
         </Link>
-        <h1 className="mt-2 text-2xl font-semibold">Edit employee</h1>
       </div>
 
       <EmployeeForm

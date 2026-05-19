@@ -28,13 +28,13 @@ export default async function AccountPage() {
   const displayName = user.displayName ?? user.email;
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="max-w-full space-y-6">
       <div>
         <h1 className="text-[18px] font-semibold text-slate-900">Account</h1>
         <p className="text-[13px] text-slate-500 mt-0.5">Your profile and platform access.</p>
       </div>
 
-      {/* Profile card */}
+  
       <section className="bg-white border border-slate-200 rounded-xl overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-100">
           <p className="text-[13px] font-semibold text-slate-700">Profile</p>
@@ -67,7 +67,7 @@ export default async function AccountPage() {
         </div>
       </section>
 
-      {/* Roles card */}
+     
       <section className="bg-white border border-slate-200 rounded-xl overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-100">
           <p className="text-[13px] font-semibold text-slate-700">Roles</p>
