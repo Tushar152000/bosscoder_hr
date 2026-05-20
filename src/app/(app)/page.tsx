@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { requireUser } from '@/lib/auth/guard';
+import { isPrivileged } from '@/lib/auth/roles';
 import {
   getEmployeeById,
   getEmployeeByUserUid,
@@ -50,9 +51,10 @@ export default async function HomePage({
   });
 
   const canViewDirectory = user.roles.some((r) =>
-    (['founder', 'hr', 'manager'] as string[]).includes(r)
+    (['founder', 'hr'] as string[]).includes(r)
   );
   const isFounder = user.roles.includes('founder');
+  const isHR = isPrivileged(user.roles);
 
   const userInitials = initials(user.displayName, user.email);
   const displayName = me?.displayName ?? user.displayName ?? user.email;
@@ -90,7 +92,7 @@ export default async function HomePage({
                 iconColor="#0C447C"
                 title="Employee directory"
                 description="Browse teams and reporting lines"
-                badge="Manager access"
+                badge="HR access"
                 badgeTone="info"
               />
             )}
@@ -195,7 +197,7 @@ export default async function HomePage({
         {/* Profile detail card */}
         {me ? (
           <div className="bg-[#FAFAF7] border border-slate-200/70 rounded-xl p-3.5 divide-y divide-slate-200/50 mb-5">
-            <DetailRow label="Employee ID" value={me.employeeId} mono />
+            {isHR && <DetailRow label="Employee ID" value={me.employeeId} mono />}
             <DetailRow label="Designation" value={me.designation} />
             {!isFounder && me.department && (
               <DetailRow label="Department" value={me.department} />

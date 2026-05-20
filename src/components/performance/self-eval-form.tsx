@@ -397,7 +397,7 @@ export function SelfEvalForm({
   const readOnly = isFinal || !canEdit;
 
   const answeredCount = QUESTIONS.filter(
-    (q) => (answers[q.key] ?? '').trim().length >= 20
+    (q) => (answers[q.key] ?? '').trim().length >= 1
   ).length;
 
   // ── Auto-save ─────────────────────────────────────────────────────────────
@@ -475,7 +475,7 @@ export function SelfEvalForm({
         const idx = cardRefs.current.findIndex((r) => r === topmost.target);
         if (idx < 0) return;
         const isAnswered =
-          (answersRef.current[QUESTIONS[idx].key] ?? '').trim().length >= 20;
+          (answersRef.current[QUESTIONS[idx].key] ?? '').trim().length >= 1;
         if (!isAnswered) setActiveIdx(idx);
       },
       { root: scrollContainerRef.current, threshold: 0.4, rootMargin: '0px 0px -40% 0px' }
@@ -595,7 +595,7 @@ export function SelfEvalForm({
             <div className="pt-2.5 mt-2.5 border-t border-divider">
               <div className="flex flex-col gap-0.5">
                 {QUESTIONS.map((q, idx) => {
-                  const isAnswered = (answers[q.key] ?? '').trim().length >= 20;
+                  const isAnswered = (answers[q.key] ?? '').trim().length >= 1;
                   const isActive = idx === activeIdx;
                   return (
                     <a
@@ -683,7 +683,7 @@ export function SelfEvalForm({
 
             {QUESTIONS.map((q, idx) => {
               const value = answers[q.key] ?? '';
-              const isAnswered = value.trim().length >= 20 && idx !== activeIdx;
+              const isAnswered = value.trim().length >= 1 && idx !== activeIdx;
               const isActive = idx === activeIdx;
               const cardState: 'answered' | 'active' | 'untouched' = isAnswered
                 ? 'answered'

@@ -11,7 +11,7 @@ export const metadata = { title: 'Org tree' };
 
 export default async function OrgTreePage() {
   const user = await requireUser();
-  if (!hasAnyRole(user.roles, 'founder', 'hr', 'manager')) {
+  if (!hasAnyRole(user.roles, 'founder', 'hr')) {
     redirect('/?error=forbidden');
   }
 

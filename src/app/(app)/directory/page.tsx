@@ -21,7 +21,7 @@ export const metadata = { title: 'Directory' };
 export default async function DirectoryPage() {
   const user = await requireUser();
 
-  if (!hasAnyRole(user.roles, 'founder', 'hr', 'manager')) {
+  if (!hasAnyRole(user.roles, 'founder', 'hr')) {
     redirect('/?error=forbidden');
   }
 

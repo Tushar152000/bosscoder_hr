@@ -24,9 +24,11 @@ const TAB_LABELS: Record<Tab, string> = {
 interface Props {
   submissions: ReviewSubmission[];
   cyclesById: Record<string, ReviewCycle>;
+  /** When true (right rail present), cap the grid at 2 cols to leave room. */
+  hasRail?: boolean;
 }
 
-export function MyQueue({ submissions, cyclesById }: Props) {
+export function MyQueue({ submissions, cyclesById, hasRail = false }: Props) {
   const now = useMemo(() => new Date(), []);
 
   const enriched = useMemo<Enriched[]>(
@@ -154,7 +156,7 @@ export function MyQueue({ submissions, cyclesById }: Props) {
       {visible.length === 0 ? (
         <EmptyState tab={tab} />
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className={cn('grid grid-cols-1 gap-3', hasRail ? 'md:grid-cols-2' : 'sm:grid-cols-2 xl:grid-cols-3')}>
           {visible.map((e) => (
             <FormCard key={e.sub.submissionId} item={e} />
           ))}

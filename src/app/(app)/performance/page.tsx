@@ -12,10 +12,8 @@ import { getEmployeeByUserUid, listEmployees } from '@/lib/firestore/employees';
 import { MyQueue } from '@/components/performance/my-queue';
 import { AdminBrowseSection, DrillSection, type DeptStat, type OrgStats } from '@/components/performance/browse-grid';
 import { CyclesTable } from '@/components/performance/cycles-table';
-import {
-  TeamRatingsList,
-  type TeamMemberSummary,
-} from '@/components/performance/team-ratings-list';
+import { MyTeamRail, type ReportWithHistory } from '@/components/performance/my-team-rail';
+import type { TeamMemberSummary } from '@/components/performance/team-ratings-list';
 import {
   availableFYs,
   cycleFY,
@@ -279,6 +277,18 @@ export default async function PerformancePage({ searchParams }: Props) {
   const cyclesById: Record<string, ReviewCycle> = {};
   for (const c of cycles) cyclesById[c.cycleId] = c;
 
+  // Enrich teamRows with pending manager-evals from mySubs so the rail can show them
+  const hasReports = teamRows.length > 0;
+  const reportsWithHistory: ReportWithHistory[] = teamRows.map((row) => ({
+    ...row,
+    pendingSubs: mySubs.filter(
+      (s) =>
+        s.kind === 'manager' &&
+        s.subjectEmployeeId === row.employeeId &&
+        (s.status === 'not-started' || s.status === 'in-progress'),
+    ),
+  }));
+
   // Build FY options + apply FY / month / status filters
   const fyOptions = availableFYs(cycles);
   const filteredCycles = cycles.filter((c) => {
@@ -289,21 +299,19 @@ export default async function PerformancePage({ searchParams }: Props) {
   });
 
   return (
-    <div className="px-4 py-6 space-y-10">
-      {/* ── Page header ──────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="px-4 py-6 space-y-6">
+      {/* ── Header ──────────────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-3.5">
         <div>
-          <h1 className="text-[24px] font-semibold text-slate-900">
-            Performance evaluation
-          </h1>
-          <p className="mt-0.5 text-[12px] text-slate-500">
+          <h1 className="text-[20px] font-medium text-slate-900">Performance evaluation</h1>
+          <p className="mt-1 text-[12px] text-slate-500">
             Track and submit evaluation forms across cycles.
           </p>
         </div>
         {isAdmin && (
           <Link
             href="/performance/cycles/new"
-            className="inline-flex items-center gap-1.5 bg-brand text-white rounded-lg px-3.5 py-2 text-[14px] font-medium hover:bg-brand-hover transition"
+            className="inline-flex items-center gap-1.5 bg-brand text-white rounded-lg px-3.5 py-2 text-[13px] font-medium hover:bg-brand-hover transition"
           >
             <Plus className="h-3.5 w-3.5" />
             New cycle
@@ -311,9 +319,7 @@ export default async function PerformancePage({ searchParams }: Props) {
         )}
       </div>
 
-      <MyQueue submissions={mySubs} cyclesById={cyclesById} />
-
-      {/* ── Section 2: Browse employees ───────────────────────────── */}
+      {/* ── Admin browse / drill (above the queue grid) ──────────── */}
       {isAdmin && adminView.kind === 'tiles' && (
         <AdminBrowseSection
           deptStats={deptStats}
@@ -330,19 +336,14 @@ export default async function PerformancePage({ searchParams }: Props) {
       {isAdmin && adminView.kind !== 'tiles' && (
         <DrillSection title={drillTitle} subtitle={drillSubtitle} rows={drillRows} />
       )}
-      {!isAdmin && teamRows.length > 0 && (
-        <section className="space-y-4">
-          <div>
-            <h2 className="text-[15px] font-semibold text-slate-900">My team</h2>
-            <p className="mt-0.5 text-[12px] text-slate-500">
-              Direct reports and their rating history.
-            </p>
-          </div>
-          <TeamRatingsList rows={teamRows} />
-        </section>
-      )}
 
-      {/* ── Section 3: Evaluation cycles (admin only) ─────────────── */}
+      {/* ── Queue + team rail grid ───────────────────────────────── */}
+      <div className={hasReports ? 'grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-3.5 items-start' : undefined}>
+        <MyQueue submissions={mySubs} cyclesById={cyclesById} hasRail={hasReports} />
+        {hasReports && <MyTeamRail reports={reportsWithHistory} />}
+      </div>
+
+      {/* ── Cycles table (admin only) ────────────────────────────── */}
       {isAdmin && (
         <CyclesTable
           cycles={filteredCycles}
