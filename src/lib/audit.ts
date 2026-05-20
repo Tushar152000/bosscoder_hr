@@ -16,6 +16,7 @@ export type AuditAction =
   | 'review_cycle.close'
   | 'review_cycle.nudge'
   | 'review.submit'
+  | 'review.nudge_manager'
   | 'review.read'
   | 'offer.create'
   | 'offer.send'

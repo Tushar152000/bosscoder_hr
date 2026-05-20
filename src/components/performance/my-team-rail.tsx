@@ -110,6 +110,7 @@ export function MyTeamRail({ reports }: Props) {
             .filter((s) => s.managerOverallRating != null)
             .slice(-6)
             .map((s) => ({
+              id: s.submissionId,
               label: shortLabel(s.cycleName),
               rating: s.managerOverallRating as number,
             }));
@@ -291,7 +292,7 @@ export function MyTeamRail({ reports }: Props) {
                         {/* X-axis cycle labels */}
                         <div className="flex justify-between mt-1">
                           {chartData.map((d) => (
-                            <span key={d.label} className="text-[8px] text-slate-400">
+                            <span key={d.id} className="text-[8px] text-slate-400">
                               {d.label}
                             </span>
                           ))}

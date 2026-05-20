@@ -362,6 +362,29 @@ export async function saveManagerEval(args: {
   return { status: submit ? 'submitted' : 'in-progress', overall };
 }
 
+/**
+ * All manager-evals where this employee is the SUBJECT (any status).
+ * Notes are decrypted so the employee can preview feedback inline.
+ */
+export async function listManagerEvalsForSubject(
+  subjectEmployeeId: string,
+): Promise<ReviewSubmission[]> {
+  const snap = await adminDb
+    .collection(COL)
+    .where('subjectEmployeeId', '==', subjectEmployeeId)
+    .where('kind', '==', 'manager')
+    .get();
+  const subs = snap.docs.map((d) =>
+    toSubmission(d.data() as ReviewSubmissionStored, { decryptNotes: true }),
+  );
+  subs.sort((a, b) => {
+    const at = (a.submittedAt ?? a.createdAt)?.getTime() ?? 0;
+    const bt = (b.submittedAt ?? b.createdAt)?.getTime() ?? 0;
+    return at - bt;
+  });
+  return subs;
+}
+
 export async function lockAllForCycle(cycleId: string): Promise<number> {
   const snap = await adminDb.collection(COL).where('cycleId', '==', cycleId).get();
   let batch = adminDb.batch();

@@ -7,12 +7,13 @@ import {
   listSubmissionsForCycle,
   listSubmissionsForReviewer,
   listSubmittedManagerEvalsForSubject,
+  listManagerEvalsForSubject,
 } from '@/lib/firestore/review-submissions';
 import { getEmployeeByUserUid, listEmployees } from '@/lib/firestore/employees';
-import { MyQueue } from '@/components/performance/my-queue';
 import { AdminBrowseSection, DrillSection, type DeptStat, type OrgStats } from '@/components/performance/browse-grid';
 import { CyclesTable } from '@/components/performance/cycles-table';
-import { MyTeamRail, type ReportWithHistory } from '@/components/performance/my-team-rail';
+import { EvalQueueSection } from '@/components/performance/eval-queue-section';
+import type { ReportWithHistory } from '@/components/performance/my-team-rail';
 import type { TeamMemberSummary } from '@/components/performance/team-ratings-list';
 import {
   availableFYs,
@@ -24,7 +25,7 @@ import {
   parseStatusFilter,
 } from '@/lib/performance/cycle-period';
 import type { EmployeePublic } from '@/types/employee';
-import type { ReviewCycle } from '@/types/review';
+import type { ReviewCycle, ReviewSubmission } from '@/types/review';
 
 export const metadata = { title: 'Performance evaluation' };
 
@@ -64,7 +65,7 @@ export default async function PerformancePage({ searchParams }: Props) {
   const filterMonth  = parseMonthParam(sp?.month);
   const filterStatus = parseStatusFilter(sp?.status);
 
-  const [cycles, mySubs, directReports, allEmployees] = await Promise.all([
+  const [cycles, mySubs, directReports, allEmployees, myMgrEvals] = await Promise.all([
     listCycles(),
     listSubmissionsForReviewer(user.email),
     me
@@ -73,6 +74,9 @@ export default async function PerformancePage({ searchParams }: Props) {
     isAdmin
       ? listEmployees({ status: 'active', limit: 500 })
       : Promise.resolve([] as EmployeePublic[]),
+    me
+      ? listManagerEvalsForSubject(me.employeeId)
+      : Promise.resolve([]),
   ]);
 
   // Direct reports with rating history — for manager "My team" section
@@ -277,6 +281,21 @@ export default async function PerformancePage({ searchParams }: Props) {
   const cyclesById: Record<string, ReviewCycle> = {};
   for (const c of cycles) cyclesById[c.cycleId] = c;
 
+  // Build cycleId → manager-eval map (all statuses) for the current user as subject
+  const mgrEvalByCycle: Record<string, ReviewSubmission> = {};
+  for (const e of myMgrEvals) {
+    mgrEvalByCycle[e.cycleId] = e;
+  }
+
+  // Build cycleId → previous cycle's manager rating (for delta in SubmittedCard)
+  const prevRatingByCycle: Record<string, number | null> = {};
+  const submittedMgrEvals = myMgrEvals
+    .filter((e) => e.status === 'submitted' || e.status === 'locked')
+    .sort((a, b) => ((a.submittedAt ?? a.createdAt)?.getTime() ?? 0) - ((b.submittedAt ?? b.createdAt)?.getTime() ?? 0));
+  for (let i = 1; i < submittedMgrEvals.length; i++) {
+    prevRatingByCycle[submittedMgrEvals[i].cycleId] = submittedMgrEvals[i - 1].managerOverallRating;
+  }
+
   // Enrich teamRows with pending manager-evals from mySubs so the rail can show them
   const hasReports = teamRows.length > 0;
   const reportsWithHistory: ReportWithHistory[] = teamRows.map((row) => ({
@@ -337,11 +356,16 @@ export default async function PerformancePage({ searchParams }: Props) {
         <DrillSection title={drillTitle} subtitle={drillSubtitle} rows={drillRows} />
       )}
 
-      {/* ── Queue + team rail grid ───────────────────────────────── */}
-      <div className={hasReports ? 'grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-3.5 items-start' : undefined}>
-        <MyQueue submissions={mySubs} cyclesById={cyclesById} hasRail={hasReports} />
-        {hasReports && <MyTeamRail reports={reportsWithHistory} />}
-      </div>
+      {/* ── Eval queue toggle (self / team) ─────────────────────── */}
+      {(mySubs.length > 0 || hasReports) && (
+        <EvalQueueSection
+          submissions={mySubs}
+          cyclesById={cyclesById}
+          reportsWithHistory={reportsWithHistory}
+          mgrEvalByCycle={mgrEvalByCycle}
+          prevRatingByCycle={prevRatingByCycle}
+        />
+      )}
 
       {/* ── Cycles table (admin only) ────────────────────────────── */}
       {isAdmin && (

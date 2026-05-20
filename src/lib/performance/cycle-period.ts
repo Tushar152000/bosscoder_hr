@@ -63,6 +63,32 @@ export function availableYears(cycles: ReviewCycle[]): number[] {
   return [...set].sort((a, b) => b - a);
 }
 
+/**
+ * Derive Indian FY string directly from a cycle name string.
+ * Works for monthly ("April 2025") and quarterly ("Q1 2025") names.
+ */
+export function cycleFYFromName(cycleName: string): string | null {
+  const name = cycleName.trim();
+  const monthName = MONTHS_LONG.find((m) => name.startsWith(m));
+  if (monthName) {
+    const yr = parseInt(name.slice(monthName.length).trim(), 10);
+    if (Number.isFinite(yr)) {
+      const month = MONTHS_LONG.indexOf(monthName) + 1;
+      const fyYear = month >= 4 ? yr : yr - 1;
+      return `FY ${fyYear}-${String(fyYear + 1).slice(-2)}`;
+    }
+  }
+  const qm = /^Q([1-4])\s+(\d{4})$/.exec(name);
+  if (qm) {
+    const q = parseInt(qm[1], 10);
+    const yr = parseInt(qm[2], 10);
+    const startMonth = (q - 1) * 3 + 1;
+    const fyYear = startMonth >= 4 ? yr : yr - 1;
+    return `FY ${fyYear}-${String(fyYear + 1).slice(-2)}`;
+  }
+  return null;
+}
+
 /** Parse a searchParam `'2026'` → 2026; bad/missing → null. */
 export function parseYearParam(v: string | undefined): number | null {
   if (!v) return null;

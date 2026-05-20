@@ -338,6 +338,38 @@ export async function createCycleAndRedirect(input: {
  * in-progress) forms in the given cycle. Stub — wire up to notification
  * service when ready. Returns a user-facing message for the toast.
  */
+/**
+ * Employee-facing nudge: log that the employee asked their manager to complete
+ * the evaluation. In future, wire up to an email/notification service.
+ */
+export async function sendManagerNudgeAction(
+  managerEvalSubmissionId: string,
+): Promise<ActionResult> {
+  const user = await requireUser();
+
+  const sub = await getSubmission(managerEvalSubmissionId, { decryptNotes: false });
+  if (!sub) return { ok: false, error: 'Submission not found' };
+  if (sub.kind !== 'manager') return { ok: false, error: 'Wrong form kind' };
+  if (sub.subjectEmail.toLowerCase() !== user.email.toLowerCase())
+    return { ok: false, error: 'Forbidden' };
+  if (sub.status === 'submitted' || sub.status === 'locked')
+    return { ok: false, error: 'Already reviewed' };
+
+  try {
+    await writeAuditLog({
+      actorUid: user.uid,
+      actorEmail: user.email,
+      action: 'review.nudge_manager',
+      resource: { type: 'review_submission', id: managerEvalSubmissionId },
+      metadata: { cycleName: sub.cycleName, reviewerEmail: sub.reviewerEmail },
+    });
+    // TODO: send email to sub.reviewerEmail
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Nudge failed' };
+  }
+}
+
 export async function nudgePendingEmployees(
   cycleId: string,
 ): Promise<ActionResult<{ sent: number }>> {
