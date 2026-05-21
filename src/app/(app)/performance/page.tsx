@@ -56,6 +56,7 @@ interface Props {
 export default async function PerformancePage({ searchParams }: Props) {
   const user = await requireUser();
   const isAdmin = canManageCycles(user);
+  const isFounder = user.roles.includes('founder');
   const me = await getEmployeeByUserUid(user.uid);
   const sp = await searchParams;
   const adminView = isAdmin ? parseAdminView(sp) : ({ kind: 'tiles' } as AdminView);
@@ -308,6 +309,8 @@ export default async function PerformancePage({ searchParams }: Props) {
     ),
   }));
 
+  const queueSubs = isFounder ? mySubs.filter((s) => s.kind !== 'self') : mySubs;
+
   // Build FY options + apply FY / month / status filters
   const fyOptions = availableFYs(cycles);
   const filteredCycles = cycles.filter((c) => {
@@ -357,9 +360,9 @@ export default async function PerformancePage({ searchParams }: Props) {
       )}
 
       {/* ── Eval queue toggle (self / team) ─────────────────────── */}
-      {(mySubs.length > 0 || hasReports) && (
+      {(queueSubs.length > 0 || hasReports) && (
         <EvalQueueSection
-          submissions={mySubs}
+          submissions={queueSubs}
           cyclesById={cyclesById}
           reportsWithHistory={reportsWithHistory}
           mgrEvalByCycle={mgrEvalByCycle}
@@ -367,8 +370,8 @@ export default async function PerformancePage({ searchParams }: Props) {
         />
       )}
 
-      {/* ── Cycles table (admin only) ────────────────────────────── */}
-      {isAdmin && (
+      {/* ── Cycles table (tiles view only) ──────────────────────── */}
+      {isAdmin && adminView.kind === 'tiles' && (
         <CyclesTable
           cycles={filteredCycles}
           allCount={cycles.length}

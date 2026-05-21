@@ -1,3 +1,4 @@
+import React from 'react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import {
@@ -24,6 +25,17 @@ export function ManagerRatingTable({
     );
   }
 
+  // Group by reviewer, preserving insertion order (first seen)
+  const byReviewer = new Map<string, { name: string; rows: ReviewSubmission[] }>();
+  for (const s of rows) {
+    const key = s.reviewerEmail ?? s.reviewerName;
+    if (!byReviewer.has(key)) byReviewer.set(key, { name: s.reviewerName, rows: [] });
+    byReviewer.get(key)!.rows.push(s);
+  }
+  const groups = [...byReviewer.values()].sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
+
   return (
     <div className="overflow-x-auto rounded-xl border border-[#E2E8F0] bg-white shadow-card">
       <table className="w-full min-w-[720px] text-left">
@@ -31,7 +43,6 @@ export function ManagerRatingTable({
           <tr>
             <th className="px-4 py-2.5">Employee</th>
             <th className="px-4 py-2.5">Department</th>
-            <th className="px-4 py-2.5">Reviewer</th>
             {MANAGER_RATING_KEYS.map((k) => (
               <th key={k} className="px-3 py-2.5 text-center">
                 {MANAGER_RATING_LABELS[k]}
@@ -42,55 +53,67 @@ export function ManagerRatingTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((s) => {
-            const ratings = s.managerRatings;
-            const overall = s.managerOverallRating;
-            return (
-              <tr
-                key={s.submissionId}
-                className="border-t border-[#E2E8F0] transition hover:bg-[#F8FAFC]"
-              >
-                <td className="px-4 py-3">
-                  <Link
-                    href={`/performance/submissions/${s.submissionId}`}
-                    className="text-[13px] font-medium text-slate-900 hover:text-[#0C447C] hover:underline"
-                  >
-                    {s.subjectName}
-                  </Link>
-                </td>
-                <td className="px-4 py-3 text-[12px] text-slate-500">{s.subjectDepartment}</td>
-                <td className="px-4 py-3 text-[12px] text-slate-700">{s.reviewerName}</td>
-                {MANAGER_RATING_KEYS.map((k) => (
-                  <td key={k} className="px-3 py-3 text-center text-[13px] tabular-nums text-slate-700">
-                    {ratings ? ratings[k].toFixed(1) : '—'}
-                  </td>
-                ))}
-                <td className="px-4 py-3 text-center">
-                  {overall != null ? (
-                    <span
-                      className={cn(
-                        'text-[14px] font-semibold tabular-nums',
-                        overall <= 2
-                          ? 'text-[#0F6E56]'
-                          : overall <= 3
-                          ? 'text-slate-900'
-                          : overall <= 4
-                          ? 'text-[#854F0B]'
-                          : 'text-[#993C1D]',
-                      )}
-                    >
-                      {overall.toFixed(2)}
-                    </span>
-                  ) : (
-                    <span className="text-[13px] text-slate-400">—</span>
-                  )}
-                </td>
-                <td className="px-4 py-3">
-                  <StatusPill status={s.status} />
+          {groups.map(({ name, rows: groupRows }) => (
+            <React.Fragment key={name}>
+              {/* Reviewer group header */}
+              <tr className="border-t border-[#E2E8F0] bg-[#F8FAFC]">
+                <td
+                  colSpan={3 + MANAGER_RATING_KEYS.length + 2}
+                  className="px-4 py-2 text-[11px] font-semibold text-slate-500 uppercase tracking-[0.6px]"
+                >
+                  {name}
                 </td>
               </tr>
-            );
-          })}
+              {groupRows.map((s) => {
+                const ratings = s.managerRatings;
+                const overall = s.managerOverallRating;
+                return (
+                  <tr
+                    key={s.submissionId}
+                    className="border-t border-[#E2E8F0] transition hover:bg-[#F8FAFC]"
+                  >
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/performance/submissions/${s.submissionId}`}
+                        className="text-[13px] font-medium text-slate-900 hover:text-[#0C447C] hover:underline"
+                      >
+                        {s.subjectName}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-[12px] text-slate-500">{s.subjectDepartment}</td>
+                    {MANAGER_RATING_KEYS.map((k) => (
+                      <td key={k} className="px-3 py-3 text-center text-[13px] tabular-nums text-slate-700">
+                        {ratings ? ratings[k].toFixed(1) : '—'}
+                      </td>
+                    ))}
+                    <td className="px-4 py-3 text-center">
+                      {overall != null ? (
+                        <span
+                          className={cn(
+                            'text-[14px] font-semibold tabular-nums',
+                            overall <= 2
+                              ? 'text-[#0F6E56]'
+                              : overall <= 3
+                              ? 'text-slate-900'
+                              : overall <= 4
+                              ? 'text-[#854F0B]'
+                              : 'text-[#993C1D]',
+                          )}
+                        >
+                          {overall.toFixed(2)}
+                        </span>
+                      ) : (
+                        <span className="text-[13px] text-slate-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <StatusPill status={s.status} />
+                    </td>
+                  </tr>
+                );
+              })}
+            </React.Fragment>
+          ))}
         </tbody>
       </table>
     </div>

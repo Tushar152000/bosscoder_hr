@@ -1,7 +1,8 @@
 import { requireUser } from '@/lib/auth/guard';
 import { type Permission } from '@/lib/auth/roles';
-import { initials } from '@/lib/utils';
+import { getHrUser } from '@/lib/firestore/users';
 import { CopyButton } from '@/components/ui/copy-button';
+import { AvatarUploader } from '@/components/settings/avatar-uploader';
 
 export const metadata = { title: 'Account · Settings' };
 
@@ -24,7 +25,8 @@ const ROLE_LABELS: Record<string, string> = {
 
 export default async function AccountPage() {
   const user = await requireUser();
-  const userInitials = initials(user.displayName, user.email);
+  const hrUser = await getHrUser(user.uid);
+  const photoURL = hrUser?.photoURL ?? user.photoURL;
   const displayName = user.displayName ?? user.email;
 
   return (
@@ -41,19 +43,12 @@ export default async function AccountPage() {
         </div>
         <div className="px-5 py-4">
           <div className="flex items-center gap-4 mb-5">
-            {user.photoURL ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={user.photoURL}
-                alt=""
-                referrerPolicy="no-referrer"
-                className="w-14 h-14 rounded-full object-cover"
-              />
-            ) : (
-              <div className="w-14 h-14 rounded-full bg-[#0C447C] flex items-center justify-center text-white text-[18px] font-medium shrink-0">
-                {userInitials}
-              </div>
-            )}
+            <AvatarUploader
+              uid={user.uid}
+              photoURL={photoURL}
+              displayName={user.displayName}
+              email={user.email}
+            />
             <div>
               <p className="text-[15px] font-medium text-slate-900">{displayName}</p>
               <p className="text-[12px] text-slate-500 mt-0.5">{user.email}</p>

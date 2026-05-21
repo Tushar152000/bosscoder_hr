@@ -5,7 +5,6 @@ import {
   Mail,
   FileText,
   ClipboardCheck,
-  Bell,
   Settings,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -16,7 +15,10 @@ import {
   getEmployeeByUserUid,
   listEmployees,
 } from '@/lib/firestore/employees';
+import { getHrUser } from '@/lib/firestore/users';
+import { listNotificationsForUser } from '@/lib/firestore/notifications';
 import { QuickCard } from '@/components/dashboard/quick-card';
+import { HomeNotifications } from '@/components/dashboard/home-notifications';
 import { initials } from '@/lib/utils';
 import { colorForName } from '@/lib/directory/colors';
 import { formatDate } from '@/lib/format';
@@ -32,7 +34,11 @@ export default async function HomePage({
   const params = await searchParams;
   const forbidden = params.error === 'forbidden';
 
-  const me = await getEmployeeByUserUid(user.uid);
+  const [me, hrUser, notifications] = await Promise.all([
+    getEmployeeByUserUid(user.uid),
+    getHrUser(user.uid),
+    listNotificationsForUser(user.uid),
+  ]);
   const reportingManager =
     me?.managerId ? await getEmployeeById(me.managerId) : null;
   const directReports = me
@@ -56,6 +62,7 @@ export default async function HomePage({
   const isFounder = user.roles.includes('founder');
   const isHR = isPrivileged(user.roles);
 
+  const photoURL = hrUser?.photoURL ?? user.photoURL;
   const userInitials = initials(user.displayName, user.email);
   const displayName = me?.displayName ?? user.displayName ?? user.email;
   const avatarBg = colorForName(displayName);
@@ -162,10 +169,10 @@ export default async function HomePage({
         {/* Avatar + name */}
         <div className="flex items-center gap-3 mb-5">
           <div className="relative shrink-0">
-            {user.photoURL ? (
+            {photoURL ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={user.photoURL}
+                src={photoURL}
                 alt=""
                 referrerPolicy="no-referrer"
                 className="w-[52px] h-[52px] rounded-full object-cover ring-2 ring-white shadow-sm"
@@ -232,12 +239,7 @@ export default async function HomePage({
           <p className="text-[10px] font-semibold tracking-[1.4px] uppercase text-slate-400 mb-3">
             Notifications
           </p>
-          <div className="flex flex-col items-center justify-center py-6 gap-2">
-            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
-              <Bell className="h-4 w-4 text-slate-400" />
-            </div>
-            <p className="text-[11px] text-slate-400">No new notifications</p>
-          </div>
+          <HomeNotifications notifications={notifications} />
         </div>
 
         {/* Bottom settings link */}

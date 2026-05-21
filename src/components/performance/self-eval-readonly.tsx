@@ -1,6 +1,5 @@
-import { Card, CardBody, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { formatDate } from '@/lib/format';
+import { Check, Clock, Lock, Pencil } from 'lucide-react';
 import {
   SELF_EVAL_QUESTION_KEYS,
   SELF_EVAL_QUESTION_LABELS,
@@ -8,29 +7,21 @@ import {
 } from '@/types/review';
 
 interface Props {
-  /** The matching self-eval submission, if it exists. */
   selfEval: ReviewSubmission | null;
-  /** Subject's name (for the header — falls back to selfEval.subjectName). */
   subjectName?: string;
 }
 
-/**
- * Read-only render of the employee's self-evaluation answers — used at the top
- * of the manager-eval page so the manager has the employee's reflection in
- * front of them while they fill the rating.
- */
 export function SelfEvalReadOnly({ selfEval, subjectName }: Props) {
   if (!selfEval) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Self-evaluation</CardTitle>
-          <CardDescription>
-            {subjectName ?? 'The employee'} hasn&apos;t been assigned a self-eval for
-            this cycle.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <div className="rounded-xl border border-[#E2E8F0] bg-white shadow-card overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#E2E8F0]">
+          <p className="text-[13px] font-semibold text-slate-700">Self-evaluation</p>
+          <p className="text-[12px] text-slate-400 mt-0.5">
+            {subjectName ?? 'The employee'} hasn&apos;t been assigned a self-eval for this cycle.
+          </p>
+        </div>
+      </div>
     );
   }
 
@@ -38,55 +29,65 @@ export function SelfEvalReadOnly({ selfEval, subjectName }: Props) {
   const answers = selfEval.selfAnswers;
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>
+    <div className="rounded-xl border border-[#E2E8F0] bg-white shadow-card overflow-hidden">
+      <div className="px-5 py-4 border-b border-[#E2E8F0] flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[13px] font-semibold text-slate-700">
             Self-evaluation by {selfEval.subjectName}
-          </CardTitle>
-          <StatusPill status={selfEval.status} />
+          </p>
+          <p className="text-[12px] text-slate-400 mt-0.5">
+            {isFinal && selfEval.submittedAt
+              ? `Submitted on ${formatDate(selfEval.submittedAt)}.`
+              : 'Not yet submitted — answers may still change.'}
+          </p>
         </div>
-        <CardDescription>
-          {isFinal && selfEval.submittedAt
-            ? `Submitted on ${formatDate(selfEval.submittedAt)}.`
-            : 'Not yet submitted — answers may still change.'}
-        </CardDescription>
-      </CardHeader>
-      <CardBody>
+        <StatusPill status={selfEval.status} />
+      </div>
+
+      <div className="px-5 py-4">
         {!answers || !isFinal ? (
-          <p className="text-sm text-muted">
+          <p className="text-[13px] text-slate-400 italic">
             {answers
               ? 'Draft in progress — wait for the employee to submit before relying on these answers.'
               : 'No answers yet.'}
           </p>
         ) : (
-          <ol className="space-y-5">
+          <ol className="space-y-4">
             {SELF_EVAL_QUESTION_KEYS.map((key, i) => {
               const value = answers[key] ?? '';
               return (
                 <li key={key}>
-                  <p className="text-xs font-medium uppercase tracking-wider text-muted">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.8px] text-slate-400 mb-0.5">
                     Q{i + 1}
                   </p>
-                  <p className="mt-1 text-sm font-medium">
+                  <p className="text-[12px] font-medium text-slate-700 mb-1.5">
                     {SELF_EVAL_QUESTION_LABELS[key]}
                   </p>
-                  <p className="mt-2 whitespace-pre-wrap rounded-md border border-default bg-card-elevated px-3 py-2 text-sm leading-relaxed">
-                    {value || <span className="italic text-muted">(left blank)</span>}
-                  </p>
+                  <div className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2.5 text-[12px] text-slate-800 leading-relaxed whitespace-pre-wrap">
+                    {value || <span className="italic text-slate-400">(left blank)</span>}
+                  </div>
                 </li>
               );
             })}
           </ol>
         )}
-      </CardBody>
-    </Card>
+      </div>
+    </div>
   );
 }
 
 function StatusPill({ status }: { status: ReviewSubmission['status'] }) {
-  if (status === 'submitted') return <Badge variant="success">Submitted</Badge>;
-  if (status === 'locked') return <Badge variant="muted">Locked</Badge>;
-  if (status === 'in-progress') return <Badge variant="warning">In progress</Badge>;
-  return <Badge variant="default">Not started</Badge>;
+  const map = {
+    submitted:     { label: 'Submitted',   cls: 'bg-[#E1F5EE] text-[#0F6E56]',               icon: <Check size={10} /> },
+    'in-progress': { label: 'In progress', cls: 'bg-[#FAEEDA] text-[#854F0B]',               icon: <Pencil size={10} /> },
+    'not-started': { label: 'Not started', cls: 'bg-[#F8FAFC] text-slate-500 border border-[#E2E8F0]', icon: <Clock size={10} /> },
+    locked:        { label: 'Locked',      cls: 'bg-[#F8FAFC] text-slate-500 border border-[#E2E8F0]', icon: <Lock size={10} /> },
+  } as const;
+  const { label, cls, icon } = map[status];
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${cls}`}>
+      {icon}
+      {label}
+    </span>
+  );
 }

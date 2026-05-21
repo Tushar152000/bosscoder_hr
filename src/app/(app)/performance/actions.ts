@@ -27,6 +27,8 @@ import {
   sendCycleOpenEmails,
   type CycleOpenRecipient,
 } from '@/lib/email/cycle-open';
+import { writeNotificationsForReviewers } from '@/lib/firestore/notifications';
+import { listSubmissionsForCycle } from '@/lib/firestore/review-submissions';
 import type { Cadence, ManagerEvalInput, SelfEvalInput } from '@/types/review';
 
 export type ActionResult<T = void> =
@@ -106,6 +108,7 @@ export async function openCycleAction(cycleId: string): Promise<ActionResult> {
     // Best-effort notifications. Don't block / fail the cycle-open if email
     // delivery hits a snag — log the result via audit log.
     const emailResult = await dispatchCycleOpenEmails(cycle, result.newSubmissions);
+    await dispatchCycleOpenNotifications(cycle.name, result.newSubmissions).catch(() => {});
 
     await writeAuditLog({
       actorUid: user.uid,
@@ -168,6 +171,37 @@ async function dispatchCycleOpenEmails(
   });
 }
 
+async function dispatchCycleOpenNotifications(
+  cycleName: string,
+  newSubmissions: NewSubmissionInfo[]
+): Promise<void> {
+  const byUid = new Map<string, { hasSelf: boolean; managerCount: number }>();
+  for (const s of newSubmissions) {
+    if (!s.reviewerUid) continue;
+    let entry = byUid.get(s.reviewerUid);
+    if (!entry) {
+      entry = { hasSelf: false, managerCount: 0 };
+      byUid.set(s.reviewerUid, entry);
+    }
+    if (s.kind === 'self') entry.hasSelf = true;
+    else entry.managerCount++;
+  }
+
+  const entries = [...byUid.entries()].map(([uid, { hasSelf, managerCount }]) => {
+    let title: string;
+    if (hasSelf && managerCount > 0) {
+      title = `Your ${cycleName} evaluations are ready`;
+    } else if (hasSelf) {
+      title = `Your ${cycleName} self-evaluation is ready`;
+    } else {
+      title = `Team evaluation ready — ${cycleName}`;
+    }
+    return { uid, title, href: '/performance', tone: 'info' as const };
+  });
+
+  await writeNotificationsForReviewers(entries);
+}
+
 export async function syncCycleEmployeesAction(cycleId: string): Promise<ActionResult> {
   const user = await requireUser();
   if (!canManageCycles(user)) return { ok: false, error: 'Forbidden' };
@@ -192,6 +226,7 @@ export async function syncCycleEmployeesAction(cycleId: string): Promise<ActionR
     // Notify ONLY the people whose forms are brand new (existing reviewers
     // were already emailed when the cycle first opened).
     await dispatchCycleOpenEmails(cycle, result.newSubmissions);
+    await dispatchCycleOpenNotifications(cycle.name, result.newSubmissions).catch(() => {});
     revalidatePath(`/performance/cycles/${cycleId}`);
     return { ok: true };
   } catch (e) {
@@ -363,7 +398,14 @@ export async function sendManagerNudgeAction(
       resource: { type: 'review_submission', id: managerEvalSubmissionId },
       metadata: { cycleName: sub.cycleName, reviewerEmail: sub.reviewerEmail },
     });
-    // TODO: send email to sub.reviewerEmail
+    if (sub.reviewerUid) {
+      await writeNotificationsForReviewers([{
+        uid: sub.reviewerUid,
+        title: `${sub.subjectName} is waiting for their ${sub.cycleName} evaluation`,
+        href: '/performance',
+        tone: 'warning',
+      }]).catch(() => {});
+    }
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Nudge failed' };
@@ -381,15 +423,35 @@ export async function nudgePendingEmployees(
   if (cycle.status !== 'open') return { ok: false, error: 'Cycle is not open' };
 
   try {
+    const allSubs = await listSubmissionsForCycle(cycleId);
+    const pending = allSubs.filter(
+      (s) => s.status === 'not-started' || s.status === 'in-progress',
+    );
+    const entries = [
+      ...new Map(
+        pending
+          .filter((s) => s.reviewerUid)
+          .map((s) => [
+            s.reviewerUid!,
+            {
+              uid: s.reviewerUid!,
+              title: `Reminder: your ${cycle.name} evaluation is waiting`,
+              href: '/performance',
+              tone: 'warning' as const,
+            },
+          ]),
+      ).values(),
+    ];
+    await writeNotificationsForReviewers(entries).catch(() => {});
+
     await writeAuditLog({
       actorUid: user.uid,
       actorEmail: user.email,
       action: 'review_cycle.nudge',
       resource: { type: 'review_cycle', id: cycleId },
-      metadata: { cycleName: cycle.name },
+      metadata: { cycleName: cycle.name, notified: entries.length },
     });
-    // TODO: email pending reviewers via notification service
-    return { ok: true, data: { sent: 0 } };
+    return { ok: true, data: { sent: entries.length } };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Nudge failed' };
   }

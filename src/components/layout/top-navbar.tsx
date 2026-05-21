@@ -18,10 +18,12 @@ import { auth } from "@/lib/firebase/client";
 import { BosscoderLogo } from "@/assets/images/BosscoderLogo";
 import { initials, cn } from "@/lib/utils";
 import type { Permission, Role } from "@/lib/auth/roles";
+import { markNotificationsReadAction } from "@/app/(app)/notifications/actions";
 
 export interface NavNotification {
   id: string;
   title: string;
+  href?: string;
   createdAt: Date;
   read: boolean;
   tone: "info" | "success" | "warning";
@@ -51,9 +53,20 @@ export function TopNavbar({ user, notifications = [] }: Props) {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [localAllRead, setLocalAllRead] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  const unread = notifications.filter((n) => !n.read).length;
+  // Reset local read state whenever notifications prop refreshes (page navigation)
+  useEffect(() => { setLocalAllRead(false); }, [notifications]);
+
+  const unread = localAllRead ? 0 : notifications.filter((n) => !n.read).length;
+
+  function handleBellOpenChange(open: boolean) {
+    if (open && unread > 0) {
+      setLocalAllRead(true);
+      markNotificationsReadAction().catch(() => {});
+    }
+  }
   const canSeeRoles = user.permissions.includes("manage_roles");
   const canSeeAudit = user.permissions.includes("view_audit_log");
 
@@ -93,7 +106,7 @@ export function TopNavbar({ user, notifications = [] }: Props) {
 
         <div className="flex items-center gap-2">
       
-          <Popover.Root>
+          <Popover.Root onOpenChange={handleBellOpenChange}>
             <Popover.Trigger asChild>
               <button
                 type="button"
@@ -121,27 +134,32 @@ export function TopNavbar({ user, notifications = [] }: Props) {
                   </p>
                 ) : (
                   <ul className="space-y-0.5">
-                    {notifications.map((n) => (
-                      <li
-                        key={n.id}
-                        className="flex items-start gap-2.5 px-2 py-2 rounded-md hover:bg-slate-50"
-                      >
-                        <span
-                          className={cn(
-                            "mt-1.5 w-1.5 h-1.5 rounded-full shrink-0",
-                            TONE_DOT[n.tone],
-                          )}
-                        />
-                        <div className="min-w-0">
-                          <p className="text-[12px] font-medium text-slate-900 leading-snug">
-                            {n.title}
-                          </p>
-                          <p className="text-[10px] text-slate-400 mt-0.5">
-                            {timeAgo(n.createdAt)}
-                          </p>
-                        </div>
-                      </li>
-                    ))}
+                    {notifications.map((n) => {
+                      const isUnread = !localAllRead && !n.read;
+                      const inner = (
+                        <>
+                          <span className={cn("mt-1.5 w-1.5 h-1.5 rounded-full shrink-0", TONE_DOT[n.tone])} />
+                          <div className="min-w-0 flex-1">
+                            <p className={cn("text-[12px] leading-snug", isUnread ? "font-semibold text-slate-900" : "font-medium text-slate-700")}>
+                              {n.title}
+                            </p>
+                            <p className="text-[10px] text-slate-400 mt-0.5">{timeAgo(n.createdAt)}</p>
+                          </div>
+                          {isUnread && <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />}
+                        </>
+                      );
+                      return n.href ? (
+                        <li key={n.id}>
+                          <Link href={n.href} className="flex items-start gap-2.5 px-2 py-2 rounded-md hover:bg-slate-50 transition-colors">
+                            {inner}
+                          </Link>
+                        </li>
+                      ) : (
+                        <li key={n.id} className="flex items-start gap-2.5 px-2 py-2 rounded-md">
+                          {inner}
+                        </li>
+                      );
+                    })}
                   </ul>
                 )}
               </Popover.Content>

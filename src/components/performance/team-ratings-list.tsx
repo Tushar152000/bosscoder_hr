@@ -2,12 +2,17 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ChevronDown, ExternalLink } from 'lucide-react';
+import { ArrowRight, ChevronDown, TrendingDown, TrendingUp } from 'lucide-react';
 import { RatingChart, type RatingPoint } from '@/components/performance/rating-chart';
 import { StatCard } from '@/components/performance/stat-card';
 import { initials, cn } from '@/lib/utils';
 import { formatDate } from '@/lib/format';
-import type { ReviewSubmission } from '@/types/review';
+import { colorForName } from '@/lib/directory/colors';
+import {
+  MANAGER_RATING_KEYS,
+  MANAGER_RATING_LABELS,
+  type ReviewSubmission,
+} from '@/types/review';
 
 export interface TeamMemberSummary {
   employeeId: string;
@@ -15,64 +20,47 @@ export interface TeamMemberSummary {
   email: string;
   designation: string;
   department: string;
-  /** Submitted manager-evals where this employee is the SUBJECT, oldest → newest. */
   history: ReviewSubmission[];
 }
 
-interface Props {
-  rows: TeamMemberSummary[];
-}
-
-/**
- * Accordion list of a manager's direct reports. Each row shows a quick summary
- * (latest rating + trend arrow); clicking opens an inline panel with the
- * person's full rating chart, stats, and links to their recent submissions.
- */
-export function TeamRatingsList({ rows }: Props) {
+export function TeamRatingsList({ rows }: { rows: TeamMemberSummary[] }) {
   const [openId, setOpenId] = useState<string | null>(null);
-
   if (rows.length === 0) return null;
 
   return (
-    <div className="overflow-hidden rounded-xl border border-default bg-card">
-      <ul className="divide-y divide-[rgb(var(--border))]">
+    <div className="overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-card">
+      <ul className="divide-y divide-[#E2E8F0]">
         {rows.map((row) => {
           const isOpen = openId === row.employeeId;
+          const avatarBg = colorForName(row.displayName ?? row.email);
           return (
             <li key={row.employeeId}>
               <button
                 type="button"
-                onClick={() =>
-                  setOpenId((cur) => (cur === row.employeeId ? null : row.employeeId))
-                }
+                onClick={() => setOpenId((cur) => (cur === row.employeeId ? null : row.employeeId))}
                 className={cn(
-                  'flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors hover:bg-white/[0.02]',
-                  isOpen && 'bg-white/[0.03]'
+                  'flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors hover:bg-[#F8FAFC]',
+                  isOpen && 'bg-[#F8FAFC]',
                 )}
                 aria-expanded={isOpen}
               >
                 <div className="flex min-w-0 items-center gap-3">
-                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-500/15 text-sm font-semibold text-accent-200 ring-1 ring-accent-500/30">
+                  <div
+                    className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-[13px] font-semibold text-white ring-2 ring-white shadow-sm"
+                    style={{ background: avatarBg }}
+                  >
                     {initials(row.displayName, row.email)}
                   </div>
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-medium text-white">
-                      {row.displayName}
-                    </div>
-                    <div className="truncate text-xs text-muted">
-                      {row.designation}
-                      {row.department && <> · {row.department}</>}
-                    </div>
+                    <p className="truncate text-[13px] font-medium text-slate-900">{row.displayName}</p>
+                    <p className="truncate text-[11px] text-slate-500">
+                      {row.designation}{row.department && <> · {row.department}</>}
+                    </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
                   <RatingSummary history={row.history} />
-                  <ChevronDown
-                    className={cn(
-                      'h-4 w-4 text-muted transition-transform',
-                      isOpen && 'rotate-180'
-                    )}
-                  />
+                  <ChevronDown className={cn('h-4 w-4 text-slate-400 transition-transform', isOpen && 'rotate-180')} />
                 </div>
               </button>
 
@@ -85,174 +73,252 @@ export function TeamRatingsList({ rows }: Props) {
   );
 }
 
+// ── Row summary ───────────────────────────────────────────────────────────────
+
 function RatingSummary({ history }: { history: ReviewSubmission[] }) {
   const ratings = history
     .map((s) => s.managerOverallRating)
     .filter((r): r is number => typeof r === 'number');
 
-  if (ratings.length === 0) {
-    return <span className="text-xs text-muted">No ratings yet</span>;
-  }
+  if (ratings.length === 0)
+    return <span className="text-[12px] text-slate-400">No ratings yet</span>;
 
   const last = ratings[ratings.length - 1];
   const prev = ratings.length > 1 ? ratings[ratings.length - 2] : null;
   const trend = prev != null ? last - prev : 0;
-  // Lower is better in Bosscoder's scale (1 best, 5 worst), so a NEGATIVE
-  // trend (rating dropping) is GOOD.
   const trendIsGood = trend < -0.05;
-  const trendIsBad = trend > 0.05;
+  const trendIsBad  = trend > 0.05;
 
   const tone =
-    last <= 2
-      ? 'text-emerald-300'
-      : last <= 3
-      ? 'text-white'
-      : last <= 4
-      ? 'text-amber-300'
-      : 'text-red-300';
+    last <= 2 ? 'text-[#0F6E56]'
+    : last <= 3 ? 'text-slate-900'
+    : last <= 4 ? 'text-[#854F0B]'
+    : 'text-[#993C1D]';
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2.5">
       <div className="text-right">
-        <div className={cn('text-lg font-semibold tabular-nums', tone)}>
+        <div className={cn('text-[18px] font-semibold tabular-nums leading-none', tone)}>
           {last.toFixed(1)}
-          <span className="ml-0.5 text-xs font-medium text-muted">/5</span>
+          <span className="ml-0.5 text-[11px] font-medium text-slate-400">/5</span>
         </div>
-        <div className="text-[10px] uppercase tracking-wider text-muted">
+        <div className="mt-0.5 text-[10px] uppercase tracking-wider text-slate-400">
           {ratings.length} {ratings.length === 1 ? 'cycle' : 'cycles'}
         </div>
       </div>
       {prev != null && (trendIsGood || trendIsBad) && (
-        <span
-          className={cn(
-            'rounded-full px-2 py-0.5 text-[10px] font-medium',
-            trendIsGood && 'bg-emerald-500/15 text-emerald-300',
-            trendIsBad && 'bg-amber-500/15 text-amber-300'
-          )}
-          title={trendIsGood ? 'Improving (rating closer to 1)' : 'Slipping'}
-        >
-          {trendIsGood ? '▲' : '▼'} {Math.abs(trend).toFixed(2)}
+        <span className={cn(
+          'inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium',
+          trendIsGood && 'bg-[#E1F5EE] text-[#0F6E56]',
+          trendIsBad  && 'bg-[#FAEEDA] text-[#854F0B]',
+        )}>
+          {trendIsGood ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+          {Math.abs(trend).toFixed(2)}
         </span>
       )}
     </div>
   );
 }
 
+// ── Expanded panel ────────────────────────────────────────────────────────────
+
 function ExpandedPanel({ row }: { row: TeamMemberSummary }) {
-  const ratings = row.history
+  // null = all-time trend view; a submissionId = that cycle's breakdown
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const submitted = row.history.filter(
+    (s) => s.status === 'submitted' || s.status === 'locked',
+  );
+  const selected = submitted.find((s) => s.submissionId === selectedId) ?? null;
+
+  const ratings = submitted
     .map((s) => s.managerOverallRating)
     .filter((r): r is number => typeof r === 'number');
 
-  const lastRating = ratings.length > 0 ? ratings[ratings.length - 1] : null;
-  const avgQuarterly = avg(ratings.slice(-3));
   const avgFy = avg(ratings);
 
-  const chartData: RatingPoint[] = row.history.map((s) => ({
-    label: shortLabel(s.cycleName),
+  const chartData: RatingPoint[] = submitted.map((s) => ({
+    label:  shortLabel(s.cycleName),
     rating: s.managerOverallRating ?? null,
   }));
 
   return (
-    <div className="border-t border-default bg-card-elevated px-5 py-5">
-      {row.history.length === 0 ? (
-        <p className="text-sm text-muted">
-          No submitted manager-evaluations yet for {row.displayName}. Once a cycle
-          closes with a rating, their trend chart will populate here.
-        </p>
-      ) : (
-        <div className="grid gap-4 lg:grid-cols-[1fr_220px]">
-          <div className="rounded-lg border border-default bg-card p-4">
-            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-muted">
-              Rating trend
-            </p>
-            <RatingChart data={chartData} averageLine={avgFy} height={220} />
+    <div className="border-t border-[#E2E8F0] bg-[#FAFAF7] px-5 py-5 space-y-4">
+
+      {/* ── Cycle selector ── */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          type="button"
+          onClick={() => setSelectedId(null)}
+          className={cn(
+            'rounded-lg px-3 py-1.5 text-[12px] font-medium transition',
+            selectedId === null
+              ? 'bg-[#0C447C] text-white'
+              : 'bg-white border border-[#E2E8F0] text-slate-600 hover:border-slate-300',
+          )}
+        >
+          All time
+        </button>
+        {submitted.length === 0 && (
+          <span className="text-[12px] text-slate-400">No submitted evaluations yet</span>
+        )}
+        {submitted.slice().reverse().map((s) => (
+          <button
+            key={s.submissionId}
+            type="button"
+            onClick={() => setSelectedId(s.submissionId)}
+            className={cn(
+              'rounded-lg px-3 py-1.5 text-[12px] font-medium transition',
+              selectedId === s.submissionId
+                ? 'bg-[#0C447C] text-white'
+                : 'bg-white border border-[#E2E8F0] text-slate-600 hover:border-slate-300',
+            )}
+          >
+            {s.cycleName}
+          </button>
+        ))}
+      </div>
+
+      {/* ── All-time trend view ── */}
+      {selectedId === null && (
+        submitted.length === 0 ? (
+          <p className="text-[13px] text-slate-500">
+            No submitted evaluations yet for {row.displayName}. Once a cycle closes with a rating, the trend chart will appear here.
+          </p>
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-[1fr_200px]">
+            <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-card">
+              <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.8px] text-slate-400">
+                Rating trend
+              </p>
+              <RatingChart data={chartData} averageLine={avgFy} height={200} />
+            </div>
+            <div className="flex flex-col gap-2.5">
+              <StatCard
+                label="Latest rating"
+                value={ratings.length > 0 ? ratings[ratings.length - 1].toFixed(1) : '—'}
+                unit={ratings.length > 0 ? '/5' : undefined}
+                hint={submitted[submitted.length - 1]?.cycleName}
+              />
+              <StatCard
+                label="Avg · last 3"
+                value={avg(ratings.slice(-3)) != null ? avg(ratings.slice(-3))!.toFixed(1) : '—'}
+                unit={avg(ratings.slice(-3)) != null ? '/5' : undefined}
+                hint="Most recent 3 cycles"
+              />
+              <StatCard
+                label="Avg · all-time"
+                value={avgFy != null ? avgFy.toFixed(1) : '—'}
+                unit={avgFy != null ? '/5' : undefined}
+                hint={`${ratings.length} ${ratings.length === 1 ? 'cycle' : 'cycles'} total`}
+              />
+            </div>
           </div>
-          <div className="space-y-3">
-            <StatCard
-              label="Latest rating"
-              value={lastRating != null ? lastRating.toFixed(1) : '—'}
-              unit={lastRating != null ? '/5' : undefined}
-              hint={
-                lastRating != null
-                  ? row.history[row.history.length - 1]?.cycleName
-                  : 'No data'
-              }
-            />
-            <StatCard
-              label="Avg (last 3)"
-              value={avgQuarterly != null ? avgQuarterly.toFixed(1) : '—'}
-              unit={avgQuarterly != null ? '/5' : undefined}
-              hint="Most recent 3 cycles"
-            />
-            <StatCard
-              label="Avg (all-time)"
-              value={avgFy != null ? avgFy.toFixed(1) : '—'}
-              unit={avgFy != null ? '/5' : undefined}
-              hint={`Across ${ratings.length} ${ratings.length === 1 ? 'cycle' : 'cycles'}`}
-            />
+        )
+      )}
+
+      {/* ── Single-cycle breakdown view ── */}
+      {selectedId !== null && selected && (
+        <div className="grid gap-4 lg:grid-cols-[1fr_180px]">
+          {/* Rating bars */}
+          <div className="rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-card space-y-4">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.8px] text-slate-400">
+              Rating breakdown · {selected.cycleName}
+            </p>
+            {MANAGER_RATING_KEYS.map((key) => {
+              const val = selected.managerRatings?.[key];
+              const pct = val != null ? ((5 - val) / 4) * 100 : 0; // 1=best so invert for bar fill
+              const barColor =
+                val == null ? 'bg-slate-200'
+                : val <= 2  ? 'bg-[#0F6E56]'
+                : val <= 3  ? 'bg-[#0C447C]'
+                : val <= 4  ? 'bg-[#854F0B]'
+                : 'bg-[#993C1D]';
+              return (
+                <div key={key}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[12px] text-slate-600">{MANAGER_RATING_LABELS[key]}</span>
+                    <span className="text-[13px] font-semibold tabular-nums text-slate-900">
+                      {val != null ? `${val.toFixed(1)}/5` : '—'}
+                    </span>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-slate-100">
+                    {val != null && (
+                      <div
+                        className={cn('h-2 rounded-full transition-all', barColor)}
+                        style={{ width: `${pct}%` }}
+                      />
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Overall + meta */}
+          <div className="flex flex-col gap-2.5">
+            <div className="rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-card text-center">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.8px] text-slate-400 mb-2">
+                Overall
+              </p>
+              {selected.managerOverallRating != null ? (
+                <p className={cn(
+                  'text-[36px] font-semibold tabular-nums leading-none',
+                  selected.managerOverallRating <= 2 ? 'text-[#0F6E56]'
+                  : selected.managerOverallRating <= 3 ? 'text-slate-900'
+                  : selected.managerOverallRating <= 4 ? 'text-[#854F0B]'
+                  : 'text-[#993C1D]',
+                )}>
+                  {selected.managerOverallRating.toFixed(2)}
+                  <span className="ml-0.5 text-[16px] font-medium text-slate-400">/5</span>
+                </p>
+              ) : (
+                <p className="text-[28px] font-semibold text-slate-300">—</p>
+              )}
+              {selected.submittedAt && (
+                <p className="mt-2 text-[10px] text-slate-400">
+                  Submitted {formatDate(selected.submittedAt)}
+                </p>
+              )}
+              <p className="mt-0.5 text-[10px] text-slate-400">by {selected.reviewerName}</p>
+            </div>
+
+            <Link
+              href={`/performance/submissions/${selected.submissionId}`}
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-white px-3 py-2 text-[12px] font-medium text-slate-700 shadow-card transition hover:bg-[#F8FAFC]"
+            >
+              View full form
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Link>
           </div>
         </div>
       )}
 
-      {row.history.length > 0 && (
-        <div className="mt-4">
-          <p className="text-xs font-medium uppercase tracking-wider text-muted">
-            Recent evaluations
-          </p>
-          <ul className="mt-2 divide-y divide-[rgb(var(--border))] rounded-lg border border-default bg-card">
-            {row.history.slice(-5).reverse().map((s) => (
-              <li key={s.submissionId}>
-                <Link
-                  href={`/performance/submissions/${s.submissionId}`}
-                  className="flex items-center justify-between gap-3 px-4 py-2.5 text-sm hover:bg-white/[0.02]"
-                >
-                  <div>
-                    <div className="font-medium text-white">{s.cycleName}</div>
-                    <div className="text-xs text-muted">
-                      {s.submittedAt
-                        ? `Submitted ${formatDate(s.submittedAt)}`
-                        : 'Pending submission'}{' '}
-                      · by {s.reviewerName}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    {typeof s.managerOverallRating === 'number' && (
-                      <span className="text-base font-semibold tabular-nums text-white">
-                        {s.managerOverallRating.toFixed(1)}
-                        <span className="ml-0.5 text-xs font-medium text-muted">/5</span>
-                      </span>
-                    )}
-                    <ExternalLink className="h-4 w-4 text-muted" />
-                  </div>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
+      {/* ── No submission for selected cycle ── */}
+      {selectedId !== null && !selected && (
+        <p className="text-[13px] text-slate-500">
+          No submitted evaluation found for this cycle.
+        </p>
       )}
     </div>
   );
 }
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function avg(xs: number[]): number | null {
   if (xs.length === 0) return null;
   return xs.reduce((a, b) => a + b, 0) / xs.length;
 }
 
-const MONTHS_SHORT = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-];
-const MONTHS_LONG = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTHS_LONG  = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 function shortLabel(cycleName: string): string {
   const m = MONTHS_LONG.find((mm) => cycleName.startsWith(mm));
   if (m) {
     const idx = MONTHS_LONG.indexOf(m);
-    const yr = cycleName.slice(m.length).trim().slice(-2);
+    const yr  = cycleName.slice(m.length).trim().slice(-2);
     return `${MONTHS_SHORT[idx]} ${yr}`;
   }
   const q = /^Q(\d)\s+(\d{4})$/.exec(cycleName);

@@ -93,6 +93,14 @@
       ]
     },
     {
+      "collectionGroup": "hr_notifications",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "uid", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "hr_offer_letters",
       "queryScope": "COLLECTION",
       "fields": [

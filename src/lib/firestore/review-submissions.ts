@@ -52,6 +52,7 @@ function toSubmission(
 export interface NewSubmissionInfo {
   submissionId: string;
   kind: 'self' | 'manager';
+  reviewerUid: string | null;
   reviewerName: string;
   reviewerEmail: string;
   /** Subject's name — for manager-evals this tells the reviewer who to evaluate. */
@@ -139,6 +140,7 @@ export async function generateSubmissionsForCycle(args: {
       newSubmissions.push({
         submissionId: ref.id,
         kind: 'self',
+        reviewerUid: emp.userUid ?? null,
         reviewerName: emp.displayName,
         reviewerEmail: emp.email,
         subjectName: emp.displayName,
@@ -183,6 +185,7 @@ export async function generateSubmissionsForCycle(args: {
           newSubmissions.push({
             submissionId: ref.id,
             kind: 'manager',
+            reviewerUid: manager.userUid ?? null,
             reviewerName: manager.displayName,
             reviewerEmail: manager.email,
             subjectName: emp.displayName,

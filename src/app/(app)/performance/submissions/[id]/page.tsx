@@ -82,10 +82,10 @@ export default async function SubmissionPage({ params }: Props) {
   );
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
+    <div className="mx-auto max-w-[1300px] py-6 space-y-4">
       <Link
         href={`/performance/cycles/${sub.cycleId}`}
-        className="inline-flex items-center gap-1 text-sm text-muted hover:text-white"
+        className="inline-flex items-center gap-1.5 text-[14px] font-medium text-slate-500 hover:text-slate-900 transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
         Back to {sub.cycleName}

@@ -3,39 +3,27 @@ import { cn } from '@/lib/utils';
 interface Props {
   label: string;
   value: string;
-  /** Decimal denominator like "/5" — rendered smaller next to the value. */
   unit?: string;
-  /** Tiny supporting text below (e.g. "Q4 · Best quarter"). */
   hint?: string;
-  /** "good" tints the hint green, "warn" amber, default muted. */
   tone?: 'default' | 'good' | 'warn';
   className?: string;
 }
 
 const TONE: Record<NonNullable<Props['tone']>, string> = {
-  default: 'text-muted',
-  good: 'text-emerald-400',
-  warn: 'text-amber-300',
+  default: 'text-slate-400',
+  good:    'text-[#0F6E56]',
+  warn:    'text-[#854F0B]',
 };
 
 export function StatCard({ label, value, unit, hint, tone = 'default', className }: Props) {
   return (
-    <div
-      className={cn(
-        'rounded-xl border border-default bg-card p-5',
-        className
-      )}
-    >
-      <p className="text-xs font-medium text-muted">{label}</p>
-      <p className="mt-2 text-3xl font-bold tabular-nums text-white">
+    <div className={cn('rounded-xl border border-[#E2E8F0] bg-white p-4 shadow-card', className)}>
+      <p className="text-[11px] font-medium uppercase tracking-[0.6px] text-slate-400">{label}</p>
+      <p className="mt-2 text-[28px] font-semibold leading-none tabular-nums text-slate-900">
         {value}
-        {unit && (
-          <span className="ml-0.5 text-xl font-medium text-muted">{unit}</span>
-        )}
+        {unit && <span className="ml-0.5 text-[16px] font-medium text-slate-400">{unit}</span>}
       </p>
-      {hint && (
-        <p className={cn('mt-2 text-xs', TONE[tone])}>{hint}</p>
-      )}
+      {hint && <p className={cn('mt-1.5 text-[11px]', TONE[tone])}>{hint}</p>}
     </div>
   );
 }
