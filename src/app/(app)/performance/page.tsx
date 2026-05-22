@@ -80,6 +80,11 @@ export default async function PerformancePage({ searchParams }: Props) {
       : Promise.resolve([]),
   ]);
 
+  // employeeId → displayName lookup for resolving manager names
+  const empNameById = new Map<string, string>(
+    allEmployees.map((e) => [e.employeeId, e.displayName]),
+  );
+
   // Direct reports with rating history — for manager "My team" section
   const teamRows: TeamMemberSummary[] = await Promise.all(
     directReports.map(async (e) => ({
@@ -88,6 +93,7 @@ export default async function PerformancePage({ searchParams }: Props) {
       email: e.email,
       designation: e.designation,
       department: e.department,
+      managerName: e.managerId ? (empNameById.get(e.managerId) ?? null) : null,
       history: await listSubmittedManagerEvalsForSubject(e.employeeId),
     })),
   );
@@ -274,6 +280,7 @@ export default async function PerformancePage({ searchParams }: Props) {
         email: e.email,
         designation: e.designation,
         department: e.department,
+        managerName: e.managerId ? (empNameById.get(e.managerId) ?? null) : null,
         history: await listSubmittedManagerEvalsForSubject(e.employeeId),
       })),
     );

@@ -19,6 +19,7 @@ export interface ReviewCycleStored {
   assignedAt: FirebaseFirestore.Timestamp | null;
   openedAt: FirebaseFirestore.Timestamp | null;
   closedAt: FirebaseFirestore.Timestamp | null;
+  dueDate: FirebaseFirestore.Timestamp | null;
   selfCount: number;
   managerCount: number;
   selfSubmittedCount: number;
@@ -39,6 +40,7 @@ export interface ReviewCycle {
   assignedAt: Date | null;
   openedAt: Date | null;
   closedAt: Date | null;
+  dueDate: Date | null;
   selfCount: number;
   managerCount: number;
   selfSubmittedCount: number;

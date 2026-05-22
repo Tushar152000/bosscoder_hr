@@ -21,6 +21,7 @@ import { TeamMemberCard, type TeamPair } from '@/components/performance/team-mem
 import { YourSelfEvalCard } from '@/components/performance/your-self-eval-card';
 import {
   CloseCycleButton,
+  EditCycleDueDateButton,
   OpenCycleButton,
   SyncEmployeesButton,
 } from '@/components/performance/cycle-actions';
@@ -138,6 +139,12 @@ export default async function CycleDetailPage({ params }: Props) {
         </div>
         {isAdmin && (
           <div className="flex items-center gap-2">
+            {cycle.status !== 'closed' && (
+              <EditCycleDueDateButton
+                cycleId={cycle.cycleId}
+                currentDueDate={cycle.dueDate}
+              />
+            )}
             {cycle.status === 'draft' && <OpenCycleButton cycleId={cycle.cycleId} />}
             {cycle.status === 'open' && (
               <>

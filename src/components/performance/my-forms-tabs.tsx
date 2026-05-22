@@ -41,6 +41,7 @@ const MONTHS_LONG = [
 
 function cycleDeadline(c: ReviewCycle): Date | null {
   if (c.status === 'closed' && c.closedAt) return c.closedAt;
+  if (c.dueDate) return c.dueDate;
 
   // "Month YYYY" — end of that month
   const monthName = MONTHS_LONG.find((m) => c.name.startsWith(m));

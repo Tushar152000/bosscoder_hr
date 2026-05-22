@@ -12,8 +12,45 @@ import {
   getEmployeeById,
   updateEmployee,
 } from '@/lib/firestore/employees';
+import { getHrUser, updateHrUserRolesAndPermissions } from '@/lib/firestore/users';
+import { syncCustomClaimsFromFirestore } from '@/lib/auth/claims';
+import { defaultPermissionsForRoles } from '@/lib/auth/roles';
 import { writeAuditLog } from '@/lib/audit';
 import type { EmployeeInput } from '@/types/employee';
+
+/**
+ * If an employee has no reporting manager → promote them to `manager` role.
+ * If they already have a privileged role (founder/hr) don't downgrade it.
+ */
+async function syncRoleFromManagerId(
+  userUid: string | null,
+  hasManager: boolean,
+  displayName: string,
+): Promise<string | undefined> {
+  if (!userUid) return undefined;
+  const hrUser = await getHrUser(userUid);
+  if (!hrUser) return undefined;
+
+  const current = hrUser.roles;
+  if (current.includes('founder') || current.includes('hr')) return undefined;
+
+  const targetRole = hasManager ? 'employee' : 'manager';
+
+  if (current.includes(targetRole) && current.length === 1) {
+    return targetRole === 'manager'
+      ? `${displayName} already has the Manager role.`
+      : undefined;
+  }
+
+  const newRoles = [targetRole] as typeof current;
+  const newPerms = defaultPermissionsForRoles(newRoles);
+  await updateHrUserRolesAndPermissions({ uid: userUid, roles: newRoles, permissions: newPerms });
+  await syncCustomClaimsFromFirestore(userUid);
+
+  return targetRole === 'manager'
+    ? `${displayName} has been promoted to Manager.`
+    : `${displayName} role set to Employee.`;
+}
 
 const employmentTypeEnum = z.enum(['full-time', 'intern', 'contractor']);
 const statusEnum = z.enum(['active', 'on-notice', 'left']);
@@ -67,7 +104,9 @@ const employeeInputSchema = z.object({
   }),
 });
 
-export type ActionResult = { ok: true; employeeId: string } | { ok: false; error: string };
+export type ActionResult =
+  | { ok: true; employeeId: string; roleMessage?: string }
+  | { ok: false; error: string };
 
 export async function createEmployeeAction(input: EmployeeInput): Promise<ActionResult> {
   const user = await requireUser();
@@ -80,6 +119,7 @@ export async function createEmployeeAction(input: EmployeeInput): Promise<Action
 
   try {
     const created = await createEmployee(parsed.data, user.uid);
+    const roleMessage = await syncRoleFromManagerId(created.userUid, !!parsed.data.managerId, created.displayName);
     await writeAuditLog({
       actorUid: user.uid,
       actorEmail: user.email,
@@ -89,7 +129,7 @@ export async function createEmployeeAction(input: EmployeeInput): Promise<Action
     });
     revalidatePath('/directory');
     revalidatePath('/directory/tree');
-    return { ok: true, employeeId: created.employeeId };
+    return { ok: true, employeeId: created.employeeId, roleMessage };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Failed to create' };
   }
@@ -109,6 +149,7 @@ export async function updateEmployeeAction(
 
   try {
     const updated = await updateEmployee(employeeId, parsed.data, user.uid);
+    const roleMessage = await syncRoleFromManagerId(updated.userUid, !!parsed.data.managerId, updated.displayName);
     await writeAuditLog({
       actorUid: user.uid,
       actorEmail: user.email,
@@ -118,7 +159,7 @@ export async function updateEmployeeAction(
     revalidatePath('/directory');
     revalidatePath(`/directory/${employeeId}`);
     revalidatePath('/directory/tree');
-    return { ok: true, employeeId: updated.employeeId };
+    return { ok: true, employeeId: updated.employeeId, roleMessage };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Failed to update' };
   }

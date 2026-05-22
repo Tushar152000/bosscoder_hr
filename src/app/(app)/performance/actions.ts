@@ -13,6 +13,7 @@ import {
   createCycle,
   getCycle,
   setCycleStatus,
+  updateCycleDueDate,
 } from '@/lib/firestore/review-cycles';
 import {
   generateSubmissionsForCycle,
@@ -52,6 +53,7 @@ export async function createCycleAction(input: {
   month: number | null;
   quarter: number | null;
   year: number;
+  dueDate: string | null;
 }): Promise<ActionResult<{ cycleId: string }>> {
   const user = await requireUser();
   if (!canManageCycles(user)) return { ok: false, error: 'Forbidden' };
@@ -67,6 +69,7 @@ export async function createCycleAction(input: {
       month: parsed.data.cadence === 'monthly' ? parsed.data.month : null,
       quarter: parsed.data.cadence === 'quarterly' ? parsed.data.quarter : null,
       year: parsed.data.year,
+      dueDate: input.dueDate ? new Date(input.dueDate) : null,
       createdBy: user.uid,
     });
     await writeAuditLog({
@@ -80,6 +83,25 @@ export async function createCycleAction(input: {
     return { ok: true, data: { cycleId: cycle.cycleId } };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Failed to create' };
+  }
+}
+
+export async function updateCycleDueDateAction(
+  cycleId: string,
+  dueDate: string | null,
+): Promise<ActionResult> {
+  const user = await requireUser();
+  if (!canManageCycles(user)) return { ok: false, error: 'Forbidden' };
+  const cycle = await getCycle(cycleId);
+  if (!cycle) return { ok: false, error: 'Cycle not found' };
+  if (cycle.status === 'closed') return { ok: false, error: 'Cannot edit a closed cycle' };
+  try {
+    await updateCycleDueDate(cycleId, dueDate ? new Date(dueDate) : null);
+    revalidatePath(`/performance/cycles/${cycleId}`);
+    revalidatePath('/performance');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Failed to update' };
   }
 }
 
@@ -363,6 +385,7 @@ export async function createCycleAndRedirect(input: {
   month: number | null;
   quarter: number | null;
   year: number;
+  dueDate: string | null;
 }): Promise<void> {
   const res = await createCycleAction(input);
   if (res.ok) redirect(`/performance/cycles/${res.data.cycleId}`);

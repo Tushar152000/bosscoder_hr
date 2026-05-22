@@ -11,6 +11,8 @@ const MONTHS_LONG = [
 
 export function cycleDeadline(c: ReviewCycle): Date | null {
   if (c.status === 'closed' && c.closedAt) return c.closedAt;
+  // Explicit due date set by HR takes priority over name-derived deadline
+  if (c.dueDate) return c.dueDate;
   const monthName = MONTHS_LONG.find((m) => c.name.startsWith(m));
   if (monthName) {
     const yr = parseInt(c.name.slice(monthName.length).trim(), 10);

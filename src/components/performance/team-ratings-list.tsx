@@ -20,6 +20,7 @@ export interface TeamMemberSummary {
   email: string;
   designation: string;
   department: string;
+  managerName: string | null;
   history: ReviewSubmission[];
 }
 
@@ -56,6 +57,11 @@ export function TeamRatingsList({ rows }: { rows: TeamMemberSummary[] }) {
                     <p className="truncate text-[11px] text-slate-500">
                       {row.designation}{row.department && <> · {row.department}</>}
                     </p>
+                    {row.managerName && (
+                      <p className="truncate text-[10px] text-slate-400 mt-0.5">
+                        Manager: <span className="font-medium text-slate-500">{row.managerName}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-3">

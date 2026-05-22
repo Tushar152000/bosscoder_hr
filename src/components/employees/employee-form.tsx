@@ -62,7 +62,10 @@ export function EmployeeForm({ mode, initial, employeeId, managers, canEditSensi
         setError(result.error);
         return;
       }
-      router.push(`/directory/${result.employeeId}`);
+      const dest = result.roleMessage
+        ? `/directory/${result.employeeId}?msg=${encodeURIComponent(result.roleMessage)}`
+        : `/directory/${result.employeeId}`;
+      router.push(dest);
       router.refresh();
     });
   }

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { ArrowLeft, Home, ChevronRight, Lock, Pencil } from 'lucide-react';
+import { Home, ChevronRight, Lock, Pencil } from 'lucide-react';
 import { requireUser } from '@/lib/auth/guard';
 import { canEditEmployees, canViewEmployee, canViewSensitiveFor } from '@/lib/auth/employee-access';
 import { getEmployeeById, getEmployeeFull, listEmployees } from '@/lib/firestore/employees';
@@ -14,6 +14,7 @@ import type { EmployeeFull, EmployeeStatus, EmploymentType } from '@/types/emplo
 
 interface Props {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ msg?: string }>;
 }
 
 export async function generateMetadata({ params }: Props) {
@@ -22,9 +23,10 @@ export async function generateMetadata({ params }: Props) {
   return { title: e ? e.displayName : 'Employee' };
 }
 
-export default async function EmployeeDetailPage({ params }: Props) {
+export default async function EmployeeDetailPage({ params, searchParams }: Props) {
   const user = await requireUser();
   const { id } = await params;
+  const { msg } = await searchParams;
   const employee = await getEmployeeById(id);
   if (!employee) notFound();
 
@@ -50,6 +52,12 @@ export default async function EmployeeDetailPage({ params }: Props) {
 
   return (
     <div className="py-5 space-y-5">
+      {msg && (
+        <div className="flex items-center gap-2 rounded-xl border border-[#A4DFC4] bg-[#E1F5EE] px-4 py-3 text-[12px] text-[#0F6E56]">
+          <Pencil size={13} className="shrink-0" />
+          {msg}
+        </div>
+      )}
       {/* Breadcrumb */}
       <div className="flex items-center gap-1.5 text-[12px] text-slate-400">
         <Home size={12} />

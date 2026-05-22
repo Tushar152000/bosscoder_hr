@@ -1,5 +1,5 @@
 import 'server-only';
-import { adminDb, FieldValue } from '@/lib/firebase/admin';
+import { adminDb, FieldValue, Timestamp } from '@/lib/firebase/admin';
 import { HR } from '@/lib/firebase/collections';
 import { buildCycleName, type Cadence, type ReviewCycle, type ReviewCycleStored } from '@/types/review';
 
@@ -21,6 +21,7 @@ function toCycle(stored: ReviewCycleStored): ReviewCycle {
     assignedAt: tsToDate(stored.assignedAt),
     openedAt: tsToDate(stored.openedAt),
     closedAt: tsToDate(stored.closedAt),
+    dueDate: tsToDate(stored.dueDate),
     selfCount: stored.selfCount ?? 0,
     managerCount: stored.managerCount ?? 0,
     selfSubmittedCount: stored.selfSubmittedCount ?? 0,
@@ -53,6 +54,7 @@ export async function createCycle(args: {
   month: number | null;
   quarter: number | null;
   year: number;
+  dueDate: Date | null;
   createdBy: string;
 }): Promise<ReviewCycle> {
   const ref = adminDb.collection(COL).doc();
@@ -70,6 +72,7 @@ export async function createCycle(args: {
     assignedAt: null,
     openedAt: null,
     closedAt: null,
+    dueDate: args.dueDate ? Timestamp.fromDate(args.dueDate) : null,
     selfCount: 0,
     managerCount: 0,
     selfSubmittedCount: 0,
@@ -104,6 +107,16 @@ export async function setCycleStatus(
     update.closedAt = FieldValue.serverTimestamp();
   }
   await adminDb.collection(COL).doc(cycleId).update(update);
+}
+
+export async function updateCycleDueDate(
+  cycleId: string,
+  dueDate: Date | null,
+): Promise<void> {
+  await adminDb.collection(COL).doc(cycleId).update({
+    dueDate: dueDate ? Timestamp.fromDate(dueDate) : null,
+    updatedAt: FieldValue.serverTimestamp(),
+  });
 }
 
 export async function adjustCycleSubmittedCount(

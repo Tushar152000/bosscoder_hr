@@ -815,7 +815,7 @@ export function OrgTreeClient({
   return (
     <div>
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-[11px] text-slate-400 mb-1.5">
+      <nav className="flex items-center gap-1.5 text-[14px] text-slate-400 mb-1.5">
         <Link href="/" className="flex items-center gap-1 hover:text-slate-600 transition">
           <Home size={11} />
           Home
@@ -823,7 +823,7 @@ export function OrgTreeClient({
         <ChevronRight size={10} />
         <Link href="/directory" className="hover:text-slate-600 transition">Directory</Link>
         <ChevronRight size={10} />
-        <span className="text-slate-600">Org tree</span>
+        <span className="text-slate-600 font-semibold">Org tree</span>
       </nav>
 
       {/* Header */}

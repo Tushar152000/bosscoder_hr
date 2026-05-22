@@ -82,10 +82,18 @@ function buildDirectoryView(employees: EmployeePublic[]): DirectoryView {
   }
 
   const mgrIds = new Set(reportsByMgr.keys());
-  const deptNames = [...new Set(employees.map((e) => e.department).filter(Boolean))].sort();
+  const UNASSIGNED = '__unassigned__';
+  const deptNames = [
+    ...[...new Set(employees.map((e) => e.department).filter(Boolean))].sort(),
+    // Always append unassigned bucket last if any stub employees exist
+    ...(employees.some((e) => !e.department) ? [UNASSIGNED] : []),
+  ];
 
   const departments: DirectoryDept[] = deptNames.map((deptName) => {
-    const deptEmps = employees.filter((e) => e.department === deptName);
+    const isUnassigned = deptName === UNASSIGNED;
+    const deptEmps = isUnassigned
+      ? employees.filter((e) => !e.department)
+      : employees.filter((e) => e.department === deptName);
     const counted = new Set<string>();
     const managers: DirectoryManager[] = deptEmps
       .filter((e) => mgrIds.has(e.employeeId))
@@ -104,8 +112,8 @@ function buildDirectoryView(employees: EmployeePublic[]): DirectoryView {
     }
 
     return {
-      id: deptName.toLowerCase().replace(/\s+/g, '-'),
-      name: deptName,
+      id: isUnassigned ? 'unassigned' : deptName.toLowerCase().replace(/\s+/g, '-'),
+      name: isUnassigned ? 'Needs setup' : deptName,
       memberCount: deptEmps.length,
       managers,
     };

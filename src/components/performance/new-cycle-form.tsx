@@ -33,6 +33,7 @@ export function NewCycleForm({ defaultYear, defaultMonth, defaultQuarter }: Prop
   const [month, setMonth] = useState<number>(defaultMonth);
   const [quarter, setQuarter] = useState<number>(defaultQuarter);
   const [year, setYear] = useState<number>(defaultYear);
+  const [dueDate, setDueDate] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
   const previewName = useMemo(
@@ -55,6 +56,7 @@ export function NewCycleForm({ defaultYear, defaultMonth, defaultQuarter }: Prop
         month: cadence === 'monthly' ? month : null,
         quarter: cadence === 'quarterly' ? quarter : null,
         year,
+        dueDate: dueDate || null,
       });
       if (!res.ok) {
         setError(res.error);
@@ -194,6 +196,23 @@ export function NewCycleForm({ defaultYear, defaultMonth, defaultQuarter }: Prop
                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
               </div>
             </div>
+          </div>
+
+          {/* Due date */}
+          <div className="mt-4 flex flex-col gap-1.5">
+            <label className="text-[12px] font-medium text-slate-700">
+              Submission due date <span className="text-slate-400 font-normal">(optional)</span>
+            </label>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              min={new Date().toISOString().slice(0, 10)}
+              className="h-10 w-full rounded-md border border-[#E2E8F0] bg-white px-3 text-[13px] text-slate-900 focus:border-[#0C447C] focus:outline-none focus:ring-2 focus:ring-[#0C447C]/20"
+            />
+            <p className="text-[11px] text-slate-400">
+              If set, forms show this as the deadline instead of the end of the {cadence === 'monthly' ? 'month' : 'quarter'}.
+            </p>
           </div>
 
           {/* Cycle name preview */}

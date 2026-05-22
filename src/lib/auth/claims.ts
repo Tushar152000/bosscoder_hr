@@ -1,5 +1,5 @@
 import 'server-only';
-import { adminAuth, adminDb, FieldValue } from '@/lib/firebase/admin';
+import { adminAuth, adminDb, FieldValue, Timestamp } from '@/lib/firebase/admin';
 import { HR } from '@/lib/firebase/collections';
 import {
   defaultPermissionsForRoles,
@@ -91,6 +91,7 @@ export async function ensureUserAndSyncClaims(args: {
   const linkedEmployeeId = await linkEmployeeAndBackfillSubmissions({
     uid,
     email: lowerEmail,
+    displayName: args.displayName,
     currentEmployeeId: doc.employeeId,
   });
   if (linkedEmployeeId && linkedEmployeeId !== doc.employeeId) {
@@ -111,19 +112,71 @@ export async function ensureUserAndSyncClaims(args: {
  *
  * Returns the linked employeeId if one was found.
  */
+function buildSearchTokens(displayName: string, email: string): string[] {
+  const blob = `${displayName} ${email}`.toLowerCase();
+  const words = blob.split(/[\s,@.]+/).filter(Boolean);
+  const tokens = new Set<string>();
+  for (const w of words) {
+    for (let i = 1; i <= Math.min(w.length, 20); i++) tokens.add(w.slice(0, i));
+  }
+  return [...tokens];
+}
+
 async function linkEmployeeAndBackfillSubmissions(args: {
   uid: string;
   email: string;
+  displayName: string | null;
   currentEmployeeId: string | null;
 }): Promise<string | null> {
-  const { uid, email, currentEmployeeId } = args;
+  const { uid, email, displayName, currentEmployeeId } = args;
 
   const empSnap = await adminDb
     .collection(HR.employees)
     .where('email', '==', email)
     .limit(1)
     .get();
-  if (empSnap.empty) return currentEmployeeId;
+
+  if (empSnap.empty) {
+    // Auto-provision a stub employee so the person appears in the directory.
+    // HR can fill in designation, department, etc. afterwards.
+    const ref = adminDb.collection(HR.employees).doc();
+    const name = displayName ?? email.split('@')[0];
+    const tokens = buildSearchTokens(name, email);
+    await ref.set({
+      employeeId: ref.id,
+      userUid: uid,
+      displayName: name,
+      email,
+      personalEmail: null,
+      phone: null,
+      designation: '',
+      department: '',
+      managedDepartments: [],
+      teamId: null,
+      managerId: null,
+      joiningDate: Timestamp.now(),
+      employmentType: 'full-time',
+      status: 'active',
+      exitDate: null,
+      active: true,
+      searchTokens: tokens,
+      compensation: { ctc: null, salary: null, bonus: null },
+      bank: { accountNumber: null, ifsc: null, beneficiaryName: null },
+      identity: { pan: null, aadhaar: null },
+      address: { line1: null, line2: null, city: null, state: null, pincode: null },
+      dob: null,
+      emergencyContact: { name: null, phone: null },
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+      createdBy: 'system',
+      updatedBy: 'system',
+    });
+    await adminDb.collection(HR.users).doc(uid).update({
+      employeeId: ref.id,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    return ref.id;
+  }
 
   const empDoc = empSnap.docs[0];
   const emp = empDoc.data() as { employeeId: string; userUid: string | null };
