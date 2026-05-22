@@ -265,7 +265,7 @@ export default async function CycleDetailPage({ params }: Props) {
       )}
 
       {/* ── Manager rating table (admin/dept-lead) ───────────────── */}
-      {showManagerTable && (
+      {/* {showManagerTable && (
         <section className="space-y-3">
           <h2 className="text-[15px] font-medium text-slate-900">Manager ratings</h2>
           <p className="text-[13px] text-slate-500">
@@ -278,7 +278,7 @@ export default async function CycleDetailPage({ params }: Props) {
             cycleStatus={cycle.status}
           />
         </section>
-      )}
+      )} */}
     </div>
   );
 }

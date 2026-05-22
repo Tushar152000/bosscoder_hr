@@ -88,22 +88,38 @@ export function TeamRatingsList({ rows }: { rows: TeamMemberSummary[] }) {
                     <SelfStatusPill status={oce.selfStatus} />
                   )}
                   {/* Manager-eval action button */}
-                  {oce?.managerSubId && (
-                    <Link
-                      href={`/performance/submissions/${oce.managerSubId}`}
-                      className={cn(
-                        'inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[12px] font-medium transition',
-                        oce.managerStatus === 'submitted' || oce.managerStatus === 'locked'
-                          ? 'border border-[#E2E8F0] bg-white text-slate-600 hover:bg-[#F8FAFC]'
-                          : 'bg-[#0C447C] text-white hover:bg-[#0a3a6a]',
-                      )}
-                    >
-                      {oce.managerStatus === 'submitted' || oce.managerStatus === 'locked'
-                        ? 'View'
-                        : 'Evaluate'}
-                      <ArrowRight className="h-3 w-3" />
-                    </Link>
-                  )}
+                  {oce?.managerSubId && (() => {
+                    const isFinal = oce.managerStatus === 'submitted' || oce.managerStatus === 'locked';
+                    const selfDone = oce.selfStatus === 'submitted';
+                    if (isFinal) {
+                      return (
+                        <Link
+                          href={`/performance/submissions/${oce.managerSubId}`}
+                          className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[12px] font-medium transition border border-[#E2E8F0] bg-white text-slate-600 hover:bg-[#F8FAFC]"
+                        >
+                          View <ArrowRight className="h-3 w-3" />
+                        </Link>
+                      );
+                    }
+                    if (!selfDone) {
+                      return (
+                        <span
+                          title="Waiting for self-evaluation"
+                          className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[12px] font-medium border border-[#E2E8F0] bg-[#F8FAFC] text-slate-400 cursor-not-allowed"
+                        >
+                          Evaluate <ArrowRight className="h-3 w-3" />
+                        </span>
+                      );
+                    }
+                    return (
+                      <Link
+                        href={`/performance/submissions/${oce.managerSubId}`}
+                        className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[12px] font-medium transition bg-[#0C447C] text-white hover:bg-[#0a3a6a]"
+                      >
+                        Evaluate <ArrowRight className="h-3 w-3" />
+                      </Link>
+                    );
+                  })()}
                   <RatingSummary history={row.history} />
                   <button
                     type="button"
@@ -257,22 +273,38 @@ function ExpandedPanel({ row }: { row: TeamMemberSummary }) {
                 </div>
               )}
             </div>
-            {row.openCycleEval.managerSubId && (
-              <Link
-                href={`/performance/submissions/${row.openCycleEval.managerSubId}`}
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[12px] font-medium transition',
-                  row.openCycleEval.managerStatus === 'submitted' || row.openCycleEval.managerStatus === 'locked'
-                    ? 'border border-[#E2E8F0] bg-white text-slate-700 hover:bg-[#F8FAFC]'
-                    : 'bg-[#0C447C] text-white hover:bg-[#0a3a6a]',
-                )}
-              >
-                {row.openCycleEval.managerStatus === 'submitted' || row.openCycleEval.managerStatus === 'locked'
-                  ? 'View evaluation'
-                  : 'Fill out evaluation'}
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            )}
+            {row.openCycleEval.managerSubId && (() => {
+              const isFinal = row.openCycleEval.managerStatus === 'submitted' || row.openCycleEval.managerStatus === 'locked';
+              const selfDone = row.openCycleEval.selfStatus === 'submitted';
+              if (isFinal) {
+                return (
+                  <Link
+                    href={`/performance/submissions/${row.openCycleEval.managerSubId}`}
+                    className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[12px] font-medium transition border border-[#E2E8F0] bg-white text-slate-700 hover:bg-[#F8FAFC]"
+                  >
+                    View evaluation <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                );
+              }
+              if (!selfDone) {
+                return (
+                  <div className="space-y-1">
+                    <span className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[12px] font-medium border border-[#E2E8F0] bg-[#F8FAFC] text-slate-400 cursor-not-allowed">
+                      Fill out evaluation <ArrowRight className="h-3.5 w-3.5" />
+                    </span>
+                    <p className="text-[11px] text-amber-600">Waiting for self-evaluation to be submitted first.</p>
+                  </div>
+                );
+              }
+              return (
+                <Link
+                  href={`/performance/submissions/${row.openCycleEval.managerSubId}`}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[12px] font-medium transition bg-[#0C447C] text-white hover:bg-[#0a3a6a]"
+                >
+                  Fill out evaluation <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              );
+            })()}
             {!row.openCycleEval.managerSubId && (
               <p className="text-[12px] text-slate-400">You are not assigned to evaluate this person.</p>
             )}

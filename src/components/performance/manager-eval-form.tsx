@@ -26,6 +26,7 @@ interface Props {
   status: SubmissionStatus;
   submittedAt: Date | null;
   canEdit: boolean;
+  selfEvalSubmitted: boolean;
 }
 
 export function ManagerEvalForm({
@@ -37,6 +38,7 @@ export function ManagerEvalForm({
   status,
   submittedAt,
   canEdit,
+  selfEvalSubmitted,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -45,7 +47,8 @@ export function ManagerEvalForm({
   const { confirm, dialog } = useDialog();
 
   const isFinal = status === 'submitted' || status === 'locked';
-  const readOnly = isFinal || !canEdit;
+  const blockedBySelfEval = !selfEvalSubmitted && !isFinal;
+  const readOnly = isFinal || !canEdit || blockedBySelfEval;
 
   const overall = useMemo(() => computeManagerOverall(form.ratings), [form.ratings]);
 
@@ -110,6 +113,12 @@ export function ManagerEvalForm({
         <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 flex items-center gap-2 text-[12px] text-slate-500">
           <Lock size={14} className="shrink-0" />
           This cycle is closed. The form is read-only.
+        </div>
+      )}
+      {blockedBySelfEval && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-center gap-2 text-[12px] text-amber-700">
+          <Clock size={14} className="shrink-0" />
+          {subjectName} hasn&apos;t submitted their self-evaluation yet. You can fill in ratings but cannot submit until they do.
         </div>
       )}
 

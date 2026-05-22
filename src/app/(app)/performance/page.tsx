@@ -378,7 +378,7 @@ export default async function PerformancePage({ searchParams }: Props) {
             Track and submit evaluation forms across cycles.
           </p>
         </div>
-        {isAdmin && (
+        {isAdmin && !isFounder && (
           <Link
             href="/performance/cycles/new"
             className="inline-flex items-center gap-1.5 bg-brand text-white rounded-lg px-3.5 py-2 text-[13px] font-medium hover:bg-brand-hover transition"
@@ -452,6 +452,7 @@ export default async function PerformancePage({ searchParams }: Props) {
           statusParam={sp?.status ?? null}
           view={sp?.view ?? null}
           viewName={sp?.name ?? null}
+          canCreate={!isFounder}
         />
       )}
     </div>

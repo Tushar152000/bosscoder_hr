@@ -43,6 +43,8 @@ interface Props {
   /** Current view/name params to preserve on filter navigation. */
   view?: string | null;
   viewName?: string | null;
+  /** Whether the current user can create new cycles. */
+  canCreate?: boolean;
 }
 
 export function CyclesTable({
@@ -54,6 +56,7 @@ export function CyclesTable({
   statusParam,
   view,
   viewName,
+  canCreate = true,
 }: Props) {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -161,17 +164,21 @@ export function CyclesTable({
             )}
           </button>
 
-          {/* Vertical divider */}
-          <div className="w-px h-5 bg-divider mx-1" />
+          {canCreate && (
+            <>
+              {/* Vertical divider */}
+              <div className="w-px h-5 bg-divider mx-1" />
 
-          {/* New cycle */}
-          <Link
-            href="/performance/cycles/new"
-            className="inline-flex items-center gap-1.5 bg-brand text-white rounded-md px-3 py-1.5 text-[12px] font-medium hover:bg-brand-hover transition"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            New cycle
-          </Link>
+              {/* New cycle */}
+              <Link
+                href="/performance/cycles/new"
+                className="inline-flex items-center gap-1.5 bg-brand text-white rounded-md px-3 py-1.5 text-[12px] font-medium hover:bg-brand-hover transition"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                New cycle
+              </Link>
+            </>
+          )}
         </div>
       </div>
 

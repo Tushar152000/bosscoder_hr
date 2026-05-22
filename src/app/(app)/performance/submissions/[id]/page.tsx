@@ -81,6 +81,8 @@ export default async function SubmissionPage({ params }: Props) {
     sub.subjectEmployeeId
   );
 
+  const selfEvalSubmitted = pairedSelfEval?.status === 'submitted';
+
   return (
     <div className="mx-auto max-w-[1300px] py-6 space-y-4">
       <Link
@@ -102,6 +104,7 @@ export default async function SubmissionPage({ params }: Props) {
         status={sub.status}
         submittedAt={sub.submittedAt}
         canEdit={editable}
+        selfEvalSubmitted={selfEvalSubmitted}
       />
     </div>
   );
