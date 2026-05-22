@@ -32,14 +32,14 @@ export function EvalQueueSection({
     hasManager || hasReports ? 'manager' : 'self',
   );
 
-  // If only one kind exists, no need for a toggle
+
   const showToggle = (hasSelf && (hasManager || hasReports));
 
   return (
     <div className="space-y-4">
-      {/* Toggle */}
+    
       {showToggle && (
-        <div className="inline-flex items-center gap-1 rounded-xl bg-slate-100 p-1">
+        <div className="inline-flex items-center gap-1 rounded-xl bg-slate-100 p-1 ">
           <ToggleBtn
             active={view === 'self'}
             icon={ClipboardList}
@@ -56,7 +56,7 @@ export function EvalQueueSection({
         </div>
       )}
 
-      {/* Panel */}
+
       {view === 'self' && hasSelf && (
         <MyQueue
           submissions={submissions}

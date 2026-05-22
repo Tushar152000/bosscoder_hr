@@ -14,7 +14,7 @@ export default async function NewCyclePage() {
   const now = new Date();
   return (
     <div className="px-4 py-6">
-      {/* Breadcrumb */}
+
       <nav className="mb-4 flex items-center gap-1.5 text-[14px] text-slate-400">
         <Link href="/" className="flex items-center gap-1 hover:text-slate-600 transition">
           <Home className="h-3 w-3" />
@@ -25,7 +25,7 @@ export default async function NewCyclePage() {
           Performance
         </Link>
         <ChevronRight className="h-2.5 w-2.5" />
-        <span className="text-slate-600">New cycle</span>
+        <span className="text-slate-600 font-semibold">New cycle</span>
       </nav>
 
 

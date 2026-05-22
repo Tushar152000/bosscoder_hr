@@ -95,8 +95,7 @@ export default async function CycleDetailPage({ params }: Props) {
   return (
     <div className="px-4 py-6 space-y-6">
 
-      {/* ── Breadcrumb ────────────────────────────────────────────── */}
-      <nav className="flex items-center gap-1.5 text-[11px] text-slate-400">
+      <nav className="flex items-center gap-1.5 text-[14px] text-slate-400">
         <Link href="/" className="flex items-center gap-1 hover:text-slate-600 transition">
           <Home className="h-3 w-3" />
           Home
@@ -109,7 +108,6 @@ export default async function CycleDetailPage({ params }: Props) {
         <span className="text-slate-600">{cycle.name}</span>
       </nav>
 
-      {/* ── Header ────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-[20px] font-medium text-slate-900">{cycle.name}</h1>
@@ -156,7 +154,6 @@ export default async function CycleDetailPage({ params }: Props) {
         )}
       </div>
 
-      {/* ── Stat cards (admin only) ───────────────────────────────── */}
       {isAdmin && (
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatCard
@@ -216,10 +213,9 @@ export default async function CycleDetailPage({ params }: Props) {
         </div>
       )}
 
-      {/* ── Your self-evaluation ─────────────────────────────────── */}
       {mySelfEval && <YourSelfEvalCard submission={mySelfEval} />}
 
-      {/* ── Your team ────────────────────────────────────────────── */}
+     
       {teamPairs.length > 0 && (
         <section className="space-y-3">
           <div className="flex items-center gap-2">
@@ -258,7 +254,12 @@ export default async function CycleDetailPage({ params }: Props) {
               No self-evaluations have been generated yet.
             </div>
           ) : (
-            <SelfSubsByDepartment subs={deptScopedSelfEvals} myEmail={myEmail} />
+            <SelfSubsByDepartment
+              subs={deptScopedSelfEvals}
+              myEmail={myEmail}
+              myUid={user.uid}
+              myEmployeeId={me?.employeeId ?? null}
+            />
           )}
         </section>
       )}
@@ -359,13 +360,21 @@ function CycleStatusPill({
 function SelfSubsByDepartment({
   subs,
   myEmail,
+  myUid,
+  myEmployeeId,
 }: {
   subs: ReviewSubmission[];
   myEmail: string;
+  myUid: string;
+  myEmployeeId: string | null;
 }) {
   const grouped = new Map<string, ReviewSubmission[]>();
   for (const s of subs) {
-    if (s.reviewerEmail.toLowerCase() === myEmail) continue;
+    const isMe =
+      (s.reviewerUid && s.reviewerUid === myUid) ||
+      s.reviewerEmail.toLowerCase() === myEmail ||
+      (myEmployeeId && s.subjectEmployeeId === myEmployeeId);
+    if (isMe) continue;
     const k = s.subjectDepartment || '— Unassigned —';
     if (!grouped.has(k)) grouped.set(k, []);
     grouped.get(k)!.push(s);

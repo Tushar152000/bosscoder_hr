@@ -449,7 +449,7 @@ function EmptyState() {
   );
 }
 
-// ─── DrillSection (unchanged — used by admin drill-in and manager team view) ──
+
 
 export function DrillSection({
   title,
@@ -465,7 +465,7 @@ export function DrillSection({
       <div>
         <Link
           href="/performance"
-          className="inline-flex items-center gap-1 text-[12px] text-slate-500 hover:text-slate-700 transition"
+          className="inline-flex items-center gap-1 text-[14px] text-slate-500 hover:text-slate-700 transition"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Back to departments

@@ -80,6 +80,9 @@ export default async function PerformancePage({ searchParams }: Props) {
       : Promise.resolve([]),
   ]);
 
+  // Detect open cycle early — needed for both tiles and drill views
+  const openCycle = cycles.find((c) => c.status === 'open') ?? null;
+
   // employeeId → displayName lookup for resolving manager names
   const empNameById = new Map<string, string>(
     allEmployees.map((e) => [e.employeeId, e.displayName]),
@@ -87,15 +90,32 @@ export default async function PerformancePage({ searchParams }: Props) {
 
   // Direct reports with rating history — for manager "My team" section
   const teamRows: TeamMemberSummary[] = await Promise.all(
-    directReports.map(async (e) => ({
-      employeeId: e.employeeId,
-      displayName: e.displayName,
-      email: e.email,
-      designation: e.designation,
-      department: e.department,
-      managerName: e.managerId ? (empNameById.get(e.managerId) ?? null) : null,
-      history: await listSubmittedManagerEvalsForSubject(e.employeeId),
-    })),
+    directReports.map(async (e) => {
+      const managerSub = mySubs.find(
+        (s) =>
+          s.kind === 'manager' &&
+          s.subjectEmployeeId === e.employeeId &&
+          openCycle &&
+          s.cycleId === openCycle.cycleId,
+      ) ?? null;
+      return {
+        employeeId: e.employeeId,
+        displayName: e.displayName,
+        email: e.email,
+        designation: e.designation,
+        department: e.department,
+        managerName: e.managerId ? (empNameById.get(e.managerId) ?? null) : null,
+        history: await listSubmittedManagerEvalsForSubject(e.employeeId),
+        openCycleEval: openCycle
+          ? {
+              cycleName: openCycle.name,
+              selfStatus: null, // self-eval status not fetched for teamRows (use drill view for that)
+              managerSubId: managerSub?.submissionId ?? null,
+              managerStatus: managerSub?.status ?? null,
+            }
+          : null,
+      };
+    }),
   );
 
   // Department headcounts
@@ -108,12 +128,10 @@ export default async function PerformancePage({ searchParams }: Props) {
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  // ── Admin browse stats ─────────────────────────────────────────────────────
-  // Only computed on the tiles view; skipped when drilled in.
   let deptStats: DeptStat[] = [];
   let orgStats: OrgStats = { totalActive: 0, totalPending: 0, orgAvgRating: null, orgRatingDelta: null };
-  let openCycleId: string | null = null;
-  let openCycleName: string | null = null;
+  let openCycleId: string | null = openCycle?.cycleId ?? null;
+  let openCycleName: string | null = openCycle?.name ?? null;
   let daysUntilClose: number | null = null;
   let lastClosedCycleName: string | null = null;
   let decliningCount = 0;
@@ -121,7 +139,6 @@ export default async function PerformancePage({ searchParams }: Props) {
   const searchableEmployees: { employeeId: string; displayName: string; department: string }[] = [];
 
   if (isAdmin && adminView.kind === 'tiles') {
-    const openCycle = cycles.find((c) => c.status === 'open') ?? null;
     const closedCycles = cycles
       .filter((c) => c.status === 'closed')
       .sort((a, b) => (b.closedAt?.getTime() ?? 0) - (a.closedAt?.getTime() ?? 0));
@@ -133,8 +150,6 @@ export default async function PerformancePage({ searchParams }: Props) {
     ]);
 
     if (openCycle) {
-      openCycleId = openCycle.cycleId;
-      openCycleName = openCycle.name;
       const deadline = computeCycleDeadline(openCycle);
       if (deadline) daysUntilClose = Math.ceil((deadline.getTime() - Date.now()) / 864e5);
     }
@@ -273,16 +288,42 @@ export default async function PerformancePage({ searchParams }: Props) {
       drillTitle = adminView.name;
       drillSubtitle = `${subjects.length} ${subjects.length === 1 ? 'person' : 'people'}`;
     }
+
+    // Fetch open cycle subs once for the whole drill view
+    const drillOpenSubs = openCycle
+      ? await listSubmissionsForCycle(openCycle.cycleId)
+      : [];
+
     drillRows = await Promise.all(
-      subjects.map(async (e) => ({
-        employeeId: e.employeeId,
-        displayName: e.displayName,
-        email: e.email,
-        designation: e.designation,
-        department: e.department,
-        managerName: e.managerId ? (empNameById.get(e.managerId) ?? null) : null,
-        history: await listSubmittedManagerEvalsForSubject(e.employeeId),
-      })),
+      subjects.map(async (e) => {
+        const selfSub = drillOpenSubs.find(
+          (s) => s.kind === 'self' && s.subjectEmployeeId === e.employeeId,
+        ) ?? null;
+        const managerSub = drillOpenSubs.find(
+          (s) =>
+            s.kind === 'manager' &&
+            s.subjectEmployeeId === e.employeeId &&
+            (s.reviewerUid === user.uid ||
+              s.reviewerEmail?.toLowerCase() === user.email.toLowerCase()),
+        ) ?? null;
+        return {
+          employeeId: e.employeeId,
+          displayName: e.displayName,
+          email: e.email,
+          designation: e.designation,
+          department: e.department,
+          managerName: e.managerId ? (empNameById.get(e.managerId) ?? null) : null,
+          history: await listSubmittedManagerEvalsForSubject(e.employeeId),
+          openCycleEval: openCycle
+            ? {
+                cycleName: openCycle.name,
+                selfStatus: selfSub?.status ?? null,
+                managerSubId: managerSub?.submissionId ?? null,
+                managerStatus: managerSub?.status ?? null,
+              }
+            : null,
+        };
+      }),
     );
   }
 
@@ -348,7 +389,7 @@ export default async function PerformancePage({ searchParams }: Props) {
         )}
       </div>
 
-      {/* ── Admin browse / drill (above the queue grid) ──────────── */}
+
       {isAdmin && adminView.kind === 'tiles' && (
         <AdminBrowseSection
           deptStats={deptStats}
@@ -366,18 +407,41 @@ export default async function PerformancePage({ searchParams }: Props) {
         <DrillSection title={drillTitle} subtitle={drillSubtitle} rows={drillRows} />
       )}
 
-      {/* ── Eval queue toggle (self / team) ─────────────────────── */}
-      {(queueSubs.length > 0 || hasReports) && (
-        <EvalQueueSection
-          submissions={queueSubs}
-          cyclesById={cyclesById}
-          reportsWithHistory={reportsWithHistory}
-          mgrEvalByCycle={mgrEvalByCycle}
-          prevRatingByCycle={prevRatingByCycle}
-        />
+
+      {isAdmin ? (
+        // Admins: only show team evaluations inside a department drill-down, scoped to that dept
+        adminView.kind !== 'tiles' && (() => {
+          const deptName = adminView.kind === 'dept' ? adminView.name : null;
+          const scopedSubs = deptName
+            ? queueSubs.filter((s) => s.subjectDepartment === deptName)
+            : queueSubs;
+          const scopedReports = deptName
+            ? reportsWithHistory.filter((r) => ((r.department ?? '').trim() || 'Unassigned') === deptName)
+            : reportsWithHistory;
+          return (scopedSubs.length > 0 || scopedReports.length > 0) ? (
+            <EvalQueueSection
+              submissions={scopedSubs}
+              cyclesById={cyclesById}
+              reportsWithHistory={scopedReports}
+              mgrEvalByCycle={mgrEvalByCycle}
+              prevRatingByCycle={prevRatingByCycle}
+            />
+          ) : null;
+        })()
+      ) : (
+        // Non-admins: always show their own eval queue
+        (queueSubs.length > 0 || hasReports) && (
+          <EvalQueueSection
+            submissions={queueSubs}
+            cyclesById={cyclesById}
+            reportsWithHistory={reportsWithHistory}
+            mgrEvalByCycle={mgrEvalByCycle}
+            prevRatingByCycle={prevRatingByCycle}
+          />
+        )
       )}
 
-      {/* ── Cycles table (tiles view only) ──────────────────────── */}
+
       {isAdmin && adminView.kind === 'tiles' && (
         <CyclesTable
           cycles={filteredCycles}

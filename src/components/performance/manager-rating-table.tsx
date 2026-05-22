@@ -26,10 +26,10 @@ export function ManagerRatingTable({
   }
 
   // Group by reviewer, preserving insertion order (first seen)
-  const byReviewer = new Map<string, { name: string; rows: ReviewSubmission[] }>();
+  const byReviewer = new Map<string, { key: string; name: string; rows: ReviewSubmission[] }>();
   for (const s of rows) {
     const key = s.reviewerEmail ?? s.reviewerName;
-    if (!byReviewer.has(key)) byReviewer.set(key, { name: s.reviewerName, rows: [] });
+    if (!byReviewer.has(key)) byReviewer.set(key, { key, name: s.reviewerName, rows: [] });
     byReviewer.get(key)!.rows.push(s);
   }
   const groups = [...byReviewer.values()].sort((a, b) =>
@@ -53,8 +53,8 @@ export function ManagerRatingTable({
           </tr>
         </thead>
         <tbody>
-          {groups.map(({ name, rows: groupRows }) => (
-            <React.Fragment key={name}>
+          {groups.map(({ key, name, rows: groupRows }) => (
+            <React.Fragment key={key}>
               {/* Reviewer group header */}
               <tr className="border-t border-[#E2E8F0] bg-[#F8FAFC]">
                 <td

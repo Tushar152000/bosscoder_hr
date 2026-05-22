@@ -4,7 +4,6 @@ import {
   PieChart,
   Mail,
   FileText,
-  ClipboardCheck,
   Settings,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -13,7 +12,6 @@ import { isPrivileged } from '@/lib/auth/roles';
 import {
   getEmployeeById,
   getEmployeeByUserUid,
-  listEmployees,
 } from '@/lib/firestore/employees';
 import { getHrUser } from '@/lib/firestore/users';
 import { listNotificationsForUser } from '@/lib/firestore/notifications';
@@ -41,10 +39,6 @@ export default async function HomePage({
   ]);
   const reportingManager =
     me?.managerId ? await getEmployeeById(me.managerId) : null;
-  const directReports = me
-    ? await listEmployees({ managerId: me.employeeId, status: 'any', limit: 200 })
-    : [];
-  const isPeopleManager = directReports.length > 0;
 
   const firstName = (user.displayName ?? user.email).split(/[\s@]/)[0];
   const timeOfDay = greetingFor(new Date());
@@ -133,18 +127,6 @@ export default async function HomePage({
               comingSoon
             />
 
-            {isPeopleManager && (
-              <QuickCard
-                href="/performance"
-                icon={ClipboardCheck}
-                iconBg="#E6F1FB"
-                iconColor="#0C447C"
-                title="Team evaluation"
-                description="Review and rate your team's performance"
-                badge={`${directReports.length} ${directReports.length === 1 ? 'report' : 'reports'}`}
-                badgeTone="info"
-              />
-            )}
 
             <QuickCard
               href="/"

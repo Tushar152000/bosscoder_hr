@@ -152,34 +152,38 @@ function DialogShell({
       aria-labelledby="dialog-title"
       className="fixed inset-0 z-[100] flex items-center justify-center px-4"
     >
+      {/* Backdrop */}
       <button
         type="button"
         aria-label="Close dialog"
         onClick={() => close('cancel')}
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+        className="absolute inset-0 bg-black/30 backdrop-blur-[2px] transition-opacity"
       />
+
+      {/* Card */}
       <div
         ref={cardRef}
-        className="relative w-full max-w-md rounded-xl border border-default bg-card-elevated shadow-2xl ring-1 ring-white/5"
+        className="relative w-full max-w-md rounded-xl border border-[#E2E8F0] bg-white shadow-xl"
       >
         <form onSubmit={onSubmit} className="p-5">
+          {/* Icon + title + body */}
           <div className="flex items-start gap-3">
             <div
               className={cn(
                 'grid h-9 w-9 shrink-0 place-items-center rounded-full',
                 isDanger
-                  ? 'bg-red-500/15 text-red-300 ring-1 ring-red-500/30'
-                  : 'bg-accent-500/15 text-accent-200 ring-1 ring-accent-500/30'
+                  ? 'bg-red-50 text-red-600 ring-1 ring-red-200'
+                  : 'bg-[#EBF3FE] text-[#0C447C] ring-1 ring-[#B5D4F4]',
               )}
             >
               {isDanger ? <AlertTriangle className="h-4 w-4" /> : <Info className="h-4 w-4" />}
             </div>
             <div className="min-w-0 flex-1">
-              <h2 id="dialog-title" className="text-base font-semibold text-white">
+              <h2 id="dialog-title" className="text-[15px] font-semibold text-slate-900">
                 {state.title}
               </h2>
               {state.body && (
-                <div className="mt-1 text-sm text-muted">{state.body}</div>
+                <div className="mt-1.5 text-[13px] leading-relaxed text-slate-500">{state.body}</div>
               )}
               {state.kind === 'prompt' && (
                 <div className="mt-3">
@@ -189,10 +193,15 @@ function DialogShell({
                     onChange={(e) => setPromptValue(e.target.value)}
                     placeholder={state.placeholder}
                     autoComplete="off"
+                    className="border-[#E2E8F0] bg-white text-slate-900 placeholder:text-slate-400 focus:border-[#0C447C] focus:ring-[#0C447C]/20"
                   />
                   {state.expected && (
-                    <p className="mt-1.5 text-xs text-muted">
-                      Type <code className="rounded bg-white/10 px-1 py-0.5 font-mono text-[11px] text-white">{state.expected}</code> to confirm.
+                    <p className="mt-1.5 text-[12px] text-slate-500">
+                      Type{' '}
+                      <code className="rounded bg-[#F8FAFC] px-1 py-0.5 font-mono text-[11px] text-slate-800 border border-[#E2E8F0]">
+                        {state.expected}
+                      </code>{' '}
+                      to confirm.
                     </p>
                   )}
                 </div>
@@ -200,28 +209,32 @@ function DialogShell({
             </div>
           </div>
 
-          <div className="mt-5 flex items-center justify-end gap-2">
+          {/* Divider */}
+          <div className="mt-5 border-t border-[#E2E8F0] pt-4 flex items-center justify-end gap-2">
             {state.kind !== 'alert' && (
-              <Button
+              <button
                 type="button"
-                variant="outline"
-                size="sm"
                 onClick={() => close('cancel')}
+                className="inline-flex items-center rounded-lg border border-[#E2E8F0] bg-white px-3.5 py-2 text-[13px] font-medium text-slate-700 transition hover:bg-[#F8FAFC]"
               >
                 {(state as ConfirmOpts | PromptOpts).cancelLabel ?? 'Cancel'}
-              </Button>
+              </button>
             )}
-            <Button
+            <button
               ref={confirmBtnRef}
               type="submit"
-              size="sm"
-              variant={isDanger ? 'danger' : 'default'}
               disabled={promptDisabled}
+              className={cn(
+                'inline-flex items-center rounded-lg px-3.5 py-2 text-[13px] font-medium transition disabled:opacity-50',
+                isDanger
+                  ? 'bg-red-600 text-white hover:bg-red-700'
+                  : 'bg-[#0C447C] text-white hover:bg-[#0a3a6a]',
+              )}
             >
               {state.kind === 'alert'
                 ? state.okLabel ?? 'OK'
                 : (state as ConfirmOpts | PromptOpts).confirmLabel ?? 'Confirm'}
-            </Button>
+            </button>
           </div>
         </form>
       </div>
