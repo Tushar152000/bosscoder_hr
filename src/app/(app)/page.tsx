@@ -108,13 +108,12 @@ export default async function HomePage({
             />
 
             <QuickCard
-              href="/"
+              href="/esop"
               icon={PieChart}
               iconBg="#EEEDFE"
               iconColor="#534AB7"
               title="ESOPs"
               description="Vested grants and statements"
-              comingSoon
             />
 
             <QuickCard

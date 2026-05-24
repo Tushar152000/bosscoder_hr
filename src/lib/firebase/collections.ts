@@ -14,6 +14,8 @@ export const HR = {
   settings: 'hr_settings',
   notifications: 'hr_notifications',
   auditLogs: 'hr_audit_logs',
+  esopPlans: 'hr_esop_plans',
+  esopGrants: 'hr_esop_grants',
 } as const;
 
 export type HrCollection = (typeof HR)[keyof typeof HR];
