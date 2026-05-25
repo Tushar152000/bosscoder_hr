@@ -89,6 +89,8 @@ export async function createEsopGrantAction(fd: FormData): Promise<ActionResult>
       vestingStartDate: Timestamp.fromDate(new Date(String(fd.get('vestingStartDate')))),
       cliffMonths: Number(fd.get('cliffMonths') ?? 12),
       vestingMonths: Number(fd.get('vestingMonths') ?? 48),
+      vestingSchedule: [],
+      status: 'active',
       notes: String(fd.get('notes') ?? ''),
     });
     revalidatePath('/esop');
