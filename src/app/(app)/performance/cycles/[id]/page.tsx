@@ -47,6 +47,7 @@ export default async function CycleDetailPage({ params }: Props) {
   if (!cycle) notFound();
 
   const isAdmin = canManageCycles(user);
+  const isFounder = user.roles.includes('founder');
   const me = await getEmployeeByUserUid(user.uid);
   const myEmail = user.email.toLowerCase();
   const isReviewer = (s: ReviewSubmission) =>
@@ -213,7 +214,7 @@ export default async function CycleDetailPage({ params }: Props) {
         </div>
       )}
 
-      {mySelfEval && <YourSelfEvalCard submission={mySelfEval} />}
+      {mySelfEval && !isFounder && <YourSelfEvalCard submission={mySelfEval} />}
 
      
       {teamPairs.length > 0 && (

@@ -40,9 +40,9 @@ export default async function EsopPage() {
   const hasGrants = myGrants.length > 0;
 
   return (
-    <div className="mx-auto max-w-[1200px] py-8 space-y-6">
+    <div className="mx-auto max-w-[1300px] py-8 space-y-6">
 
-      {/* ── Hero banner ── */}
+
       <div className="rounded-xl border border-[#bcd2ff] bg-[#EBF3FE] px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <p className="text-[10px] font-semibold tracking-[1.4px] uppercase text-[#0C447C]">
@@ -71,7 +71,14 @@ export default async function EsopPage() {
         )}
       </div>
 
-      {/* ── Metric cards ── */}
+      {isAdmin && (
+        <EsopClientPanel
+          plans={plans}
+          employees={allEmployees}
+          allGrants={allGrants}
+        />
+      )}
+
       {hasGrants && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <MetricCard label="Granted shares" value={String(totalGranted)} sub="total options" />
@@ -81,7 +88,6 @@ export default async function EsopPage() {
         </div>
       )}
 
-      {/* ── No grants state ── */}
       {!hasGrants && (
         <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-10 text-center space-y-2">
           <div className="w-10 h-10 rounded-xl bg-[#EBF3FE] flex items-center justify-center mx-auto">
@@ -93,14 +99,14 @@ export default async function EsopPage() {
       )}
 
       {/* ── How it works + Key terms ── */}
-      <HowItWorks />
+   
 
-      {/* ── Vesting timeline ── */}
       {primary && (
         <VestingTimeline
           grantDate={primary.grantDate}
           vestingSchedule={primary.vestingSchedule}
           sharesGranted={primary.sharesGranted}
+          perShareValue={primary.plan.perShareValue}
         />
       )}
 
@@ -114,14 +120,7 @@ export default async function EsopPage() {
         />
       )}
 
-      {/* ── HR admin panel ── */}
-      {isAdmin && (
-        <EsopClientPanel
-          plans={plans}
-          employees={allEmployees}
-          allGrants={allGrants}
-        />
-      )}
+         <HowItWorks />
     </div>
   );
 }
