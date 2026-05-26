@@ -357,7 +357,11 @@ export default async function PerformancePage({ searchParams }: Props) {
     ),
   }));
 
-  const queueSubs = isFounder ? mySubs.filter((s) => s.kind !== 'self') : mySubs;
+  // Admin's own self-eval is shown in a dedicated top-level section, not inside dept drill-down
+  const mySelfSubs = mySubs.filter((s) => s.kind === 'self');
+  const queueSubs = (isFounder || isAdmin)
+    ? mySubs.filter((s) => s.kind !== 'self')
+    : mySubs;
 
   // Build FY options + apply FY / month / status filters
   const fyOptions = availableFYs(cycles);
@@ -407,6 +411,17 @@ export default async function PerformancePage({ searchParams }: Props) {
         <DrillSection title={drillTitle} subtitle={drillSubtitle} rows={drillRows} />
       )}
 
+
+      {/* Admin's own self-eval: always shown at top level, outside dept drill-down */}
+      {isAdmin && !isFounder && mySelfSubs.length > 0 && (
+        <EvalQueueSection
+          submissions={mySelfSubs}
+          cyclesById={cyclesById}
+          reportsWithHistory={[]}
+          mgrEvalByCycle={mgrEvalByCycle}
+          prevRatingByCycle={prevRatingByCycle}
+        />
+      )}
 
       {isAdmin ? (
         // Admins: only show team evaluations inside a department drill-down, scoped to that dept

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, useMemo } from 'react';
+import React, { useState, useTransition, useMemo } from 'react';
 import { Plus, Pencil, Trash2, Search, ChevronDown } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -262,8 +262,8 @@ export function EsopClientPanel({ plans, employees, allGrants }: Props) {
                     const isExpanded = expandedGrant === g.grantId;
 
                     return (
-                      <>
-                        <tr key={g.grantId}
+                      <React.Fragment key={g.grantId}>
+                        <tr
                           className="border-t border-[#E2E8F0] hover:bg-[#F8FAFC] transition cursor-pointer"
                           onClick={() => setExpandedGrant(isExpanded ? null : g.grantId)}
                         >
@@ -307,7 +307,7 @@ export function EsopClientPanel({ plans, employees, allGrants }: Props) {
                             </td>
                           </tr>
                         )}
-                      </>
+                      </React.Fragment>
                     );
                   })}
                 </tbody>
