@@ -61,6 +61,13 @@ export function founderEmails(): string[] {
     .filter(Boolean);
 }
 
+export function hrEmails(): string[] {
+  return (process.env.HR_EMAILS ?? '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 export function allowedAuthDomains(): string[] {
   return (process.env.ALLOWED_AUTH_DOMAINS ?? 'bosscoderacademy.com')
     .split(',')

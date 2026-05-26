@@ -4,6 +4,7 @@ import { HR } from '@/lib/firebase/collections';
 import {
   defaultPermissionsForRoles,
   founderEmails,
+  hrEmails,
   type Permission,
   type Role,
 } from '@/lib/auth/roles';
@@ -59,7 +60,8 @@ export async function ensureUserAndSyncClaims(args: {
   let doc: HrUserDoc;
   if (!snap.exists) {
     const isFounder = founderEmails().includes(lowerEmail);
-    const roles: Role[] = isFounder ? ['founder'] : ['employee'];
+    const isHr = !isFounder && hrEmails().includes(lowerEmail);
+    const roles: Role[] = isFounder ? ['founder'] : isHr ? ['hr'] : ['employee'];
     const permissions = defaultPermissionsForRoles(roles);
     doc = {
       uid,
