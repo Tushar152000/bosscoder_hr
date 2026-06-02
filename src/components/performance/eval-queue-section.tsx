@@ -15,6 +15,7 @@ interface Props {
   reportsWithHistory: ReportWithHistory[];
   mgrEvalByCycle: Record<string, ReviewSubmission>;
   prevRatingByCycle: Record<string, number | null>;
+  selfEvalStatusById?: Record<string, string>;
 }
 
 export function EvalQueueSection({
@@ -23,6 +24,7 @@ export function EvalQueueSection({
   reportsWithHistory,
   mgrEvalByCycle,
   prevRatingByCycle,
+  selfEvalStatusById = {},
 }: Props) {
   const hasSelf    = submissions.some((s) => s.kind === 'self');
   const hasManager = submissions.some((s) => s.kind === 'manager');
@@ -75,6 +77,7 @@ export function EvalQueueSection({
               cyclesById={cyclesById}
               kind="manager"
               hasRail={hasReports}
+              selfEvalStatusById={selfEvalStatusById}
             />
           )}
           {hasReports && <MyTeamRail reports={reportsWithHistory} />}

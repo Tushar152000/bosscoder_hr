@@ -83,6 +83,16 @@ export default async function PerformancePage({ searchParams }: Props) {
   // Detect open cycle early — needed for both tiles and drill views
   const openCycle = cycles.find((c) => c.status === 'open') ?? null;
 
+  // Fetch open cycle submissions for self-eval status lookup (needed by manager eval cards)
+  const openCycleAllSubs = openCycle
+    ? await listSubmissionsForCycle(openCycle.cycleId)
+    : [];
+  // subjectEmployeeId → self-eval status for the open cycle
+  const selfEvalStatusById: Record<string, string> = {};
+  for (const s of openCycleAllSubs) {
+    if (s.kind === 'self') selfEvalStatusById[s.subjectEmployeeId] = s.status;
+  }
+
   // employeeId → displayName lookup for resolving manager names
   const empNameById = new Map<string, string>(
     allEmployees.map((e) => [e.employeeId, e.displayName]),
@@ -300,11 +310,7 @@ export default async function PerformancePage({ searchParams }: Props) {
           (s) => s.kind === 'self' && s.subjectEmployeeId === e.employeeId,
         ) ?? null;
         const managerSub = drillOpenSubs.find(
-          (s) =>
-            s.kind === 'manager' &&
-            s.subjectEmployeeId === e.employeeId &&
-            (s.reviewerUid === user.uid ||
-              s.reviewerEmail?.toLowerCase() === user.email.toLowerCase()),
+          (s) => s.kind === 'manager' && s.subjectEmployeeId === e.employeeId,
         ) ?? null;
         return {
           employeeId: e.employeeId,
@@ -359,8 +365,17 @@ export default async function PerformancePage({ searchParams }: Props) {
 
   // Admin's own self-eval is shown in a dedicated top-level section, not inside dept drill-down
   const mySelfSubs = mySubs.filter((s) => s.kind === 'self');
-  const queueSubs = (isFounder || isAdmin)
-    ? mySubs.filter((s) => s.kind !== 'self')
+  const managerSubs = mySubs.filter((s) => s.kind !== 'self');
+  // Founders: only manager evals where the subject's self-eval is submitted (no "pending" noise)
+  // Admins: manager evals only (self-eval shown separately above)
+  // Regular employees: all their submissions including their own self-eval
+  const queueSubs = isFounder
+    ? managerSubs.filter((s) => {
+        const selfStatus = selfEvalStatusById[s.subjectEmployeeId];
+        return selfStatus === 'submitted' || selfStatus === 'locked';
+      })
+    : isAdmin
+    ? managerSubs
     : mySubs;
 
   // Build FY options + apply FY / month / status filters
@@ -440,6 +455,7 @@ export default async function PerformancePage({ searchParams }: Props) {
               reportsWithHistory={scopedReports}
               mgrEvalByCycle={mgrEvalByCycle}
               prevRatingByCycle={prevRatingByCycle}
+              selfEvalStatusById={selfEvalStatusById}
             />
           ) : null;
         })()
@@ -452,6 +468,7 @@ export default async function PerformancePage({ searchParams }: Props) {
             reportsWithHistory={reportsWithHistory}
             mgrEvalByCycle={mgrEvalByCycle}
             prevRatingByCycle={prevRatingByCycle}
+            selfEvalStatusById={selfEvalStatusById}
           />
         )
       )}

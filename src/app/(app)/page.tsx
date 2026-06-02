@@ -81,7 +81,7 @@ export default async function HomePage({
 
         {/* Quick access */}
         <section>
-          <p className="text-[10px] font-semibold tracking-[1.4px] uppercase text-slate-400 mb-3">
+          <p className="text-[14px] font-semibold tracking-[1.4px] uppercase text-slate-600 mb-3">
             Quick access
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">

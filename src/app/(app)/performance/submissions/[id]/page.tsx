@@ -23,16 +23,20 @@ import { writeAuditLog } from '@/lib/audit';
 
 interface Props {
   params: Promise<{ id: string }>;
+  searchParams?: Promise<{ from?: string }>;
 }
 
 export const metadata = { title: 'Review form' };
 
-export default async function SubmissionPage({ params }: Props) {
+export default async function SubmissionPage({ params, searchParams }: Props) {
   const user = await requireUser();
   const { id } = await params;
+  const sp = await searchParams;
 
   const sub = await getSubmission(id, { decryptNotes: true });
   if (!sub) notFound();
+
+  const backHref = sp?.from ?? '/performance';
 
   if (!(await canViewSubmission(user, sub))) {
     redirect('/performance');
@@ -86,11 +90,11 @@ export default async function SubmissionPage({ params }: Props) {
   return (
     <div className="mx-auto max-w-[1300px] py-6 space-y-4">
       <Link
-        href={`/performance/cycles/${sub.cycleId}`}
+        href={backHref}
         className="inline-flex items-center gap-1.5 text-[14px] font-medium text-slate-500 hover:text-slate-900 transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to {sub.cycleName}
+        {'Back to evaluations'}
       </Link>
 
       <SelfEvalReadOnly selfEval={pairedSelfEval} subjectName={sub.subjectName} />

@@ -55,6 +55,7 @@ export function RatingChart({ data, averageLine = null, height = 280 }: Props) {
           <YAxis
             domain={[1, 5]}
             ticks={[1, 2, 3, 4, 5]}
+            reversed
             stroke="#94a3b8"
             fontSize={11}
             tickLine={false}

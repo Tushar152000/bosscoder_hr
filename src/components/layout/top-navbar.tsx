@@ -97,7 +97,7 @@ export function TopNavbar({ user, notifications = [] }: Props) {
   }
 
   return (
-    <header className="sticky top-0 z-30 h-14 w-full bg-white flex items-center shadow-sm justify-between px-6">
+    <header className="sticky top-0 z-30 h-[64px] w-full bg-white flex items-center shadow-sm justify-between px-6">
       <div className="max-w-[1300px] mx-auto flex justify-between items-center w-full">
 
         <Link href="/" aria-label="Home">

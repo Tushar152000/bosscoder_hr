@@ -1,12 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { AlertCircle, ArrowRight, Bell, CheckCircle2, Clock } from 'lucide-react';
+import { AlertCircle, ArrowRight, CheckCircle2, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDate } from '@/lib/format';
 import type { ReviewSubmission } from '@/types/review';
-import { sendManagerNudgeAction } from '@/app/(app)/performance/actions';
 
 export type SubmittedVariant = 'reviewed' | 'awaiting' | 'overdue';
 
@@ -65,26 +63,6 @@ export function SubmittedCard({ self: selfSub, mgrEval, prevRating }: Props) {
   const snippet = mgrEval?.managerNotes
     ? mgrEval.managerNotes.slice(0, 110) + (mgrEval.managerNotes.length > 110 ? '…' : '')
     : null;
-
-  const nudgeKey = `nudge:${mgrEval?.submissionId ?? selfSub.cycleId}`;
-  const [nudgeSent, setNudgeSent] = useState(false);
-  const [nudging, setNudging] = useState(false);
-
-  useEffect(() => {
-    const ts = localStorage.getItem(nudgeKey);
-    if (ts && Date.now() - parseInt(ts, 10) < 60 * 60 * 1000) setNudgeSent(true);
-  }, [nudgeKey]);
-
-  async function handleNudge() {
-    if (!mgrEval || nudgeSent || nudging) return;
-    setNudging(true);
-    const res = await sendManagerNudgeAction(mgrEval.submissionId);
-    if (res.ok) {
-      localStorage.setItem(nudgeKey, String(Date.now()));
-      setNudgeSent(true);
-    }
-    setNudging(false);
-  }
 
   return (
     <div
@@ -148,24 +126,6 @@ export function SubmittedCard({ self: selfSub, mgrEval, prevRating }: Props) {
         </span>
 
         <div className="flex items-center gap-1.5 shrink-0">
-          {/* Nudge button (awaiting / overdue only) */}
-          {mgrEval && variant !== 'reviewed' && (
-            <button
-              type="button"
-              onClick={handleNudge}
-              disabled={nudgeSent || nudging}
-              className={cn(
-                'inline-flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium transition',
-                nudgeSent
-                  ? 'bg-slate-100 text-slate-400 cursor-default'
-                  : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200',
-              )}
-            >
-              <Bell className="h-3 w-3" />
-              {nudgeSent ? 'Nudged' : nudging ? '…' : 'Nudge'}
-            </button>
-          )}
-
           {/* View link */}
           <Link
             href={`/performance/submissions/${selfSub.submissionId}`}

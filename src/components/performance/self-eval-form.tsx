@@ -720,7 +720,7 @@ export function SelfEvalForm({
       </div>{/* end body row */}
 
       {/* ── Footer — always visible at bottom ── */}
-      <div className="flex-shrink-0 px-6 lg:px-8 py-3">
+      <div className="flex-shrink-0  py-3">
         <div className="bg-surface border border-divider rounded-xl px-4 py-2.5 shadow-[0_-2px_8px_rgba(12,68,124,0.06)] flex items-center justify-between">
           <div className="flex items-center gap-3">
             <SaveIndicator state={saveState} lastSavedAt={lastSavedAt} size={13} />

@@ -64,7 +64,11 @@ export function ManagerEvalForm({
         setError(res.error);
         return;
       }
-      router.refresh();
+      if (submit) {
+        router.push('/performance');
+      } else {
+        router.refresh();
+      }
     });
   }
 
