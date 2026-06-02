@@ -136,7 +136,7 @@ function inputToStored(
       pincode: encryptOptional(input.address.pincode),
     },
     dob: encryptOptional(input.dob),
-    dateOfBirth: input.dateOfBirth ?? null,
+    dateOfBirth: input.dateOfBirth ?? undefined,
     emergencyContact: {
       name: encryptOptional(input.emergencyContact.name),
       phone: encryptOptional(input.emergencyContact.phone),
