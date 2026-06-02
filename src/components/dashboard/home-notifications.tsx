@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { Bell, CheckCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { markNotificationsReadAction } from '@/app/(app)/notifications/actions';
+import { markNotificationsReadAction, clearAllNotificationsAction } from '@/app/(app)/notifications/actions';
 import type { NavNotification } from '@/components/layout/top-navbar';
 import { cn } from '@/lib/utils';
 
@@ -29,6 +29,7 @@ interface Props {
 export function HomeNotifications({ notifications }: Props) {
   const router = useRouter();
   const [allRead, setAllRead] = useState(false);
+  const [cleared, setCleared] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const unreadCount = allRead ? 0 : notifications.filter((n) => !n.read).length;
@@ -41,7 +42,12 @@ export function HomeNotifications({ notifications }: Props) {
     });
   }
 
-  if (notifications.length === 0) {
+  function handleClearAll() {
+    setCleared(true);
+    clearAllNotificationsAction().catch(() => {});
+  }
+
+  if (notifications.length === 0 || cleared) {
     return (
       <div className="flex flex-col items-center justify-center py-6 gap-2">
         <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
@@ -63,17 +69,26 @@ export function HomeNotifications({ notifications }: Props) {
         ) : (
           <span className="text-[10px] text-slate-400">All caught up</span>
         )}
-        {unreadCount > 0 && (
+        <div className="flex items-center gap-2">
+          {unreadCount > 0 && (
+            <button
+              type="button"
+              onClick={handleMarkAllRead}
+              disabled={isPending}
+              className="flex items-center gap-1 text-[10px] font-medium text-slate-500 hover:text-slate-900 transition disabled:opacity-50"
+            >
+              <CheckCheck size={11} />
+              Mark all read
+            </button>
+          )}
           <button
             type="button"
-            onClick={handleMarkAllRead}
-            disabled={isPending}
-            className="flex items-center gap-1 text-[10px] font-medium text-slate-500 hover:text-slate-900 transition disabled:opacity-50"
+            onClick={handleClearAll}
+            className="text-[10px] font-medium text-slate-400 hover:text-red-500 transition"
           >
-            <CheckCheck size={11} />
-            Mark all read
+            Clear all
           </button>
-        )}
+        </div>
       </div>
 
       {/* list */}

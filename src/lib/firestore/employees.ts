@@ -48,6 +48,7 @@ function toPublic(stored: EmployeeStored): EmployeePublic {
     status: stored.status,
     exitDate: tsToDate(stored.exitDate),
     active: stored.active,
+    dateOfBirth: stored.dateOfBirth,
     createdAt: tsToDate(stored.createdAt as FirebaseFirestore.Timestamp),
     updatedAt: tsToDate(stored.updatedAt as FirebaseFirestore.Timestamp),
   };
@@ -135,6 +136,7 @@ function inputToStored(
       pincode: encryptOptional(input.address.pincode),
     },
     dob: encryptOptional(input.dob),
+    dateOfBirth: input.dateOfBirth ?? null,
     emergencyContact: {
       name: encryptOptional(input.emergencyContact.name),
       phone: encryptOptional(input.emergencyContact.phone),
@@ -312,6 +314,7 @@ export function emptyEmployeeInput(): EmployeeInput {
     identity: { pan: null, aadhaar: null },
     address: { line1: null, line2: null, city: null, state: null, pincode: null },
     dob: null,
+    dateOfBirth: null,
     emergencyContact: { name: null, phone: null },
   };
 }
@@ -337,6 +340,24 @@ export function fullToInput(emp: EmployeeFull): EmployeeInput {
     identity: { ...emp.identity },
     address: { ...emp.address },
     dob: emp.dob,
+    dateOfBirth: emp.dateOfBirth ?? null,
     emergencyContact: { ...emp.emergencyContact },
   };
+}
+
+export async function listEmployeesForBirthdays(): Promise<
+  { employeeId: string; displayName: string; department: string; dateOfBirth: string }[]
+> {
+  const snap = await adminDb
+    .collection(COL)
+    .where('active', '==', true)
+    .get();
+  return snap.docs
+    .map((d) => {
+      const s = d.data() as EmployeeStored;
+      return s.dateOfBirth
+        ? { employeeId: s.employeeId, displayName: s.displayName, department: s.department, dateOfBirth: s.dateOfBirth }
+        : null;
+    })
+    .filter(Boolean) as { employeeId: string; displayName: string; department: string; dateOfBirth: string }[];
 }

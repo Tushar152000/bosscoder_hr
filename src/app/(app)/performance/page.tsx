@@ -420,6 +420,7 @@ export default async function PerformancePage({ searchParams }: Props) {
           decliningCount={decliningCount}
           incompleteMgrCount={incompleteMgrCount}
           searchableEmployees={searchableEmployees}
+          isFounder={isFounder}
         />
       )}
       {isAdmin && adminView.kind !== 'tiles' && (

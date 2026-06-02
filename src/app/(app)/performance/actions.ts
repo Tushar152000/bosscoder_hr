@@ -8,6 +8,7 @@ import {
   canEditSubmission,
   canManageCycles,
 } from '@/lib/auth/review-access';
+import { founderEmails } from '@/lib/auth/roles';
 import { writeAuditLog } from '@/lib/audit';
 import {
   createCycle,
@@ -197,21 +198,24 @@ async function dispatchCycleOpenNotifications(
   cycleName: string,
   newSubmissions: NewSubmissionInfo[]
 ): Promise<void> {
-  const byUid = new Map<string, { hasSelf: boolean; managerCount: number }>();
+  const founders = new Set(founderEmails());
+  const byUid = new Map<string, { hasSelf: boolean; managerCount: number; isFounder: boolean }>();
   for (const s of newSubmissions) {
     if (!s.reviewerUid) continue;
     let entry = byUid.get(s.reviewerUid);
     if (!entry) {
-      entry = { hasSelf: false, managerCount: 0 };
+      entry = { hasSelf: false, managerCount: 0, isFounder: founders.has(s.reviewerEmail.toLowerCase()) };
       byUid.set(s.reviewerUid, entry);
     }
     if (s.kind === 'self') entry.hasSelf = true;
     else entry.managerCount++;
   }
 
-  const entries = [...byUid.entries()].map(([uid, { hasSelf, managerCount }]) => {
+  const entries = [...byUid.entries()].map(([uid, { hasSelf, managerCount, isFounder }]) => {
     let title: string;
-    if (hasSelf && managerCount > 0) {
+    if (isFounder) {
+      title = `Your team's ${cycleName} evaluations are ready for review`;
+    } else if (hasSelf && managerCount > 0) {
       title = `Your ${cycleName} evaluations are ready`;
     } else if (hasSelf) {
       title = `Your ${cycleName} self-evaluation is ready`;
@@ -450,6 +454,7 @@ export async function nudgePendingEmployees(
     const pending = allSubs.filter(
       (s) => s.status === 'not-started' || s.status === 'in-progress',
     );
+    const founders = new Set(founderEmails());
     const entries = [
       ...new Map(
         pending
@@ -458,7 +463,9 @@ export async function nudgePendingEmployees(
             s.reviewerUid!,
             {
               uid: s.reviewerUid!,
-              title: `Reminder: your ${cycle.name} evaluation is waiting`,
+              title: founders.has(s.reviewerEmail.toLowerCase())
+                ? `Reminder: your team's ${cycle.name} evaluations are pending`
+                : `Reminder: your ${cycle.name} evaluation is waiting`,
               href: '/performance',
               tone: 'warning' as const,
             },

@@ -56,6 +56,7 @@ interface AdminBrowseSectionProps {
   decliningCount: number;
   incompleteMgrCount: number;
   searchableEmployees: SearchableEmployee[];
+  isFounder?: boolean;
 }
 
 // ─── Dept colour palette ──────────────────────────────────────────────────────
@@ -91,6 +92,7 @@ export function AdminBrowseSection({
   decliningCount,
   incompleteMgrCount,
   searchableEmployees,
+  isFounder = false,
 }: AdminBrowseSectionProps) {
   const [query, setQuery] = useState('');
   const [nudgeState, setNudgeState] = useState<'idle' | 'pending' | 'done' | 'error'>('idle');
@@ -137,7 +139,7 @@ export function AdminBrowseSection({
   }
 
   const showAttention = decliningCount > 0 || incompleteMgrCount > 0;
-  const canNudge = !!openCycleId && orgStats.totalPending > 0;
+  const canNudge = !!openCycleId && orgStats.totalPending > 0 && !isFounder;
 
   return (
     <section className="space-y-4">
@@ -437,8 +439,6 @@ function SearchResults({
     </div>
   );
 }
-
-// ─── Empty state ──────────────────────────────────────────────────────────────
 
 function EmptyState() {
   return (

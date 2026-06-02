@@ -18,7 +18,7 @@ import { auth } from "@/lib/firebase/client";
 import { BosscoderLogo } from "@/assets/images/BosscoderLogo";
 import { initials, cn } from "@/lib/utils";
 import type { Permission, Role } from "@/lib/auth/roles";
-import { markNotificationsReadAction } from "@/app/(app)/notifications/actions";
+import { markNotificationsReadAction, clearAllNotificationsAction } from "@/app/(app)/notifications/actions";
 
 export interface NavNotification {
   id: string;
@@ -54,10 +54,11 @@ export function TopNavbar({ user, notifications = [] }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [localAllRead, setLocalAllRead] = useState(false);
+  const [localCleared, setLocalCleared] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Reset local read state whenever notifications prop refreshes (page navigation)
-  useEffect(() => { setLocalAllRead(false); }, [notifications]);
+  // Reset local state whenever notifications prop refreshes (page navigation)
+  useEffect(() => { setLocalAllRead(false); setLocalCleared(false); }, [notifications]);
 
   const unread = localAllRead ? 0 : notifications.filter((n) => !n.read).length;
 
@@ -66,6 +67,11 @@ export function TopNavbar({ user, notifications = [] }: Props) {
       setLocalAllRead(true);
       markNotificationsReadAction().catch(() => {});
     }
+  }
+
+  function handleClearAll() {
+    setLocalCleared(true);
+    clearAllNotificationsAction().catch(() => {});
   }
   const canSeeRoles = user.permissions.includes("manage_roles");
   const canSeeAudit = user.permissions.includes("view_audit_log");
@@ -125,10 +131,19 @@ export function TopNavbar({ user, notifications = [] }: Props) {
                 sideOffset={8}
                 className="z-50 w-80 max-h-96 overflow-y-auto bg-white border border-slate-200 rounded-lg shadow-lg p-2 outline-none"
               >
-                <p className="px-2 py-1.5 text-[11px] font-medium tracking-[0.8px] text-slate-400">
-                  NOTIFICATIONS
-                </p>
-                {notifications.length === 0 ? (
+                <div className="flex items-center justify-between px-2 py-1.5">
+                  <p className="text-[11px] font-medium tracking-[0.8px] text-slate-400">NOTIFICATIONS</p>
+                  {notifications.length > 0 && !localCleared && (
+                    <button
+                      type="button"
+                      onClick={handleClearAll}
+                      className="text-[11px] text-slate-400 hover:text-red-500 transition-colors"
+                    >
+                      Clear all
+                    </button>
+                  )}
+                </div>
+                {notifications.length === 0 || localCleared ? (
                   <p className="px-2 py-4 text-center text-[12px] text-slate-400">
                     You&apos;re all caught up
                   </p>

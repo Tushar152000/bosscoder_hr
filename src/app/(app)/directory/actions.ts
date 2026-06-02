@@ -98,6 +98,11 @@ const employeeInputSchema = z.object({
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD')
     .nullable(),
+  dateOfBirth: z
+    .string()
+    .regex(/^\d{2}-\d{2}$/, 'Use MM-DD')
+    .nullable()
+    .optional(),
   emergencyContact: z.object({
     name: z.string().nullable(),
     phone: z.string().nullable(),

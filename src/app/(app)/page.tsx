@@ -17,6 +17,10 @@ import { getHrUser } from '@/lib/firestore/users';
 import { listNotificationsForUser } from '@/lib/firestore/notifications';
 import { QuickCard } from '@/components/dashboard/quick-card';
 import { HomeNotifications } from '@/components/dashboard/home-notifications';
+import { BirthdayBanner } from '@/components/home/birthday-banner';
+import { BirthdayPanel } from '@/components/home/birthday-panel';
+import { getUpcomingBirthdays } from '@/lib/birthday';
+import { listEmployeesForBirthdays } from '@/lib/firestore/employees';
 import { initials } from '@/lib/utils';
 import { colorForName } from '@/lib/directory/colors';
 import { formatDate } from '@/lib/format';
@@ -32,11 +36,15 @@ export default async function HomePage({
   const params = await searchParams;
   const forbidden = params.error === 'forbidden';
 
-  const [me, hrUser, notifications] = await Promise.all([
+  const [me, hrUser, notifications, birthdayEmployees] = await Promise.all([
     getEmployeeByUserUid(user.uid),
     getHrUser(user.uid),
     listNotificationsForUser(user.uid),
+    listEmployeesForBirthdays(),
   ]);
+
+  const upcomingBirthdays = getUpcomingBirthdays(birthdayEmployees);
+  const todayBirthdays = upcomingBirthdays.filter((e) => e.daysUntil === 0);
   const reportingManager =
     me?.managerId ? await getEmployeeById(me.managerId) : null;
 
@@ -78,6 +86,8 @@ export default async function HomePage({
           </h1>
           <p className="text-[13px] text-slate-400 mt-1">{dateLabel}</p>
         </div>
+
+        <BirthdayBanner people={todayBirthdays} />
 
         {/* Quick access */}
         <section>
@@ -214,6 +224,9 @@ export default async function HomePage({
             <p className="text-[10px] text-slate-400 mt-0.5">Contact HR to link your account.</p>
           </div>
         )}
+
+        {/* Birthdays */}
+        <BirthdayPanel entries={upcomingBirthdays} />
 
         {/* Notifications */}
         <div className="mb-5">
