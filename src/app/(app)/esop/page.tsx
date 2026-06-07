@@ -17,6 +17,7 @@ import { HowItWorks } from "@/components/esop/how-it-works";
 import { VestingTimeline } from "@/components/esop/vesting-timeline";
 import { ShareBreakdown } from "@/components/esop/share-breakdown";
 import { EsopClientPanel } from "@/components/esop/esop-client-panel";
+import { EsopCalculatingModal } from "@/components/esop/esop-calculating-modal";
 import type { EsopGrantWithPlan } from "@/types/esop";
 
 export const metadata = { title: "ESOPs — Equity portal" };
@@ -57,9 +58,11 @@ export default async function EsopPage() {
     : [[], [], []];
 
   const hasGrants = myGrants.length > 0;
+  const role = isFounder ? 'founder' : isAdmin ? 'hr' : 'employee';
 
   return (
     <div className="mx-auto max-w-[1300px] py-8 space-y-6">
+      <EsopCalculatingModal role={role} />
       <nav className="flex items-center gap-1.5 text-[14px] text-slate-400">
         <Link href="/" className="flex items-center hover:text-slate-600 transition-colors">
           <Home size={12} />

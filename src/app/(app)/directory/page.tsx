@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { requireUser } from '@/lib/auth/guard';
-import { hasAnyRole, isPrivileged } from '@/lib/auth/roles';
+import { isPrivileged } from '@/lib/auth/roles';
 import { listEmployees, getEmployeeByUserUid } from '@/lib/firestore/employees';
 import { canEditEmployees } from '@/lib/auth/employee-access';
 import { initials } from '@/lib/utils';
@@ -20,10 +20,6 @@ export const metadata = { title: 'Directory' };
 
 export default async function DirectoryPage() {
   const user = await requireUser();
-
-  if (!hasAnyRole(user.roles, 'founder', 'hr')) {
-    redirect('/?error=forbidden');
-  }
 
   const priv = isPrivileged(user.roles);
 
