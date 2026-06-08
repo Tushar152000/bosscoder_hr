@@ -3,48 +3,30 @@
 import { useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { CalendarPlus, Check, ChevronDown, Sparkles } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { CalendarPlus, ChevronDown, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { buildCycleName, type Cadence } from '@/types/review';
+import { buildCycleName } from '@/types/review';
 import { createCycleAction } from '@/app/(app)/performance/actions';
-
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
-
-// Indian FY order: April → March
-const FY_MONTH_ORDER = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
 
 const CURRENT_YEAR = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 7 }, (_, i) => CURRENT_YEAR - 1 + i);
 
 interface Props {
   defaultYear: number;
-  defaultMonth: number;
   defaultQuarter: number;
 }
 
-export function NewCycleForm({ defaultYear, defaultMonth, defaultQuarter }: Props) {
+export function NewCycleForm({ defaultYear, defaultQuarter }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [cadence, setCadence] = useState<Cadence>('monthly');
-  const [month, setMonth] = useState<number>(defaultMonth);
   const [quarter, setQuarter] = useState<number>(defaultQuarter);
   const [year, setYear] = useState<number>(defaultYear);
   const [dueDate, setDueDate] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
 
   const previewName = useMemo(
-    () =>
-      buildCycleName({
-        cadence,
-        month: cadence === 'monthly' ? month : null,
-        quarter: cadence === 'quarterly' ? quarter : null,
-        year,
-      }),
-    [cadence, month, quarter, year],
+    () => buildCycleName({ cadence: 'quarterly', month: null, quarter, year }),
+    [quarter, year],
   );
 
   function onSubmit(e: React.FormEvent) {
@@ -52,9 +34,9 @@ export function NewCycleForm({ defaultYear, defaultMonth, defaultQuarter }: Prop
     setError(null);
     startTransition(async () => {
       const res = await createCycleAction({
-        cadence,
-        month: cadence === 'monthly' ? month : null,
-        quarter: cadence === 'quarterly' ? quarter : null,
+        cadence: 'quarterly',
+        month: null,
+        quarter,
         year,
         dueDate: dueDate || null,
       });
@@ -81,63 +63,14 @@ export function NewCycleForm({ defaultYear, defaultMonth, defaultQuarter }: Prop
             <div>
               <p className="text-[14px] font-medium text-slate-900">Cycle details</p>
               <p className="text-[11px] text-slate-500">
-                Pick a cadence and period — name is generated for you.
+                Pick a quarter and year — name is generated for you.
               </p>
             </div>
           </div>
 
 
-          <div className="mb-4 grid grid-cols-2 gap-2">
-            {(['monthly', 'quarterly'] as Cadence[]).map((c) => {
-              const active = cadence === c;
-              return (
-                <button
-                  key={c}
-                  type="button"
-                  onClick={() => setCadence(c)}
-                  className={cn(
-                    'rounded-md border p-2.5 text-left transition',
-                    active
-                      ? 'border-[#0C447C] bg-[#EBF3FE]'
-                      : 'border-[#E2E8F0] bg-white hover:border-[#CBD5E1]',
-                  )}
-                >
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={cn(
-                        'text-[13px] font-medium capitalize',
-                        active ? 'text-[#0C447C]' : 'text-slate-900',
-                      )}
-                    >
-                      {c}
-                    </span>
-                    <span
-                      className={cn(
-                        'flex h-3.5 w-3.5 items-center justify-center rounded-full',
-                        active ? 'bg-[#0C447C]' : 'border border-[#E2E8F0] bg-white',
-                      )}
-                    >
-                      {active && <Check className="h-2.5 w-2.5 text-white" strokeWidth={3} />}
-                    </span>
-                  </div>
-                  <p
-                    className={cn(
-                      'mt-1 text-[11px]',
-                      active ? 'text-[#0C447C]' : 'text-slate-500',
-                    )}
-                  >
-                    {c === 'monthly'
-                      ? '12 cycles per year · short forms'
-                      : '4 cycles per year · deeper reviews'}
-                  </p>
-                </button>
-              );
-            })}
-          </div>
-
-
           <div className="grid grid-cols-2 gap-3">
-  
+
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-medium text-slate-700">
                 Year <span className="text-red-500">*</span>
@@ -150,49 +83,28 @@ export function NewCycleForm({ defaultYear, defaultMonth, defaultQuarter }: Prop
                   className="h-10 w-full appearance-none rounded-md border border-[#E2E8F0] bg-white px-3 text-[13px] text-slate-900 focus:border-[#0C447C] focus:outline-none focus:ring-2 focus:ring-[#0C447C]/20"
                 >
                   {YEAR_OPTIONS.map((y) => (
-                    <option key={y} value={y}>
-                      {y}
-                    </option>
+                    <option key={y} value={y}>{y}</option>
                   ))}
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
               </div>
             </div>
 
-      
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-medium text-slate-700">
-                {cadence === 'monthly' ? 'Month' : 'Quarter'}{' '}
-                <span className="text-red-500">*</span>
+                Quarter <span className="text-red-500">*</span>
               </label>
               <div className="relative">
-                {cadence === 'monthly' ? (
-                  <select
-                    value={month}
-                    onChange={(e) => setMonth(Number(e.target.value))}
-                    required
-                    className="h-10 w-full appearance-none rounded-md border border-[#E2E8F0] bg-white px-3 text-[13px] text-slate-900 focus:border-[#0C447C] focus:outline-none focus:ring-2 focus:ring-[#0C447C]/20"
-                  >
-                    {FY_MONTH_ORDER.map((m) => (
-                      <option key={m} value={m}>
-                        {MONTHS[m - 1]}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <select
-                    value={quarter}
-                    onChange={(e) => setQuarter(Number(e.target.value))}
-                    required
-                    className="h-10 w-full appearance-none rounded-md border border-[#E2E8F0] bg-white px-3 text-[13px] text-slate-900 focus:border-[#0C447C] focus:outline-none focus:ring-2 focus:ring-[#0C447C]/20"
-                  >
-                    {[1, 2, 3, 4].map((q) => (
-                      <option key={q} value={q}>
-                        Q{q}
-                      </option>
-                    ))}
-                  </select>
-                )}
+                <select
+                  value={quarter}
+                  onChange={(e) => setQuarter(Number(e.target.value))}
+                  required
+                  className="h-10 w-full appearance-none rounded-md border border-[#E2E8F0] bg-white px-3 text-[13px] text-slate-900 focus:border-[#0C447C] focus:outline-none focus:ring-2 focus:ring-[#0C447C]/20"
+                >
+                  {[1, 2, 3, 4].map((q) => (
+                    <option key={q} value={q}>Q{q}</option>
+                  ))}
+                </select>
                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
               </div>
             </div>
@@ -211,7 +123,7 @@ export function NewCycleForm({ defaultYear, defaultMonth, defaultQuarter }: Prop
               className="h-10 w-full rounded-md border border-[#E2E8F0] bg-white px-3 text-[13px] text-slate-900 focus:border-[#0C447C] focus:outline-none focus:ring-2 focus:ring-[#0C447C]/20"
             />
             <p className="text-[11px] text-slate-400">
-              If set, forms show this as the deadline instead of the end of the {cadence === 'monthly' ? 'month' : 'quarter'}.
+              If set, forms show this as the deadline instead of the end of the quarter.
             </p>
           </div>
 

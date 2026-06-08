@@ -478,10 +478,8 @@ export default async function PerformancePage({ searchParams }: Props) {
       {isAdmin && adminView.kind === 'tiles' && (
         <CyclesTable
           cycles={filteredCycles}
-          allCount={cycles.length}
           fyOptions={fyOptions}
           fy={filterFY}
-          month={filterMonth}
           statusParam={sp?.status ?? null}
           view={sp?.view ?? null}
           viewName={sp?.name ?? null}

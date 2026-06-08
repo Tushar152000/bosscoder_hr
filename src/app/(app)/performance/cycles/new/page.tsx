@@ -39,7 +39,6 @@ export default async function NewCyclePage() {
 
       <NewCycleForm
         defaultYear={now.getUTCFullYear()}
-        defaultMonth={now.getUTCMonth() + 1}
         defaultQuarter={Math.ceil((now.getUTCMonth() + 1) / 3)}
       />
     </div>

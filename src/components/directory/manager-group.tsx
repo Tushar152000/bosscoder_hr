@@ -61,10 +61,12 @@ export function ManagerGroup({ manager }: { manager: DirectoryManager }) {
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-[13px] font-medium text-slate-900 truncate">{user.name}</span>
-              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#0C447C] bg-[#E6F1FB] px-2 py-0.5 rounded-full shrink-0">
-                <Crown size={10} />
-                Manager
-              </span>
+              {reports.length > 0 && (
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#0C447C] bg-[#E6F1FB] px-2 py-0.5 rounded-full shrink-0">
+                  <Crown size={10} />
+                  Manager
+                </span>
+              )}
             </div>
             <p className="text-[11px] text-slate-500 truncate">{user.designation} · {user.email}</p>
           </div>

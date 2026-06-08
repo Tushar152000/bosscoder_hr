@@ -67,9 +67,11 @@ function buildDirectoryView(employees: EmployeePublic[]): DirectoryView {
 
   const mgrIds = new Set(reportsByMgr.keys());
   const UNASSIGNED = '__unassigned__';
+  const DEPT_ORDER = ['Leadership'];
+  const allDepts = [...new Set(employees.map((e) => e.department).filter(Boolean))];
   const deptNames = [
-    ...[...new Set(employees.map((e) => e.department).filter(Boolean))].sort(),
-    // Always append unassigned bucket last if any stub employees exist
+    ...DEPT_ORDER.filter((d) => allDepts.includes(d)),
+    ...allDepts.filter((d) => !DEPT_ORDER.includes(d)).sort(),
     ...(employees.some((e) => !e.department) ? [UNASSIGNED] : []),
   ];
 

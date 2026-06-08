@@ -136,7 +136,9 @@ function inputToStored(
       pincode: encryptOptional(input.address.pincode),
     },
     dob: encryptOptional(input.dob),
-    dateOfBirth: input.dateOfBirth ?? undefined,
+    ...(input.dateOfBirth != null
+      ? { dateOfBirth: input.dateOfBirth }
+      : meta.isCreate ? {} : { dateOfBirth: FieldValue.delete() as unknown as string }),
     emergencyContact: {
       name: encryptOptional(input.emergencyContact.name),
       phone: encryptOptional(input.emergencyContact.phone),
