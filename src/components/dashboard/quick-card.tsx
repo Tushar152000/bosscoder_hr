@@ -2,6 +2,14 @@ import Link from 'next/link';
 import { ArrowRight, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+type BadgeTone = 'info' | 'warning' | 'success';
+
+const BADGE: Record<BadgeTone, string> = {
+  info:    'bg-[#E6F1FB] text-[#0C447C]',
+  warning: 'bg-[#FAECE7] text-[#993C1D]',
+  success: 'bg-[#E1F5EE] text-[#0F6E56]',
+};
+
 interface Props {
   href: string;
   title: string;
@@ -10,6 +18,7 @@ interface Props {
   iconBg: string;
   iconColor: string;
   badge?: string;
+  badgeTone?: BadgeTone;
   comingSoon?: boolean;
 }
 
@@ -20,6 +29,8 @@ export function QuickCard({
   icon: Icon,
   iconBg,
   iconColor,
+  badge,
+  badgeTone = 'info',
   comingSoon,
 }: Props) {
   return (
@@ -61,6 +72,12 @@ export function QuickCard({
         <p className="text-[14px] font-semibold text-slate-900 leading-snug">{title}</p>
         <p className="text-[12px] text-slate-500 leading-relaxed mt-1">{description}</p>
       </div>
+
+      {badge && (
+        <span className={cn('self-start text-[10px] font-medium px-2 py-0.5 rounded-full', BADGE[badgeTone])}>
+          {badge}
+        </span>
+      )}
     </Link>
   );
 }
