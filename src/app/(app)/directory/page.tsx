@@ -1,7 +1,6 @@
-import { redirect } from 'next/navigation';
 import { requireUser } from '@/lib/auth/guard';
 import { isPrivileged } from '@/lib/auth/roles';
-import { listEmployees, getEmployeeByUserUid } from '@/lib/firestore/employees';
+import { listEmployees } from '@/lib/firestore/employees';
 import { canEditEmployees } from '@/lib/auth/employee-access';
 import { initials } from '@/lib/utils';
 import { formatDate } from '@/lib/format';
@@ -22,18 +21,7 @@ export default async function DirectoryPage() {
   const user = await requireUser();
 
   const priv = isPrivileged(user.roles);
-
-  let employees: EmployeePublic[];
-
-  if (priv) {
-    employees = await listEmployees({ status: 'any', limit: 500 });
-  } else {
-
-    const me = await getEmployeeByUserUid(user.uid);
-    if (!me) redirect('/?error=forbidden');
-    const reports = await listEmployees({ managerId: me.employeeId, status: 'any' });
-    employees = [me, ...reports];
-  }
+  const employees = await listEmployees({ status: priv ? 'any' : 'active', limit: 500 });
 
   const view = buildDirectoryView(employees);
   const totalManagers = view.departments.reduce((s, d) => s + d.managers.length, 0);
