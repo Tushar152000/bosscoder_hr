@@ -35,7 +35,7 @@ export default async function CommunicationsPage() {
   const employeesByDept = Object.fromEntries(deptMap);
 
   return (
-    <div className="mx-auto max-w-[1300px] space-y-5 px-4 py-6 md:px-0">
+    <div className="mx-auto max-w-[1300px] space-y-4 px-4 py-5 md:px-6 lg:px-0">
       <div>
         <h1 className="text-[24px] font-semibold text-dark-blue">Communications</h1>
         <p className="mt-0.5 text-[15px] text-slate-500">
