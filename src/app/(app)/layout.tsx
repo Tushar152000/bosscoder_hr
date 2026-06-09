@@ -6,7 +6,6 @@ import {
 import { listNotificationsForUser } from '@/lib/firestore/notifications';
 import { getHrUser } from '@/lib/firestore/users';
 import { TopNavbar } from '@/components/layout/top-navbar';
-import { Sidebar } from '@/components/layout/sidebar';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
@@ -33,12 +32,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         }}
         notifications={notifications}
       />
-      <div className="flex flex-1 min-h-0">
-        <Sidebar roles={user.roles} permissions={user.permissions} />
-        <main className="flex-1 min-w-0 w-full max-w-[1300px] mx-auto md:mx-0 md:max-w-none">
-          {children}
-        </main>
-      </div>
+      <main className="w-full max-w-[1300px] mx-auto flex-1">
+        {children}
+      </main>
     </div>
   );
 }

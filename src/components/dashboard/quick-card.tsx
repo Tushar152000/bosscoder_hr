@@ -42,7 +42,7 @@ export function QuickCard({
         comingSoon && 'pointer-events-none opacity-60'
       )}
     >
-      {/* subtle top-right glow */}
+
       <div
         className="absolute -top-6 -right-6 w-20 h-20 rounded-full opacity-0 group-hover:opacity-40 transition-opacity duration-300 blur-2xl"
         style={{ backgroundColor: iconBg }}

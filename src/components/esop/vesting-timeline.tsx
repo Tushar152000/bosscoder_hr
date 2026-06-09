@@ -65,7 +65,7 @@ export function VestingTimeline({
     <div className="rounded-xl border border-[#E2E8F0] bg-white overflow-hidden">
 
       {/* ── Header ── */}
-      <div className="px-5 py-4 border-b border-[#F1F5F9] flex items-start justify-between gap-4">
+      <div className="px-4 sm:px-5 py-4 border-b border-[#F1F5F9] flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
         <div>
           <p className="text-[13px] font-semibold text-[#0f172a] tracking-tight">Vesting timeline</p>
           <p className="text-[11px] text-[#64748b] mt-0.5">
@@ -73,7 +73,7 @@ export function VestingTimeline({
             {lastMilestone ? ` – ${formatDateObj(lastMilestone.date)}` : ''}
           </p>
         </div>
-        <div className="flex flex-col items-end gap-2 shrink-0">
+        <div className="flex sm:flex-col items-center sm:items-end gap-3 sm:gap-2">
           {/* Progress chip */}
           <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-full px-3 py-1">
             <div className="w-14 h-1.5 bg-[#E2E8F0] rounded-full overflow-hidden">
@@ -94,10 +94,10 @@ export function VestingTimeline({
       </div>
 
       {/* ── Body ── */}
-      <div className="px-5 pt-5 pb-6 space-y-5">
+      <div className="px-4 sm:px-5 pt-5 pb-6 space-y-5">
 
         {/* Summary cards */}
-        <div className="grid grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-3 gap-2">
           <SummaryCard
             label="GRANTED"
             value={String(sharesGranted)}
@@ -115,16 +115,16 @@ export function VestingTimeline({
             valueColor="text-[#27500A]"
           />
           <SummaryCard
-            label="NEXT VESTING"
+            label="NEXT VEST"
             value={nextMilestone ? formatDateObj(nextMilestone.date) : '—'}
-            sub={nextMilestone ? `${nextMilestone.shares} shares due` : 'Fully vested'}
+            sub={nextMilestone ? `${nextMilestone.shares} shares` : 'Fully vested'}
             valueColor="text-[#0f172a]"
             smallValue={!!nextMilestone}
           />
         </div>
 
-        {/* Rail + milestone dots */}
-        <div className="relative pt-1">
+        {/* Rail + milestone dots — desktop */}
+        <div className="hidden sm:block relative pt-1">
           {/* Rail */}
           <div className="h-[3px] bg-[#E2E8F0] rounded-full relative">
             <div
@@ -167,7 +167,7 @@ export function VestingTimeline({
                       </svg>
                     )}
                   </div>
-                  <div className="text-center space-y-0.5 min-w-[56px]">
+                  <div className="text-center space-y-0.5 min-w-0">
                     <p className="text-[10px] font-semibold text-[#334155] whitespace-nowrap">
                       {formatDateObj(m.date)}
                     </p>
@@ -183,10 +183,40 @@ export function VestingTimeline({
             })}
           </div>
         </div>
+
+        {/* Vertical timeline — mobile */}
+        <div className="sm:hidden space-y-0">
+          {allMilestones.map((m, i) => {
+            const st: Status = m.isGrant ? 'grant' : vestingStatus(m.date, now);
+            const cfg = STATUS_CONFIG[st];
+            const showCheck = st === 'done' || st === 'grant';
+            const isLast = i === allMilestones.length - 1;
+
+            return (
+              <div key={i} className="flex items-start gap-3 pb-4 last:pb-0 relative">
+                {!isLast && (
+                  <span className="absolute left-[8px] top-[17px] bottom-0 w-[2px] bg-[#E2E8F0]" />
+                )}
+                <div className={cn('w-[17px] h-[17px] rounded-full border-2 shrink-0 flex items-center justify-center', cfg.dot)}>
+                  {showCheck && (
+                    <svg width="8" height="6" viewBox="0 0 8 6" fill="none">
+                      <path d="M1 3l2 2 4-4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </div>
+                <div className="min-w-0 -mt-0.5 pb-1">
+                  <p className="text-[12px] font-semibold text-[#334155]">{formatDateObj(m.date)}</p>
+                  <p className="text-[11px] text-[#64748b]">{m.isGrant ? 'Grant date' : `${m.shares} shares`}</p>
+                  <span className={cn('inline-block text-[9px] font-semibold px-2 py-0.5 rounded-full mt-0.5', cfg.badge)}>{cfg.label}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* ── Footer ── */}
-      <div className="px-5 py-3 bg-[#F8FAFC] border-t border-[#F1F5F9] flex items-start gap-2.5">
+      <div className="px-4 sm:px-5 py-3 bg-[#F8FAFC] border-t border-[#F1F5F9] flex items-start gap-2.5">
         <div className="w-5 h-5 rounded-md bg-[#EBF3FE] flex items-center justify-center flex-shrink-0 mt-0.5">
           <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
             <circle cx="5.5" cy="5.5" r="4.5" stroke="#0C447C" strokeWidth="1.2" />
@@ -208,12 +238,12 @@ function SummaryCard({
   label: string; value: string; sub: string; valueColor: string; smallValue?: boolean;
 }) {
   return (
-    <div className="bg-[#F8FAFC] border border-[#F1F5F9] rounded-[9px] px-3.5 py-2.5 space-y-0.5">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-[#94a3b8]">{label}</p>
-      <p className={cn('font-semibold tabular-nums', valueColor, smallValue ? 'text-[13px]' : 'text-[16px]')}>
+    <div className="bg-[#F8FAFC] border border-[#F1F5F9] rounded-[9px] px-2 sm:px-3.5 py-2.5 space-y-0.5">
+      <p className="text-[9px] sm:text-[10px] font-semibold uppercase tracking-tight sm:tracking-wide text-[#94a3b8] truncate">{label}</p>
+      <p className={cn('font-semibold tabular-nums', valueColor, smallValue ? 'text-[12px] sm:text-[13px]' : 'text-[15px] sm:text-[16px]')}>
         {value}
       </p>
-      <p className="text-[10px] text-[#64748b]">{sub}</p>
+      <p className="text-[9px] sm:text-[10px] text-[#64748b] truncate">{sub}</p>
     </div>
   );
 }
