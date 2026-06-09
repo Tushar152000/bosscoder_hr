@@ -1,4 +1,4 @@
-import { Users, TrendingUp, PieChart, Mail, FileText } from "lucide-react";
+import { Users, TrendingUp, PieChart, Mail, FileText, Megaphone } from "lucide-react";
 import { requireUser } from "@/lib/auth/guard";
 import { isPrivileged } from "@/lib/auth/roles";
 import {
@@ -105,6 +105,16 @@ export default async function HomePage({
               title="ESOPs"
               description="Vested grants and statements"
             />
+            {isHR && (
+              <QuickCard
+                href="/communications"
+                icon={Megaphone}
+                iconBg="#FEF3E7"
+                iconColor="#B45309"
+                title="Communications"
+                description="Send broadcast emails by department"
+              />
+            )}
             <QuickCard
               href="/"
               icon={Mail}

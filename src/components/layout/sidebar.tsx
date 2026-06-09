@@ -9,6 +9,7 @@ import {
   Shield,
   ScrollText,
   Settings,
+  Megaphone,
 } from 'lucide-react';
 import type { Permission, Role } from '@/lib/auth/roles';
 import { cn } from '@/lib/utils';
@@ -31,6 +32,13 @@ const NAV: NavItem[] = [
     label: 'Offer Letters',
     icon: FileText,
     requiredPermission: 'manage_offer_letters',
+    group: 'main',
+  },
+  {
+    href: '/communications',
+    label: 'Communications',
+    icon: Megaphone,
+    requiredPermission: 'manage_employees',
     group: 'main',
   },
   {
