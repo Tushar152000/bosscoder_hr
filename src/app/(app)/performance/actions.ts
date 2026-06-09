@@ -384,6 +384,62 @@ export async function saveManagerEvalAction(args: {
   }
 }
 
+export async function createTestCycleAction(input: {
+  quarter: number;
+  year: number;
+  dueDate: string | null;
+  employeeIds: string[];
+}): Promise<ActionResult<{ cycleId: string }>> {
+  const user = await requireUser();
+  if (!canManageCycles(user)) return { ok: false, error: 'Forbidden' };
+
+  const parsed = z.object({
+    quarter: z.coerce.number().int().min(1).max(4),
+    year: z.coerce.number().int().min(2024).max(2100),
+    employeeIds: z.array(z.string().min(1)).min(1, 'Select at least one employee'),
+  }).safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalid input' };
+
+  try {
+    const name = `Test – Q${input.quarter} ${input.year}`;
+    const cycle = await createCycle({
+      cadence: 'quarterly',
+      month: null,
+      quarter: input.quarter,
+      year: input.year,
+      dueDate: input.dueDate ? new Date(input.dueDate) : null,
+      createdBy: user.uid,
+      nameOverride: name,
+    });
+
+    const allEmps = await getAllEmployeesForTree();
+    const byId = new Map(allEmps.map((e) => [e.employeeId, e]));
+    const selectedEmps = input.employeeIds
+      .map((id) => byId.get(id))
+      .filter((e): e is NonNullable<typeof e> => e != null && e.active);
+
+    if (selectedEmps.length === 0) return { ok: false, error: 'No valid active employees found' };
+
+    const result = await generateSubmissionsForCycle({
+      cycleId: cycle.cycleId,
+      cycleName: cycle.name,
+      employees: selectedEmps,
+      employeesById: byId,
+    });
+
+    await setCycleStatus(cycle.cycleId, 'open', {
+      selfCount: result.selfTotal,
+      managerCount: result.managerTotal,
+    });
+
+    revalidatePath('/performance');
+    revalidatePath(`/performance/cycles/${cycle.cycleId}`);
+    return { ok: true, data: { cycleId: cycle.cycleId } };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Failed to create test cycle' };
+  }
+}
+
 export async function createCycleAndRedirect(input: {
   cadence: Cadence;
   month: number | null;
