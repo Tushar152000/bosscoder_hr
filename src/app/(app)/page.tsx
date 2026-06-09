@@ -1,4 +1,4 @@
-import { Users, TrendingUp, PieChart, Mail, FileText, Megaphone } from "lucide-react";
+import { Users, TrendingUp, PieChart, Mail, FileText, Megaphone, CalendarCheck } from "lucide-react";
 import { requireUser } from "@/lib/auth/guard";
 import { isPrivileged } from "@/lib/auth/roles";
 import {
@@ -88,6 +88,14 @@ export default async function HomePage({
               iconColor="#0C447C"
               title="Employee directory"
               description="Browse teams and reporting lines"
+            />
+            <QuickCard
+              href="/attendance"
+              icon={CalendarCheck}
+              iconBg="#EBF3FE"
+              iconColor="#1D4ED8"
+              title="Attendance"
+              description="Mark attendance, track leaves and balance"
             />
             <QuickCard
               href="/performance"

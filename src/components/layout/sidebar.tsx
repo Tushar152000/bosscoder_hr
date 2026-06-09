@@ -10,6 +10,7 @@ import {
   ScrollText,
   Settings,
   Megaphone,
+  CalendarCheck,
 } from 'lucide-react';
 import type { Permission, Role } from '@/lib/auth/roles';
 import { cn } from '@/lib/utils';
@@ -26,6 +27,7 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { href: '/directory', label: 'Directory', icon: Users, group: 'main' },
+  { href: '/attendance', label: 'Attendance', icon: CalendarCheck, group: 'main' },
   { href: '/performance', label: 'Performance', icon: ClipboardList, group: 'main' },
   {
     href: '/offers',

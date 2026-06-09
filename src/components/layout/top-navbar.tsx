@@ -88,11 +88,11 @@ export function TopNavbar({ user, notifications = [] }: Props) {
   return (
     <>
       <header className="sticky top-0 z-30 h-14 md:h-16 w-full bg-white border-b border-slate-100 shadow-sm">
-        <div className="h-full max-w-[1300px] mx-auto px-4 md:px-6 flex items-center justify-between gap-4">
+        <div className="h-full max-w-[1300px] mx-auto px-4 md:px-0 flex items-center justify-between gap-4">
 
 
           <Link href="/" aria-label="Home" className="shrink-0">
-            <BosscoderLogo width={120} height={25} />
+            <BosscoderLogo width={150} height={25} />
           </Link>
 
           <div className="flex items-center gap-2">
@@ -122,7 +122,6 @@ export function TopNavbar({ user, notifications = [] }: Props) {
         )}
       />
 
-      {/* Drawer panel */}
       <aside
         className={cn(
           "fixed right-0 top-0 z-50 h-full w-72 bg-white shadow-2xl flex flex-col transition-transform duration-300 ease-in-out md:hidden",
@@ -132,7 +131,7 @@ export function TopNavbar({ user, notifications = [] }: Props) {
         {/* Drawer header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
           <Link href="/" onClick={() => setMobileNavOpen(false)}>
-            <BosscoderLogo width={110} height={23} />
+            <BosscoderLogo width={140} height={23} />
           </Link>
           <button
             type="button"

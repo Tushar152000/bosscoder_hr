@@ -5,6 +5,7 @@ import {
   Mail,
   FileText,
   ClipboardCheck,
+  CalendarCheck,
 } from 'lucide-react';
 import { QuickCard } from '@/components/dashboard/quick-card';
 
@@ -61,6 +62,15 @@ export function DashboardMain({
               badgeTone="info"
             />
           )}
+
+          <QuickCard
+            href="/attendance"
+            icon={CalendarCheck}
+            iconBg="#EBF3FE"
+            iconColor="#1D4ED8"
+            title="Attendance"
+            description="Mark attendance, track leaves and balance"
+          />
 
           <QuickCard
             href="/performance"
