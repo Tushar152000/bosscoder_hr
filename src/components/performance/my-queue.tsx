@@ -31,6 +31,7 @@ interface Props {
   hasRail?: boolean;
   mgrEvalByCycle?: Record<string, ReviewSubmission>;
   prevRatingByCycle?: Record<string, number | null>;
+  selfEvalStatusById?: Record<string, string>;
 }
 
 export function MyQueue({
@@ -40,6 +41,7 @@ export function MyQueue({
   hasRail = false,
   mgrEvalByCycle,
   prevRatingByCycle,
+  selfEvalStatusById = {},
 }: Props) {
   const now = useMemo(() => new Date(), []);
 
@@ -58,9 +60,12 @@ export function MyQueue({
       const isPending = sub.status === 'not-started' || sub.status === 'in-progress';
       const urgency = urgencyOf(sub.status, daysLeft);
       const isUrgent = isPending && (urgency === 'critical' || urgency === 'overdue');
-      return { sub, deadline, daysLeft, isPending, isUrgent, urgency };
+      const selfEvalStatus = sub.kind === 'manager'
+        ? (selfEvalStatusById[sub.subjectEmployeeId] ?? null)
+        : null;
+      return { sub, deadline, daysLeft, isPending, isUrgent, urgency, selfEvalStatus };
     });
-  }, [submissions, cyclesById, kind, now]);
+  }, [submissions, cyclesById, kind, now, selfEvalStatusById]);
 
   // FY options derived from ALL items (before filtering)
   const fyOptions = useMemo(() => {

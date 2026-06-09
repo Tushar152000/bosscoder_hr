@@ -54,6 +54,7 @@ export interface Enriched {
   isPending: boolean;
   isUrgent: boolean;
   urgency: Urgency;
+  selfEvalStatus?: string | null;
 }
 
 const URGENCY: Record<Urgency, { iconWrap: string; icon: typeof ClipboardList; bar: string }> = {
@@ -66,7 +67,7 @@ const URGENCY: Record<Urgency, { iconWrap: string; icon: typeof ClipboardList; b
 };
 
 export function FormCard({ item }: { item: Enriched }) {
-  const { sub, daysLeft, urgency } = item;
+  const { sub, daysLeft, urgency, selfEvalStatus } = item;
   const s = URGENCY[urgency];
   const Icon = s.icon;
   const title = sub.kind === 'self' ? 'Self-evaluation' : `Evaluate ${sub.subjectName}`;
@@ -88,7 +89,7 @@ export function FormCard({ item }: { item: Enriched }) {
         <div className={cn('grid h-10 w-10 shrink-0 place-items-center rounded-lg', s.iconWrap)}>
           <Icon className="h-5 w-5" />
         </div>
-        <StatusPill status={sub.status} />
+        <StatusPill status={sub.status} selfEvalStatus={selfEvalStatus} />
       </div>
       <div className="min-w-0">
         <div className="truncate text-[13px] font-medium text-slate-900">{title}</div>
@@ -152,12 +153,15 @@ function DeadlineLine({ item, daysLeft }: { item: Enriched; daysLeft: number | n
   );
 }
 
-function StatusPill({ status }: { status: ReviewSubmission['status'] }) {
+function StatusPill({ status, selfEvalStatus }: { status: ReviewSubmission['status']; selfEvalStatus?: string | null }) {
+  const selfDone = selfEvalStatus === 'submitted' || selfEvalStatus === 'locked';
   const map: Record<ReviewSubmission['status'], { label: string; cls: string }> = {
-    submitted:     { label: 'Submitted',   cls: 'bg-[#E1F5EE] text-[#0F6E56]' },
-    'in-progress': { label: 'In progress', cls: 'bg-amber-50 text-amber-700'  },
-    'not-started': { label: 'Not started', cls: 'bg-slate-100 text-slate-600' },
-    locked:        { label: 'Locked',      cls: 'bg-slate-100 text-slate-500' },
+    submitted:     { label: 'Submitted',          cls: 'bg-[#E1F5EE] text-[#0F6E56]' },
+    'in-progress': { label: 'In progress',        cls: 'bg-amber-50 text-amber-700'  },
+    'not-started': selfDone
+      ? { label: 'Ready to evaluate', cls: 'bg-[#EBF3FE] text-[#0C447C]' }
+      : { label: 'Not started',       cls: 'bg-slate-100 text-slate-600' },
+    locked:        { label: 'Locked',             cls: 'bg-slate-100 text-slate-500' },
   };
   const s = map[status];
   return (

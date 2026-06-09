@@ -1,6 +1,4 @@
-import { redirect } from 'next/navigation';
 import { requireUser } from '@/lib/auth/guard';
-import { hasAnyRole } from '@/lib/auth/roles';
 import { getAllEmployeesForTree } from '@/lib/firestore/employees';
 import { initials } from '@/lib/utils';
 import { colorForName } from '@/lib/directory/colors';
@@ -10,11 +8,7 @@ import { OrgTreeClient, type TreeNodeData } from '@/components/directory/org-tre
 export const metadata = { title: 'Org tree' };
 
 export default async function OrgTreePage() {
-  const user = await requireUser();
-  if (!hasAnyRole(user.roles, 'founder', 'hr')) {
-    redirect('/?error=forbidden');
-  }
-
+  await requireUser();
   const employees = await getAllEmployeesForTree();
 
   // Build children map for stats

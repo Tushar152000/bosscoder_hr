@@ -56,10 +56,11 @@ export async function createCycle(args: {
   year: number;
   dueDate: Date | null;
   createdBy: string;
+  nameOverride?: string;
 }): Promise<ReviewCycle> {
   const ref = adminDb.collection(COL).doc();
   const cycleId = ref.id;
-  const name = buildCycleName(args);
+  const name = args.nameOverride ?? buildCycleName(args);
 
   const data: Partial<ReviewCycleStored> = {
     cycleId,

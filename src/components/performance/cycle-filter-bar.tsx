@@ -3,14 +3,10 @@
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Filter, X } from 'lucide-react';
 import { Select } from '@/components/ui/select';
-import { MONTH_OPTIONS } from '@/lib/performance/cycle-period';
 
 interface Props {
-  /** Years to offer in the dropdown. Newest first. */
   years: number[];
-  /** Cycles matching the active filter — for the inline result count. */
   matchedCycleCount: number;
-  /** Total cycles available (unfiltered) — to know whether to render at all. */
   totalCycleCount: number;
 }
 
@@ -18,15 +14,15 @@ export function CycleFilterBar({ years, matchedCycleCount, totalCycleCount }: Pr
   const router = useRouter();
   const sp = useSearchParams();
   const year = sp.get('year') ?? '';
-  const month = sp.get('month') ?? '';
-  const isFiltered = Boolean(year || month);
+  const isFiltered = Boolean(year);
 
   if (totalCycleCount === 0) return null;
 
-  function update(key: 'year' | 'month', value: string) {
+  function update(value: string) {
     const params = new URLSearchParams(sp.toString());
-    if (value) params.set(key, value);
-    else params.delete(key);
+    if (value) params.set('year', value);
+    else params.delete('year');
+    params.delete('month');
     const qs = params.toString();
     router.push(`/performance${qs ? `?${qs}` : ''}`, { scroll: false });
   }
@@ -47,28 +43,13 @@ export function CycleFilterBar({ years, matchedCycleCount, totalCycleCount }: Pr
       </span>
       <Select
         value={year}
-        onChange={(e) => update('year', e.target.value)}
+        onChange={(e) => update(e.target.value)}
         className="h-8 w-32"
         aria-label="Filter by year"
       >
         <option value="">All years</option>
         {years.map((y) => (
-          <option key={y} value={y}>
-            {y}
-          </option>
-        ))}
-      </Select>
-      <Select
-        value={month}
-        onChange={(e) => update('month', e.target.value)}
-        className="h-8 w-36"
-        aria-label="Filter by month"
-      >
-        <option value="">All months</option>
-        {MONTH_OPTIONS.map((m) => (
-          <option key={m.value} value={m.value}>
-            {m.label}
-          </option>
+          <option key={y} value={y}>{y}</option>
         ))}
       </Select>
       {isFiltered && (

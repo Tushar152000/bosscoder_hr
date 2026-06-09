@@ -1,4 +1,5 @@
-import { TrendingUp } from "lucide-react";
+import { TrendingUp, Home, ChevronRight } from "lucide-react";
+import Link from "next/link";
 import { requireUser } from "@/lib/auth/guard";
 import { isPrivileged } from "@/lib/auth/roles";
 import {
@@ -16,6 +17,7 @@ import { HowItWorks } from "@/components/esop/how-it-works";
 import { VestingTimeline } from "@/components/esop/vesting-timeline";
 import { ShareBreakdown } from "@/components/esop/share-breakdown";
 import { EsopClientPanel } from "@/components/esop/esop-client-panel";
+import { EsopCalculatingModal } from "@/components/esop/esop-calculating-modal";
 import type { EsopGrantWithPlan } from "@/types/esop";
 
 export const metadata = { title: "ESOPs — Equity portal" };
@@ -23,6 +25,7 @@ export const metadata = { title: "ESOPs — Equity portal" };
 export default async function EsopPage() {
   const user = await requireUser();
   const isAdmin = isPrivileged(user.roles);
+  const isFounder = user.roles.includes('founder');
 
   const me = await getEmployeeByUserUid(user.uid);
   const rawGrants: EsopGrantWithPlan[] = me
@@ -55,10 +58,19 @@ export default async function EsopPage() {
     : [[], [], []];
 
   const hasGrants = myGrants.length > 0;
+  const role = isFounder ? 'founder' : isAdmin ? 'hr' : 'employee';
 
   return (
     <div className="mx-auto max-w-[1300px] py-8 space-y-6">
-      <div className="rounded-xl border border-[#bcd2ff] bg-[#EBF3FE] px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <EsopCalculatingModal role={role} />
+      <nav className="flex items-center gap-1.5 text-[14px] text-slate-400">
+        <Link href="/" className="flex items-center hover:text-slate-600 transition-colors">
+          <Home size={12} />
+        </Link>
+        <ChevronRight size={11} />
+        <span className="text-slate-500 font-medium">ESOPs</span>
+      </nav>
+      {!isFounder && <div className="rounded-xl border border-[#bcd2ff] bg-[#EBF3FE] px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <p className="text-[10px] font-semibold tracking-[1.4px] uppercase text-[#0C447C]">
             Employee stock ownership plan
@@ -89,13 +101,14 @@ export default async function EsopPage() {
             </div>
           </div>
         )}
-      </div>
+      </div>}
 
       {isAdmin && (
         <EsopClientPanel
           plans={plans}
           employees={allEmployees}
           allGrants={allGrants}
+          isFounder={isFounder}
         />
       )}
 

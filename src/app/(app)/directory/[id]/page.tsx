@@ -132,6 +132,9 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
               )}
               <DataRow label="Phone" value={employee.phone ?? '—'} />
               <DataRow label="Joining date" value={formatDate(employee.joiningDate)} />
+              {employee.dateOfBirth && (
+                <DataRow label="Birthday" value={employee.dateOfBirth} />
+              )}
               <DataRow
                 label="Reporting manager"
                 value={

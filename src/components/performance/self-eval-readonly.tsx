@@ -1,5 +1,5 @@
 import { formatDate } from '@/lib/format';
-import { Check, Clock, Lock, Pencil } from 'lucide-react';
+import { Check, ChevronDown, Clock, Lock, Pencil } from 'lucide-react';
 import {
   SELF_EVAL_QUESTION_KEYS,
   SELF_EVAL_QUESTION_LABELS,
@@ -12,47 +12,37 @@ interface Props {
 }
 
 export function SelfEvalReadOnly({ selfEval, subjectName }: Props) {
-  if (!selfEval) {
-    return (
-      <div className="rounded-xl border border-[#E2E8F0] bg-white shadow-card overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#E2E8F0]">
-          <p className="text-[13px] font-semibold text-slate-700">Self-evaluation</p>
-          <p className="text-[12px] text-slate-400 mt-0.5">
-            {subjectName ?? 'The employee'} hasn&apos;t been assigned a self-eval for this cycle.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  if (!selfEval) return null;
 
   const isFinal = selfEval.status === 'submitted' || selfEval.status === 'locked';
   const answers = selfEval.selfAnswers;
 
   return (
-    <div className="rounded-xl border border-[#E2E8F0] bg-white shadow-card overflow-hidden">
-      <div className="px-5 py-4 border-b border-[#E2E8F0] flex items-center justify-between gap-3">
+    <details className="rounded-xl border border-[#E2E8F0] bg-white shadow-card overflow-hidden group">
+      <summary className="px-5 py-4 flex items-center justify-between gap-3 cursor-pointer hover:bg-[#F8FAFC] transition-colors list-none">
         <div>
           <p className="text-[13px] font-semibold text-slate-700">
-            Self-evaluation by {selfEval.subjectName}
+            {subjectName ?? selfEval.subjectName}&apos;s self-evaluation
           </p>
           <p className="text-[12px] text-slate-400 mt-0.5">
             {isFinal && selfEval.submittedAt
-              ? `Submitted on ${formatDate(selfEval.submittedAt)}.`
-              : 'Not yet submitted — answers may still change.'}
+              ? `Submitted ${formatDate(selfEval.submittedAt)} · click to expand`
+              : 'Not yet submitted · click to expand'}
           </p>
         </div>
-        <StatusPill status={selfEval.status} />
-      </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <StatusPill status={selfEval.status} />
+          <ChevronDown size={15} className="text-slate-400 transition-transform group-open:rotate-180" />
+        </div>
+      </summary>
 
-      <div className="px-5 py-4">
+      <div className="px-5 pb-5 border-t border-[#E2E8F0]">
         {!answers || !isFinal ? (
-          <p className="text-[13px] text-slate-400 italic">
-            {answers
-              ? 'Draft in progress — wait for the employee to submit before relying on these answers.'
-              : 'No answers yet.'}
+          <p className="text-[13px] text-slate-400 italic pt-4">
+            {answers ? 'Draft in progress — wait for the employee to submit.' : 'No answers yet.'}
           </p>
         ) : (
-          <ol className="space-y-4">
+          <ol className="space-y-4 pt-4">
             {SELF_EVAL_QUESTION_KEYS.map((key, i) => {
               const value = answers[key] ?? '';
               return (
@@ -72,7 +62,7 @@ export function SelfEvalReadOnly({ selfEval, subjectName }: Props) {
           </ol>
         )}
       </div>
-    </div>
+    </details>
   );
 }
 

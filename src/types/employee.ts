@@ -46,6 +46,8 @@ export interface EmployeeStored {
     pincode: EncryptedField | null;
   };
   dob: EncryptedField | null;
+  /** MM-DD only (e.g. "06-02") — no year stored for privacy. Used for birthday display. */
+  dateOfBirth?: string;
   emergencyContact: {
     name: EncryptedField | null;
     phone: EncryptedField | null;
@@ -74,6 +76,8 @@ export interface EmployeePublic {
   status: EmployeeStatus;
   exitDate: Date | null;
   active: boolean;
+  /** MM-DD only (e.g. "06-02") — no year stored for privacy. */
+  dateOfBirth?: string;
   createdAt: Date | null;
   updatedAt: Date | null;
 }
@@ -151,6 +155,8 @@ export interface EmployeeInput {
     pincode: string | null;
   };
   dob: string | null;
+  /** MM-DD only (e.g. "06-02") — no year for privacy. Used for birthday display. */
+  dateOfBirth?: string | null;
   emergencyContact: {
     name: string | null;
     phone: string | null;

@@ -73,3 +73,23 @@ export async function markAllNotificationsRead(uid: string): Promise<void> {
   }
   await batch.commit();
 }
+
+export async function clearAllNotifications(uid: string): Promise<void> {
+  const snap = await adminDb
+    .collection(HR.notifications)
+    .where('uid', '==', uid)
+    .get();
+  if (snap.empty) return;
+  let batch = adminDb.batch();
+  let ops = 0;
+  for (const doc of snap.docs) {
+    batch.delete(doc.ref);
+    ops++;
+    if (ops === 450) {
+      await batch.commit();
+      batch = adminDb.batch();
+      ops = 0;
+    }
+  }
+  if (ops > 0) await batch.commit();
+}

@@ -20,39 +20,22 @@ import {
 import type { ReactNode, ComponentType } from 'react';
 import { cn } from '@/lib/utils';
 import { formatDate } from '@/lib/format';
-import { MONTH_OPTIONS } from '@/lib/performance/cycle-period';
 import type { ReviewCycle } from '@/types/review';
 
-const MONTH_NAMES: Record<number, string> = Object.fromEntries(
-  MONTH_OPTIONS.map((m) => [m.value, m.label]),
-);
-
 interface Props {
-  /** Already-filtered cycle rows to display. */
   cycles: ReviewCycle[];
-  /** Total unfiltered count — for the strip's "Showing N cycles". */
-  allCount: number;
-  /** FY option strings for the dropdown, newest first. */
   fyOptions: string[];
-  /** Active FY filter, e.g. "FY 2025-26". */
   fy: string | null;
-  /** Active month filter (1–12). */
-  month: number | null;
-  /** Raw URL status param: 'open' | 'closed' | 'scheduled' | null. */
   statusParam: string | null;
-  /** Current view/name params to preserve on filter navigation. */
   view?: string | null;
   viewName?: string | null;
-  /** Whether the current user can create new cycles. */
   canCreate?: boolean;
 }
 
 export function CyclesTable({
   cycles,
-  allCount,
   fyOptions,
   fy,
-  month,
   statusParam,
   view,
   viewName,
@@ -61,40 +44,35 @@ export function CyclesTable({
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const monthVal = month ? String(month) : '';
-  const activeCount = [fy, monthVal || null, statusParam].filter(Boolean).length;
+  const activeCount = [fy, statusParam].filter(Boolean).length;
   const hasFilters = activeCount > 0;
 
   function buildUrl(
-    overrides: Partial<Record<'fy' | 'month' | 'status', string | null>>,
+    overrides: Partial<Record<'fy' | 'status', string | null>>,
   ) {
     const next = {
       fy:     'fy'     in overrides ? overrides.fy     : fy,
-      month:  'month'  in overrides ? overrides.month  : monthVal || null,
       status: 'status' in overrides ? overrides.status : statusParam,
     };
     const params = new URLSearchParams();
-    if (view)         params.set('view', view);
-    if (viewName)     params.set('name', viewName);
-    if (next.fy)      params.set('fy', next.fy);
-    if (next.month)   params.set('month', next.month);
-    if (next.status)  params.set('status', next.status);
+    if (view)        params.set('view', view);
+    if (viewName)    params.set('name', viewName);
+    if (next.fy)     params.set('fy', next.fy);
+    if (next.status) params.set('status', next.status);
     const qs = params.toString();
     return `/performance${qs ? `?${qs}` : ''}`;
   }
 
-  function update(key: 'fy' | 'month' | 'status', value: string) {
+  function update(key: 'fy' | 'status', value: string) {
     router.replace(buildUrl({ [key]: value || null }), { scroll: false });
   }
 
-  function clearOne(key: 'fy' | 'month' | 'status') {
+  function clearOne(key: 'fy' | 'status') {
     router.replace(buildUrl({ [key]: null }), { scroll: false });
   }
 
   function clearAll() {
-    router.replace(buildUrl({ fy: null, month: null, status: null }), {
-      scroll: false,
-    });
+    router.replace(buildUrl({ fy: null, status: null }), { scroll: false });
   }
 
   const statusOpts = [
@@ -123,7 +101,7 @@ export function CyclesTable({
 
         {/* Right: filter controls + divider + New cycle button */}
         <div className="flex items-center gap-1.5 flex-wrap">
-          {/* Desktop: three inline dropdowns */}
+          {/* Desktop: two inline dropdowns */}
           <div className="hidden md:flex items-center gap-1.5">
             <FilterSelect
               value={fy ?? ''}
@@ -131,15 +109,6 @@ export function CyclesTable({
               placeholder="All years"
               icon={Calendar}
               options={fyOptions.map((f) => ({ value: f, label: f }))}
-            />
-            <FilterSelect
-              value={monthVal}
-              onValueChange={(v) => update('month', v)}
-              placeholder="All months"
-              options={MONTH_OPTIONS.map((m) => ({
-                value: String(m.value),
-                label: m.label,
-              }))}
             />
             <FilterSelect
               value={statusParam ?? ''}
@@ -190,12 +159,6 @@ export function CyclesTable({
           </span>
           {fy && (
             <FilterChip label={fy} onRemove={() => clearOne('fy')} />
-          )}
-          {month && (
-            <FilterChip
-              label={MONTH_NAMES[month] ?? String(month)}
-              onRemove={() => clearOne('month')}
-            />
           )}
           {statusParam && (
             <FilterChip
@@ -280,21 +243,6 @@ export function CyclesTable({
                   placeholder="All years"
                   icon={Calendar}
                   options={fyOptions.map((f) => ({ value: f, label: f }))}
-                  fullWidth
-                />
-              </div>
-              <div>
-                <label className="text-[11px] font-medium text-slate-500 mb-1.5 block">
-                  Month
-                </label>
-                <FilterSelect
-                  value={monthVal}
-                  onValueChange={(v) => { update('month', v); }}
-                  placeholder="All months"
-                  options={MONTH_OPTIONS.map((m) => ({
-                    value: String(m.value),
-                    label: m.label,
-                  }))}
                   fullWidth
                 />
               </div>

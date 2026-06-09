@@ -3,6 +3,7 @@
 import type React from 'react';
 import { useState } from 'react';
 import Link from 'next/link';
+import { usePathname, useSearchParams } from 'next/navigation';
 import {
   ArrowDownRight,
   ArrowRight,
@@ -11,14 +12,6 @@ import {
   LineChart,
   Users,
 } from 'lucide-react';
-import {
-  Area,
-  AreaChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import { cn, initials } from '@/lib/utils';
 import { colorForName } from '@/lib/directory/colors';
 import { formatDate } from '@/lib/format';
@@ -40,6 +33,17 @@ const MONTHS_LONG = [
 ];
 const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
+function cyclePeriodMs(cycleName: string): number {
+  const m = MONTHS_LONG.findIndex((mm) => cycleName.startsWith(mm));
+  if (m >= 0) {
+    const yr = parseInt(cycleName.slice(MONTHS_LONG[m].length).trim(), 10);
+    if (!isNaN(yr)) return new Date(yr, m, 1).getTime();
+  }
+  const q = /^Q(\d)\s+(\d{4})$/.exec(cycleName);
+  if (q) return new Date(parseInt(q[2], 10), (parseInt(q[1], 10) - 1) * 3, 1).getTime();
+  return 0;
+}
+
 function shortLabel(cycleName: string): string {
   const m = MONTHS_LONG.find((mm) => cycleName.startsWith(mm));
   if (m) {
@@ -53,8 +57,8 @@ function shortLabel(cycleName: string): string {
 }
 
 function ratingColor(r: number): string {
-  if (r >= 4.0) return 'text-[#0F6E56]';
-  if (r >= 3.0) return 'text-[#854F0B]';
+  if (r <= 2.0) return 'text-[#0F6E56]';
+  if (r <= 3.0) return 'text-[#854F0B]';
   return 'text-[#993C1D]';
 }
 
@@ -69,6 +73,10 @@ export function MyTeamRail({ reports }: Props) {
       ?.employeeId ?? null;
 
   const [openId, setOpenId] = useState<string | null>(defaultOpen);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const qs = searchParams.toString();
+  const fromUrl = encodeURIComponent(qs ? `${pathname}?${qs}` : pathname);
 
   if (reports.length === 0) return null;
 
@@ -106,8 +114,9 @@ export function MyTeamRail({ reports }: Props) {
             latestRating != null && prevRating != null ? latestRating - prevRating : null;
           const avgLast3 = avg(ratings.slice(-3));
 
-          const chartData = report.history
+          const chartData = [...report.history]
             .filter((s) => s.managerOverallRating != null)
+            .sort((a, b) => cyclePeriodMs(a.cycleName) - cyclePeriodMs(b.cycleName))
             .slice(-6)
             .map((s) => ({
               id: s.submissionId,
@@ -184,10 +193,10 @@ export function MyTeamRail({ reports }: Props) {
                           <div
                             className={cn(
                               'inline-flex items-center gap-0.5 text-[9px] font-medium px-1.5 py-0.5 rounded-full mt-0.5',
-                              delta > 0 ? 'bg-[#E1F5EE] text-[#0F6E56]' : 'bg-[#FAECE7] text-[#993C1D]',
+                              delta < 0 ? 'bg-[#E1F5EE] text-[#0F6E56]' : 'bg-[#FAECE7] text-[#993C1D]',
                             )}
                           >
-                            {delta > 0 ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
+                            {delta < 0 ? <ArrowDownRight size={10} /> : <ArrowUpRight size={10} />}
                             {Math.abs(delta).toFixed(2)}
                           </div>
                         )}
@@ -220,83 +229,65 @@ export function MyTeamRail({ reports }: Props) {
                     </div>
                   ) : (
                     <>
-                      {/* Mini trend chart */}
-                      <div className="mt-2.5 bg-surface-muted border border-divider rounded-md p-2.5 mb-2.5">
-                        <p className="text-[9px] font-medium tracking-[0.8px] uppercase text-slate-400 mb-1.5">
-                          Rating trend
-                        </p>
-                        <div style={{ width: '100%', height: 60 }}>
-                          <ResponsiveContainer>
-                            <AreaChart
-                              data={chartData}
-                              margin={{ top: 4, right: 4, left: -24, bottom: 0 }}
-                            >
-                              <defs>
-                                <linearGradient
-                                  id={`railGrad-${report.employeeId}`}
-                                  x1="0" y1="0" x2="0" y2="1"
+                      {/* Rating trend — bar visualization */}
+                      <div className="mt-2.5 bg-white border border-[#E2E8F0] rounded-lg p-3 mb-2.5">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-[9px] font-semibold tracking-[0.8px] uppercase text-slate-400">
+                            Rating trend
+                          </p>
+                          <span className="text-[8px] text-slate-400">
+                            {chartData.length} {chartData.length === 1 ? 'cycle' : 'cycles'}
+                          </span>
+                        </div>
+                        <div className="flex items-end gap-1.5">
+                          {chartData.map((d, idx) => {
+                            const pct = d.rating != null ? ((5 - d.rating) / 4) * 100 : 0;
+                            const barColor =
+                              d.rating == null ? '#CBD5E1'
+                              : d.rating <= 2 ? '#0F6E56'
+                              : d.rating <= 3 ? '#854F0B'
+                              : '#993C1D';
+                            const isLatest = idx === chartData.length - 1;
+                            return (
+                              <div key={d.id} className="flex-1 flex flex-col items-center gap-1">
+                                {d.rating != null && (
+                                  <span
+                                    style={{ fontSize: 8.5, color: barColor, fontWeight: 700, lineHeight: 1 }}
+                                  >
+                                    {d.rating.toFixed(1)}
+                                  </span>
+                                )}
+                                <div
+                                  className="w-full rounded-sm flex flex-col justify-end"
+                                  style={{ height: 40, background: '#F1F5F9' }}
                                 >
-                                  <stop offset="0%" stopColor="#0C447C" stopOpacity={0.12} />
-                                  <stop offset="100%" stopColor="#0C447C" stopOpacity={0.01} />
-                                </linearGradient>
-                              </defs>
-                              <XAxis dataKey="label" hide />
-                              <YAxis domain={[1, 5]} hide />
-                              <Tooltip
-                                contentStyle={{
-                                  background: '#ffffff',
-                                  border: '1px solid #E2E8F0',
-                                  borderRadius: 6,
-                                  fontSize: 11,
-                                  color: '#1e293b',
-                                  padding: '4px 8px',
-                                }}
-                                labelStyle={{ color: '#64748b', marginBottom: 2 }}
-                                formatter={(value: unknown) => typeof value === 'number' ? [`${value.toFixed(2)} / 5`, 'Rating'] : ['—', '']}
-                              />
-                              <Area
-                                type="monotone"
-                                dataKey="rating"
-                                stroke="#0C447C"
-                                strokeWidth={1.5}
-                                fill={`url(#railGrad-${report.employeeId})`}
-                                dot={(props: { cx?: number; cy?: number; index?: number }) => {
-                                  const { cx = 0, cy = 0, index } = props;
-                                  const isLatest = index === chartData.length - 1;
-                                  return isLatest ? (
-                                    <circle
-                                      key={`dot-last-${index}`}
-                                      cx={cx}
-                                      cy={cy}
-                                      r={3}
-                                      fill="#0C447C"
-                                      stroke="white"
-                                      strokeWidth={1.5}
-                                    />
-                                  ) : (
-                                    <circle
-                                      key={`dot-${index}`}
-                                      cx={cx}
-                                      cy={cy}
-                                      r={2.5}
-                                      fill="#0C447C"
-                                    />
-                                  );
-                                }}
-                                activeDot={{ r: 4, fill: '#0C447C', stroke: 'white', strokeWidth: 1.5 }}
-                                connectNulls
-                              />
-                            </AreaChart>
-                          </ResponsiveContainer>
+                                  <div
+                                    className="w-full rounded-sm"
+                                    style={{
+                                      height: `${pct}%`,
+                                      backgroundColor: barColor,
+                                      opacity: isLatest ? 1 : 0.65,
+                                    }}
+                                  />
+                                </div>
+                                <span
+                                  style={{
+                                    fontSize: 7.5,
+                                    color: isLatest ? '#475569' : '#94a3b8',
+                                    fontWeight: isLatest ? 600 : 400,
+                                    textAlign: 'center',
+                                    lineHeight: 1.2,
+                                  }}
+                                >
+                                  {d.label}
+                                </span>
+                              </div>
+                            );
+                          })}
                         </div>
-                        {/* X-axis cycle labels */}
-                        <div className="flex justify-between mt-1">
-                          {chartData.map((d) => (
-                            <span key={d.id} className="text-[8px] text-slate-400">
-                              {d.label}
-                            </span>
-                          ))}
-                        </div>
+                        <p className="text-[7.5px] text-slate-400 mt-2 text-center">
+                          Taller bar = better rating · 1 is top, 5 is lowest
+                        </p>
                       </div>
 
                       {/* Stat tiles */}
@@ -336,7 +327,7 @@ export function MyTeamRail({ reports }: Props) {
                           {recent.map((item) => (
                             <Link
                               key={item.formId}
-                              href={`/performance/submissions/${item.formId}`}
+                              href={`/performance/submissions/${item.formId}?from=${fromUrl}`}
                               className="flex items-center justify-between py-1 px-0.5 rounded hover:bg-surface transition-colors"
                             >
                               <div>

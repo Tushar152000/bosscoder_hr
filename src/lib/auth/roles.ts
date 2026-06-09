@@ -28,6 +28,7 @@ const ROLE_DEFAULTS: Record<Role, readonly Permission[]> = {
     'manage_employees',
     'manage_review_cycles',
     'manage_offer_letters',
+    'manage_roles',
     'view_audit_log',
   ],
   manager: [],

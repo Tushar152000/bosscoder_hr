@@ -62,13 +62,22 @@ export default async function CycleDetailPage({ params }: Props) {
     .filter((s) => s.kind === 'manager' && isReviewer(s))
     .sort((a, b) => a.subjectName.localeCompare(b.subjectName));
 
-  const teamPairs: TeamPair[] = myManagerEvals.map((mEval) => ({
+  const allTeamPairs: TeamPair[] = myManagerEvals.map((mEval) => ({
     managerEval: mEval,
     selfEval:
       allSubs.find(
         (s) => s.kind === 'self' && s.subjectEmployeeId === mEval.subjectEmployeeId,
       ) ?? null,
   }));
+
+  // Founders only see cards where the self-eval is submitted or the eval is already done
+  const teamPairs = isFounder
+    ? allTeamPairs.filter((p) => {
+        const evalDone = p.managerEval.status === 'submitted' || p.managerEval.status === 'locked';
+        const selfDone = p.selfEval?.status === 'submitted' || p.selfEval?.status === 'locked';
+        return evalDone || selfDone;
+      })
+    : allTeamPairs;
 
   const myManagedDepts = me?.managedDepartments ?? [];
   const showDeptBrowse = isAdmin || myManagedDepts.length > 0;

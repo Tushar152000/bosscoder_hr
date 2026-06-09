@@ -202,6 +202,17 @@ export function EmployeeForm({ mode, initial, employeeId, managers, canEditSensi
               required
             />
           </Field>
+          <Field label="Birthday" optional helpText="Only month and day are saved — year is never stored">
+            <input
+              type="date"
+              className={INPUT_CLASS}
+              value={form.dateOfBirth ? `2000-${form.dateOfBirth}` : ''}
+              onChange={(e) => {
+                const raw = e.target.value; // "2000-MM-DD"
+                set('dateOfBirth', raw ? raw.slice(5) : null); // store only MM-DD
+              }}
+            />
+          </Field>
           <Field label="Exit date" optional helpText="Only if status is on-notice or left">
             <input
               type="date"

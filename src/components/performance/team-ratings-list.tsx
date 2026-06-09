@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { ArrowRight, CheckCircle2, ChevronDown, ClipboardList, Clock, TrendingDown, TrendingUp } from 'lucide-react';
 import { RatingChart, type RatingPoint } from '@/components/performance/rating-chart';
 import { StatCard } from '@/components/performance/stat-card';
@@ -37,6 +38,10 @@ export interface TeamMemberSummary {
 
 export function TeamRatingsList({ rows }: { rows: TeamMemberSummary[] }) {
   const [openId, setOpenId] = useState<string | null>(null);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const qs = searchParams.toString();
+  const fromUrl = encodeURIComponent(qs ? `${pathname}?${qs}` : pathname);
   if (rows.length === 0) return null;
 
   return (
@@ -94,7 +99,7 @@ export function TeamRatingsList({ rows }: { rows: TeamMemberSummary[] }) {
                     if (isFinal) {
                       return (
                         <Link
-                          href={`/performance/submissions/${oce.managerSubId}`}
+                          href={`/performance/submissions/${oce.managerSubId}?from=${fromUrl}`}
                           className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[12px] font-medium transition border border-[#E2E8F0] bg-white text-slate-600 hover:bg-[#F8FAFC]"
                         >
                           View <ArrowRight className="h-3 w-3" />
@@ -113,7 +118,7 @@ export function TeamRatingsList({ rows }: { rows: TeamMemberSummary[] }) {
                     }
                     return (
                       <Link
-                        href={`/performance/submissions/${oce.managerSubId}`}
+                        href={`/performance/submissions/${oce.managerSubId}?from=${fromUrl}`}
                         className="inline-flex items-center gap-1 rounded-lg px-2.5 py-1.5 text-[12px] font-medium transition bg-[#0C447C] text-white hover:bg-[#0a3a6a]"
                       >
                         Evaluate <ArrowRight className="h-3 w-3" />
@@ -219,8 +224,11 @@ function RatingSummary({ history }: { history: ReviewSubmission[] }) {
 // ── Expanded panel ────────────────────────────────────────────────────────────
 
 function ExpandedPanel({ row }: { row: TeamMemberSummary }) {
-  // null = all-time trend view; a submissionId = that cycle's breakdown
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const qs = searchParams.toString();
+  const fromUrl = encodeURIComponent(qs ? `${pathname}?${qs}` : pathname);
 
   const submitted = row.history.filter(
     (s) => s.status === 'submitted' || s.status === 'locked',
@@ -233,10 +241,12 @@ function ExpandedPanel({ row }: { row: TeamMemberSummary }) {
 
   const avgFy = avg(ratings);
 
-  const chartData: RatingPoint[] = submitted.map((s) => ({
-    label:  shortLabel(s.cycleName),
-    rating: s.managerOverallRating ?? null,
-  }));
+  const chartData: RatingPoint[] = [...submitted]
+    .sort((a, b) => cyclePeriodMs(a.cycleName) - cyclePeriodMs(b.cycleName))
+    .map((s) => ({
+      label: shortLabel(s.cycleName),
+      rating: s.managerOverallRating ?? null,
+    }));
 
   return (
     <div className="border-t border-[#E2E8F0] bg-[#FAFAF7] px-5 py-5 space-y-4">
@@ -279,7 +289,7 @@ function ExpandedPanel({ row }: { row: TeamMemberSummary }) {
               if (isFinal) {
                 return (
                   <Link
-                    href={`/performance/submissions/${row.openCycleEval.managerSubId}`}
+                    href={`/performance/submissions/${row.openCycleEval.managerSubId}?from=${fromUrl}`}
                     className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[12px] font-medium transition border border-[#E2E8F0] bg-white text-slate-700 hover:bg-[#F8FAFC]"
                   >
                     View evaluation <ArrowRight className="h-3.5 w-3.5" />
@@ -298,7 +308,7 @@ function ExpandedPanel({ row }: { row: TeamMemberSummary }) {
               }
               return (
                 <Link
-                  href={`/performance/submissions/${row.openCycleEval.managerSubId}`}
+                  href={`/performance/submissions/${row.openCycleEval.managerSubId}?from=${fromUrl}`}
                   className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[12px] font-medium transition bg-[#0C447C] text-white hover:bg-[#0a3a6a]"
                 >
                   Fill out evaluation <ArrowRight className="h-3.5 w-3.5" />
@@ -451,7 +461,7 @@ function ExpandedPanel({ row }: { row: TeamMemberSummary }) {
             </div>
 
             <Link
-              href={`/performance/submissions/${selected.submissionId}`}
+              href={`/performance/submissions/${selected.submissionId}?from=${fromUrl}`}
               className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#E2E8F0] bg-white px-3 py-2 text-[12px] font-medium text-slate-700 shadow-card transition hover:bg-[#F8FAFC]"
             >
               View full form
@@ -491,4 +501,15 @@ function shortLabel(cycleName: string): string {
   const q = /^Q(\d)\s+(\d{4})$/.exec(cycleName);
   if (q) return `Q${q[1]} ${q[2].slice(-2)}`;
   return cycleName;
+}
+
+function cyclePeriodMs(cycleName: string): number {
+  const m = MONTHS_LONG.findIndex((mm) => cycleName.startsWith(mm));
+  if (m >= 0) {
+    const yr = parseInt(cycleName.slice(MONTHS_LONG[m].length).trim(), 10);
+    if (!isNaN(yr)) return new Date(yr, m, 1).getTime();
+  }
+  const q = /^Q(\d)\s+(\d{4})$/.exec(cycleName);
+  if (q) return new Date(parseInt(q[2], 10), (parseInt(q[1], 10) - 1) * 3, 1).getTime();
+  return 0;
 }

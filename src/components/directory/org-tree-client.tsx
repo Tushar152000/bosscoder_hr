@@ -757,24 +757,21 @@ export function OrgTreeClient({
   }
 
   function handleToggleDept(dept: string) {
-    setActiveDepts(prev => {
-      let next: Set<string>;
-      if (prev.size === 0) {
-        // start from all-active; deselect just this dept
-        next = new Set(byDepartment.map(d => d.name).filter(d => d !== dept));
+    let next: Set<string>;
+    if (activeDepts.size === 0) {
+      next = new Set(byDepartment.map(d => d.name).filter(d => d !== dept));
+    } else {
+      next = new Set(activeDepts);
+      if (next.has(dept)) {
+        next.delete(dept);
+        if (next.size === byDepartment.length) next = new Set();
       } else {
-        next = new Set(prev);
-        if (next.has(dept)) {
-          next.delete(dept);
-          if (next.size === byDepartment.length) next = new Set(); // all = empty
-        } else {
-          next.add(dept);
-          if (next.size === byDepartment.length) next = new Set();
-        }
+        next.add(dept);
+        if (next.size === byDepartment.length) next = new Set();
       }
-      pushUrl({ dept: next });
-      return next;
-    });
+    }
+    setActiveDepts(next);
+    pushUrl({ dept: next });
   }
 
   function exportCsv() {

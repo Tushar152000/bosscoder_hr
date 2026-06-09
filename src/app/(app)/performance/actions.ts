@@ -8,6 +8,7 @@ import {
   canEditSubmission,
   canManageCycles,
 } from '@/lib/auth/review-access';
+import { founderEmails } from '@/lib/auth/roles';
 import { writeAuditLog } from '@/lib/audit';
 import {
   createCycle,
@@ -197,21 +198,24 @@ async function dispatchCycleOpenNotifications(
   cycleName: string,
   newSubmissions: NewSubmissionInfo[]
 ): Promise<void> {
-  const byUid = new Map<string, { hasSelf: boolean; managerCount: number }>();
+  const founders = new Set(founderEmails());
+  const byUid = new Map<string, { hasSelf: boolean; managerCount: number; isFounder: boolean }>();
   for (const s of newSubmissions) {
     if (!s.reviewerUid) continue;
     let entry = byUid.get(s.reviewerUid);
     if (!entry) {
-      entry = { hasSelf: false, managerCount: 0 };
+      entry = { hasSelf: false, managerCount: 0, isFounder: founders.has(s.reviewerEmail.toLowerCase()) };
       byUid.set(s.reviewerUid, entry);
     }
     if (s.kind === 'self') entry.hasSelf = true;
     else entry.managerCount++;
   }
 
-  const entries = [...byUid.entries()].map(([uid, { hasSelf, managerCount }]) => {
+  const entries = [...byUid.entries()].map(([uid, { hasSelf, managerCount, isFounder }]) => {
     let title: string;
-    if (hasSelf && managerCount > 0) {
+    if (isFounder) {
+      title = `Your team's ${cycleName} evaluations are ready for review`;
+    } else if (hasSelf && managerCount > 0) {
       title = `Your ${cycleName} evaluations are ready`;
     } else if (hasSelf) {
       title = `Your ${cycleName} self-evaluation is ready`;
@@ -380,6 +384,62 @@ export async function saveManagerEvalAction(args: {
   }
 }
 
+export async function createTestCycleAction(input: {
+  quarter: number;
+  year: number;
+  dueDate: string | null;
+  employeeIds: string[];
+}): Promise<ActionResult<{ cycleId: string }>> {
+  const user = await requireUser();
+  if (!canManageCycles(user)) return { ok: false, error: 'Forbidden' };
+
+  const parsed = z.object({
+    quarter: z.coerce.number().int().min(1).max(4),
+    year: z.coerce.number().int().min(2024).max(2100),
+    employeeIds: z.array(z.string().min(1)).min(1, 'Select at least one employee'),
+  }).safeParse(input);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalid input' };
+
+  try {
+    const name = `Test – Q${input.quarter} ${input.year}`;
+    const cycle = await createCycle({
+      cadence: 'quarterly',
+      month: null,
+      quarter: input.quarter,
+      year: input.year,
+      dueDate: input.dueDate ? new Date(input.dueDate) : null,
+      createdBy: user.uid,
+      nameOverride: name,
+    });
+
+    const allEmps = await getAllEmployeesForTree();
+    const byId = new Map(allEmps.map((e) => [e.employeeId, e]));
+    const selectedEmps = input.employeeIds
+      .map((id) => byId.get(id))
+      .filter((e): e is NonNullable<typeof e> => e != null && e.active);
+
+    if (selectedEmps.length === 0) return { ok: false, error: 'No valid active employees found' };
+
+    const result = await generateSubmissionsForCycle({
+      cycleId: cycle.cycleId,
+      cycleName: cycle.name,
+      employees: selectedEmps,
+      employeesById: byId,
+    });
+
+    await setCycleStatus(cycle.cycleId, 'open', {
+      selfCount: result.selfTotal,
+      managerCount: result.managerTotal,
+    });
+
+    revalidatePath('/performance');
+    revalidatePath(`/performance/cycles/${cycle.cycleId}`);
+    return { ok: true, data: { cycleId: cycle.cycleId } };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Failed to create test cycle' };
+  }
+}
+
 export async function createCycleAndRedirect(input: {
   cadence: Cadence;
   month: number | null;
@@ -450,6 +510,7 @@ export async function nudgePendingEmployees(
     const pending = allSubs.filter(
       (s) => s.status === 'not-started' || s.status === 'in-progress',
     );
+    const founders = new Set(founderEmails());
     const entries = [
       ...new Map(
         pending
@@ -458,7 +519,9 @@ export async function nudgePendingEmployees(
             s.reviewerUid!,
             {
               uid: s.reviewerUid!,
-              title: `Reminder: your ${cycle.name} evaluation is waiting`,
+              title: founders.has(s.reviewerEmail.toLowerCase())
+                ? `Reminder: your team's ${cycle.name} evaluations are pending`
+                : `Reminder: your ${cycle.name} evaluation is waiting`,
               href: '/performance',
               tone: 'warning' as const,
             },

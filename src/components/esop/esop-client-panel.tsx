@@ -17,6 +17,7 @@ interface Props {
   plans: EsopPlan[];
   employees: EmployeePublic[];
   allGrants: EsopGrant[];
+  isFounder?: boolean;
 }
 
 const STATUS_STYLE: Record<string, { label: string; cls: string }> = {
@@ -25,7 +26,7 @@ const STATUS_STYLE: Record<string, { label: string; cls: string }> = {
   lapsed:    { label: 'Lapsed',    cls: 'bg-[#FEE2E2] text-[#991B1B]' },
 };
 
-export function EsopClientPanel({ plans, employees, allGrants }: Props) {
+export function EsopClientPanel({ plans, employees, allGrants, isFounder = false }: Props) {
   const [tab, setTab] = useState<'overview' | 'plans' | 'grants'>('overview');
   const [showPlanForm, setShowPlanForm] = useState(false);
   const [showGrantForm, setShowGrantForm] = useState(false);
@@ -54,7 +55,30 @@ export function EsopClientPanel({ plans, employees, allGrants }: Props) {
     return s + g.sharesVested * (plan?.perShareValue ?? 0);
   }, 0);
   const totalSharesGranted = allGrants.reduce((s, g) => s + g.sharesGranted, 0);
+  const totalSharesVested  = allGrants.reduce((s, g) => s + g.sharesVested, 0);
   const employeesOnEsop = new Set(allGrants.map((g) => g.employeeId)).size;
+  const totalPlanShares = plans.reduce((s, p) => s + p.totalShares, 0);
+  const dilutionPct = totalPlanShares > 0 ? (totalSharesGranted / totalPlanShares) * 100 : 0;
+
+  // Dept-wise breakdown (founder overview)
+  const deptBreakdown = useMemo(() => {
+    const map = new Map<string, { granted: number; vested: number; value: number; count: number }>();
+    for (const g of allGrants) {
+      const emp = empById.get(g.employeeId);
+      const plan = planById.get(g.planId);
+      const dept = (emp?.department ?? '').trim() || 'Unassigned';
+      const existing = map.get(dept) ?? { granted: 0, vested: 0, value: 0, count: 0 };
+      map.set(dept, {
+        granted: existing.granted + g.sharesGranted,
+        vested:  existing.vested  + g.sharesVested,
+        value:   existing.value   + g.sharesVested * (plan?.perShareValue ?? 0),
+        count:   existing.count   + 1,
+      });
+    }
+    return [...map.entries()]
+      .map(([dept, d]) => ({ dept, ...d }))
+      .sort((a, b) => b.granted - a.granted);
+  }, [allGrants, empById, planById]);
 
   // Chart data: vesting milestones across all grants
   const chartData = useMemo(() => {
@@ -103,7 +127,9 @@ export function EsopClientPanel({ plans, employees, allGrants }: Props) {
 
       {/* Section header */}
       <div className="flex items-center justify-between pt-2 border-t border-[#E2E8F0]">
-        <p className="text-[10px] font-semibold tracking-[1.4px] uppercase text-[#64748b]">HR admin panel</p>
+        <p className="text-[10px] font-semibold tracking-[1.4px] uppercase text-[#64748b]">
+          {isFounder ? 'Equity overview' : 'HR admin panel'}
+        </p>
         <div className="flex gap-1 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg p-0.5">
           {(['overview', 'plans', 'grants'] as const).map((t) => (
             <button key={t} type="button" onClick={() => setTab(t)}
@@ -122,8 +148,14 @@ export function EsopClientPanel({ plans, employees, allGrants }: Props) {
             {[
               { label: 'Total plans', value: plans.length.toString() },
               { label: 'Employees on ESOP', value: employeesOnEsop.toString() },
-              { label: 'Total shares granted', value: totalSharesGranted.toString() },
+              { label: 'Total shares granted', value: totalSharesGranted.toLocaleString('en-IN') },
               { label: 'Total vested value', value: formatINR(totalVestedValue) },
+              ...(isFounder ? [
+                { label: 'Total vested shares', value: totalSharesVested.toLocaleString('en-IN') },
+                { label: 'Unvested shares', value: (totalSharesGranted - totalSharesVested).toLocaleString('en-IN') },
+                { label: 'Plan capacity used', value: `${dilutionPct.toFixed(1)}%` },
+                { label: 'Total plan pool', value: totalPlanShares.toLocaleString('en-IN') },
+              ] : []),
             ].map((s) => (
               <div key={s.label} className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-4 space-y-1">
                 <p className="text-[10px] font-semibold uppercase tracking-[1px] text-[#64748b]">{s.label}</p>
@@ -154,6 +186,39 @@ export function EsopClientPanel({ plans, employees, allGrants }: Props) {
               </div>
             </div>
           )}
+
+          {/* Dept breakdown — founder only */}
+          {isFounder && deptBreakdown.length > 0 && (
+            <div className="rounded-xl border border-[#E2E8F0] bg-white overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-[#E2E8F0] bg-[#F8FAFC]">
+                <p className="text-[12px] font-semibold text-[#0f172a]">Equity by department</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left min-w-[520px]">
+                  <thead className="border-b border-[#E2E8F0] text-[10px] font-semibold uppercase tracking-[0.5px] text-[#64748b]">
+                    <tr>
+                      <th className="px-5 py-2.5">Department</th>
+                      <th className="px-5 py-2.5 text-right">Grants</th>
+                      <th className="px-5 py-2.5 text-right">Granted</th>
+                      <th className="px-5 py-2.5 text-right">Vested</th>
+                      <th className="px-5 py-2.5 text-right">Vested value</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {deptBreakdown.map((d) => (
+                      <tr key={d.dept} className="border-t border-[#E2E8F0] hover:bg-[#F8FAFC] transition">
+                        <td className="px-5 py-3 text-[13px] font-medium text-[#0f172a]">{d.dept}</td>
+                        <td className="px-5 py-3 text-[12px] text-[#64748b] text-right tabular-nums">{d.count}</td>
+                        <td className="px-5 py-3 text-[13px] text-[#0f172a] text-right tabular-nums">{d.granted.toLocaleString('en-IN')}</td>
+                        <td className="px-5 py-3 text-[13px] font-medium text-[#27500A] text-right tabular-nums">{d.vested.toLocaleString('en-IN')}</td>
+                        <td className="px-5 py-3 text-[13px] font-semibold text-[#0f172a] text-right tabular-nums">{formatINR(d.value)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -162,10 +227,12 @@ export function EsopClientPanel({ plans, employees, allGrants }: Props) {
         <div className="rounded-xl border border-[#E2E8F0] bg-white overflow-hidden">
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#E2E8F0] bg-[#F8FAFC]">
             <p className="text-[12px] font-semibold text-[#0f172a]">ESOP Plans ({plans.length})</p>
-            <button type="button" onClick={() => { setEditPlan(undefined); setShowPlanForm(true); }}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[#0C447C] text-white px-3 py-1.5 text-[12px] font-medium hover:bg-[#0a3a6a] transition">
-              <Plus size={13} /> New plan
-            </button>
+            {!isFounder && (
+              <button type="button" onClick={() => { setEditPlan(undefined); setShowPlanForm(true); }}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#0C447C] text-white px-3 py-1.5 text-[12px] font-medium hover:bg-[#0a3a6a] transition">
+                <Plus size={13} /> New plan
+              </button>
+            )}
           </div>
           {plans.length === 0 ? (
             <div className="p-8 text-center text-[13px] text-[#64748b]">No plans yet.</div>
@@ -181,7 +248,7 @@ export function EsopClientPanel({ plans, employees, allGrants }: Props) {
                     <th className="px-5 py-2.5 text-right">Valuation total</th>
                     <th className="px-5 py-2.5 text-right">Per share</th>
                     <th className="px-5 py-2.5">Type</th>
-                    <th className="px-5 py-2.5" />
+                    {!isFounder && <th className="px-5 py-2.5" />}
                   </tr>
                 </thead>
                 <tbody>
@@ -198,12 +265,14 @@ export function EsopClientPanel({ plans, employees, allGrants }: Props) {
                           {p.type}
                         </span>
                       </td>
-                      <td className="px-5 py-3">
-                        <div className="flex items-center justify-end gap-2">
-                          <button type="button" onClick={() => { setEditPlan(p); setShowPlanForm(true); }} className="text-[#64748b] hover:text-[#0f172a] transition"><Pencil size={14} /></button>
-                          <button type="button" onClick={() => handleDeletePlan(p)} className="text-[#64748b] hover:text-red-500 transition"><Trash2 size={14} /></button>
-                        </div>
-                      </td>
+                      {!isFounder && (
+                        <td className="px-5 py-3">
+                          <div className="flex items-center justify-end gap-2">
+                            <button type="button" onClick={() => { setEditPlan(p); setShowPlanForm(true); }} className="text-[#64748b] hover:text-[#0f172a] transition"><Pencil size={14} /></button>
+                            <button type="button" onClick={() => handleDeletePlan(p)} className="text-[#64748b] hover:text-red-500 transition"><Trash2 size={14} /></button>
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -226,11 +295,13 @@ export function EsopClientPanel({ plans, employees, allGrants }: Props) {
                 className="text-[12px] bg-transparent outline-none text-[#0f172a] placeholder:text-[#64748b] w-full"
               />
             </div>
-            <button type="button" onClick={() => { setEditGrant(undefined); setShowGrantForm(true); }}
-              disabled={plans.length === 0}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[#0C447C] text-white px-3 py-1.5 text-[12px] font-medium hover:bg-[#0a3a6a] transition disabled:opacity-40 disabled:cursor-not-allowed shrink-0">
-              <Plus size={13} /> Assign grant
-            </button>
+            {!isFounder && (
+              <button type="button" onClick={() => { setEditGrant(undefined); setShowGrantForm(true); }}
+                disabled={plans.length === 0}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-[#0C447C] text-white px-3 py-1.5 text-[12px] font-medium hover:bg-[#0a3a6a] transition disabled:opacity-40 disabled:cursor-not-allowed shrink-0">
+                <Plus size={13} /> Assign grant
+              </button>
+            )}
           </div>
 
           {filteredGrants.length === 0 ? (
@@ -249,7 +320,7 @@ export function EsopClientPanel({ plans, employees, allGrants }: Props) {
                     <th className="px-5 py-2.5 text-right">Unvested</th>
                     <th className="px-5 py-2.5">Status</th>
                     <th className="px-5 py-2.5 text-right">Vested value</th>
-                    <th className="px-5 py-2.5" />
+                    {!isFounder && <th className="px-5 py-2.5" />}
                   </tr>
                 </thead>
                 <tbody>
@@ -279,17 +350,19 @@ export function EsopClientPanel({ plans, employees, allGrants }: Props) {
                             <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${st.cls}`}>{st.label}</span>
                           </td>
                           <td className="px-5 py-3 text-[13px] font-semibold text-[#0f172a] text-right tabular-nums">{formatINR(vestedValue)}</td>
-                          <td className="px-5 py-3">
-                            <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                              <ChevronDown size={14} className={`text-[#64748b] transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                              <button type="button" onClick={() => { setEditGrant(g); setShowGrantForm(true); }} className="text-[#64748b] hover:text-[#0f172a] transition"><Pencil size={14} /></button>
-                              <button type="button" onClick={() => handleDeleteGrant(g)} className="text-[#64748b] hover:text-red-500 transition"><Trash2 size={14} /></button>
-                            </div>
-                          </td>
+                          {!isFounder && (
+                            <td className="px-5 py-3">
+                              <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                                <ChevronDown size={14} className={`text-[#64748b] transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                                <button type="button" onClick={() => { setEditGrant(g); setShowGrantForm(true); }} className="text-[#64748b] hover:text-[#0f172a] transition"><Pencil size={14} /></button>
+                                <button type="button" onClick={() => handleDeleteGrant(g)} className="text-[#64748b] hover:text-red-500 transition"><Trash2 size={14} /></button>
+                              </div>
+                            </td>
+                          )}
                         </tr>
                         {isExpanded && (
                           <tr key={`${g.grantId}-detail`} className="border-t border-[#E2E8F0] bg-[#F8FAFC]">
-                            <td colSpan={8} className="px-5 py-3">
+                            <td colSpan={isFounder ? 7 : 8} className="px-5 py-3">
                               <p className="text-[11px] font-semibold text-[#64748b] uppercase tracking-[0.5px] mb-2">Vesting milestones</p>
                               <div className="flex flex-wrap gap-2">
                                 {(g as EsopGrant & { vestingSchedule?: { date: Date; shares: number }[] }).vestingSchedule?.map((m, i) => {

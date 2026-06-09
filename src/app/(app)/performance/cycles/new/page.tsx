@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { ChevronRight, Home } from 'lucide-react';
 import { requireUser } from '@/lib/auth/guard';
 import { canManageCycles } from '@/lib/auth/review-access';
+import { listEmployees } from '@/lib/firestore/employees';
 import { NewCycleForm } from '@/components/performance/new-cycle-form';
 
 export const metadata = { title: 'New cycle' };
@@ -12,6 +13,8 @@ export default async function NewCyclePage() {
   if (!canManageCycles(user)) redirect('/performance');
 
   const now = new Date();
+  const employees = await listEmployees({ status: 'active', limit: 500 });
+
   return (
     <div className="px-4 py-6">
 
@@ -28,19 +31,23 @@ export default async function NewCyclePage() {
         <span className="text-slate-600 font-semibold">New cycle</span>
       </nav>
 
-
       <div className="mb-6">
         <h1 className="text-[24px] font-medium text-slate-900">Open a new review cycle</h1>
         <p className="mt-1 text-[14px] text-slate-500">
-          Cycles assign forms to every active employee and their manager. You can save as a draft
-          and open it later.
+          Cycles assign forms to every active employee and their manager. You can save as a draft and open it later.
         </p>
       </div>
 
       <NewCycleForm
         defaultYear={now.getUTCFullYear()}
-        defaultMonth={now.getUTCMonth() + 1}
         defaultQuarter={Math.ceil((now.getUTCMonth() + 1) / 3)}
+        employees={employees.map((e) => ({
+          employeeId: e.employeeId,
+          displayName: e.displayName,
+          email: e.email,
+          department: e.department ?? '',
+          designation: e.designation ?? '',
+        }))}
       />
     </div>
   );

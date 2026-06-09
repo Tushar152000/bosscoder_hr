@@ -1,42 +1,67 @@
 import { Suspense } from 'react';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Users, TrendingUp, PieChart } from 'lucide-react';
 import { LoginButton } from '@/components/auth/login-button';
 import { BosscoderLogo } from '@/assets/images/BosscoderLogo';
 
+const FEATURES = [
+  { icon: Users,       label: 'Employee directory',     desc: 'Browse teams and org chart' },
+  { icon: TrendingUp,  label: 'Performance evaluation', desc: 'Ratings, goals & review cycles' },
+  { icon: PieChart,    label: 'ESOP portal',            desc: 'Vested grants and statements' },
+];
+
 export function LoginRightPanel() {
   return (
-    <div className="bg-white flex flex-col items-center justify-center p-8 md:p-12">
-      <div className="w-full max-w-md">
+    <div className="relative bg-white flex flex-col items-center justify-center p-8 md:p-14 overflow-hidden min-w-[40%]">
+
+      {/* subtle background circles */}
+      <div className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-[#EBF3FE] opacity-60 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-24 -left-16 h-56 w-56 rounded-full bg-[#E1F5EE] opacity-50 blur-3xl" />
+
+      <div className="relative w-full max-w-sm">
+
+        {/* Logo */}
+        <div className="mb-10">
+          <BosscoderLogo width={136} height={28} />
+        </div>
+
+        {/* Heading */}
         <div className="mb-8">
-          <BosscoderLogo width={140} height={29} />
+          <h1 className="text-[28px] font-bold text-slate-900 tracking-tight leading-snug">
+            Welcome back
+          </h1>
+          <p className="text-[14px] text-slate-500 mt-2 leading-relaxed">
+            Sign in with your{' '}
+            <span className="font-mono text-[12px] bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded">
+              @bosscoderacademy.com
+            </span>{' '}
+            account to continue.
+          </p>
         </div>
 
-        <h1 className="text-[24px] font-semibold text-dark-blue">Welcome back</h1>
-        <p className="text-sm text-slate-600 leading-relaxed mb-7 mt-2">
-          Sign in with your{' '}
-          <code className="font-mono text-xs bg-slate-100 text-dark px-1.5 py-0.5 rounded">
-            @bosscoderacademy.com
-          </code>{' '}
-          Google account. Access is restricted to authorized employees only.
-        </p>
+        <div className="rounded-2xl border border-slate-200 bg-[#FAFAFA] p-5 mb-6 shadow-sm">
+          <Suspense>
+            <LoginButton />
+          </Suspense>
 
-        <Suspense>
-          <LoginButton />
-        </Suspense>
-
-        {/* SSO trust line */}
-        <div className="mt-5 flex items-center gap-2">
-          <ShieldCheck size={14} className="text-emerald-600 shrink-0" />
-          <span className="text-xs text-slate-600">
-            Single sign-on protected · authorized employees only
-          </span>
+          <div className="mt-4 flex items-center gap-2">
+            <ShieldCheck size={13} className="text-emerald-500 shrink-0" />
+            <span className="text-[12px] text-slate-500">
+              Single sign-on · authorized employees only
+            </span>
+          </div>
         </div>
 
-        {/* Footer */}
-        <p className="mt-8 text-[11px] text-slate-400 leading-relaxed">
-          Trouble signing in? Reach out to{' '}
-          <span className="text-bosscoder-blue">it-support@bosscoderacademy.com</span>
-        </p>
+      
+
+        <div className="text-[14px] text-slate-400 leading-[120%] space-y-0.5">
+          <p className='text-[12px]'>Trouble signing in? Reach out to us:</p>
+          <p>
+            <span className="text-dark-blue font-semibold">website.tech@bosscoderacademy.com</span>
+          </p>
+          <p>
+            <span className="text-slate-500 font-medium">+91 83769 51077</span>
+          </p>
+        </div>
       </div>
     </div>
   );
