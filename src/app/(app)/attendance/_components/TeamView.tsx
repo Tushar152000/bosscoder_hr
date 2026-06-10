@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, Users, Clock, AlertTriangle } from 'lucide-react';
 import { PendingLeavesCard } from './PendingLeavesCard';
+import { MyLeaveRequestsCard } from './MyLeaveRequestsCard';
 import { getTeamMonthAttendance } from '../actions';
 import type { AttendanceRecord, LeaveRequest } from '@/types/attendance';
 import type { TeamMember } from '../actions';
@@ -295,7 +296,7 @@ export function TeamView({
                       </div>
                     </div>
 
-                    {/* Progress bar */}
+          
                     <div className="mt-3 space-y-1">
                       <div className="flex justify-between text-[11px]">
                         <span className="text-slate-400">
@@ -320,16 +321,32 @@ export function TeamView({
         )}
       </div>
 
-      {/* Pending leaves */}
-      {initialPendingLeaves.length > 0 && (
-        <div className="space-y-3">
-          <div>
-            <h2 className="text-[15px] font-semibold text-slate-800">Pending Leave Requests</h2>
-            <p className="text-[12px] text-slate-400 mt-0.5">Review and approve or reject pending requests.</p>
-          </div>
-          <PendingLeavesCard initialLeaves={initialPendingLeaves} showEmployeeName />
-        </div>
-      )}
+      {(() => {
+        const pending = initialPendingLeaves.filter((l) => l.status === 'pending');
+        const history = initialPendingLeaves.filter((l) => l.status !== 'pending');
+        return (
+          <>
+            {pending.length > 0 && (
+              <div className="space-y-3">
+                <div>
+                  <h2 className="text-[18px] font-semibold text-slate-800">Pending Leave Requests</h2>
+                  <p className="text-[14px] text-slate-400 mt-0.5">Review and approve or reject pending requests.</p>
+                </div>
+                <PendingLeavesCard initialLeaves={pending} showEmployeeName />
+              </div>
+            )}
+            {history.length > 0 && (
+              <div className="space-y-3">
+                <div>
+                  <h2 className="text-[18px] font-semibold text-slate-800">Leave History</h2>
+                  <p className="text-[14px] text-slate-400 mt-0.5">Previously approved and rejected requests.</p>
+                </div>
+                <MyLeaveRequestsCard requests={history} showEmployeeName title="Team Leave History" />
+              </div>
+            )}
+          </>
+        );
+      })()}
     </div>
   );
 }

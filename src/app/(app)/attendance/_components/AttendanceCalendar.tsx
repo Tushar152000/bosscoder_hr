@@ -163,9 +163,7 @@ export function AttendanceCalendar({ year, month, records, today, onMonthChange 
           const isToday = dateStr === today;
           const isFuture = dateStr > today;
           const dayNum = new Date(dateStr + 'T00:00:00').getDate();
-          const dayOfWeek = new Date(dateStr + 'T00:00:00').getDay();
-          const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-          const status = record?.status ?? (isWeekend ? 'weekend' : null);
+          const status = record?.status ?? null;
           const style = status ? STATUS_STYLES[status] : null;
           const isSelected = selectedDate === dateStr;
           const isClickable = !!record && !isFuture;
@@ -186,7 +184,7 @@ export function AttendanceCalendar({ year, month, records, today, onMonthChange 
               <span
                 className={cn(
                   'text-[12px] font-medium',
-                  isWeekend ? 'text-slate-400' : 'text-slate-700',
+                  'text-slate-700',
                   status === 'holiday' && 'text-slate-400',
                   isToday && 'font-bold text-[#0C447C]',
                 )}

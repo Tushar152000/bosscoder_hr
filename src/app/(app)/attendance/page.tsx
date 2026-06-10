@@ -4,6 +4,7 @@ import {
   getMonthAttendance,
   getAttendanceRecord,
   getLeaveBalance,
+  getMyLeaveRequests,
   getTeamMembers,
   getTeamMonthAttendance,
   getPendingLeaveRequestsForTeam,
@@ -41,15 +42,23 @@ export default async function AttendancePage() {
     );
   }
 
-  const isManager = user.roles.includes('manager');
+  // Show manager view if user has manager role OR has actual direct reports in Firestore.
+  // This handles cases where the role claim isn't set yet but the employee tree is configured.
+  const mightManage =
+    user.roles.includes('manager') ||
+    user.roles.includes('hr') ||
+    user.roles.includes('founder');
 
-  if (isManager) {
-    const teamMembers = await getTeamMembers(me.employeeId);
+  const teamMembers = mightManage ? await getTeamMembers(me.employeeId) : [];
+  const hasTeam = teamMembers.length > 0;
+
+  if (hasTeam) {
     const teamIds = teamMembers.map((e) => e.employeeId);
-    const [records, todayRecord, balance, teamRecords, pendingLeaves] = await Promise.all([
+    const [records, todayRecord, balance, myLeaves, teamRecords, pendingLeaves] = await Promise.all([
       getMonthAttendance(me.employeeId, year, month),
       getAttendanceRecord(me.employeeId, today),
       getLeaveBalance(me.employeeId),
+      getMyLeaveRequests(me.employeeId),
       getTeamMonthAttendance(teamIds, year, month),
       getPendingLeaveRequestsForTeam(teamIds),
     ]);
@@ -61,6 +70,7 @@ export default async function AttendancePage() {
         initialRecords={records}
         todayRecord={todayRecord}
         balance={balance}
+        initialLeaveRequests={myLeaves}
         initialYear={year}
         initialMonth={month}
         today={today}
@@ -73,10 +83,11 @@ export default async function AttendancePage() {
     );
   }
 
-  const [records, todayRecord, balance] = await Promise.all([
+  const [records, todayRecord, balance, myLeaves] = await Promise.all([
     getMonthAttendance(me.employeeId, year, month),
     getAttendanceRecord(me.employeeId, today),
     getLeaveBalance(me.employeeId),
+    getMyLeaveRequests(me.employeeId),
   ]);
 
   return (
@@ -86,6 +97,7 @@ export default async function AttendancePage() {
       initialRecords={records}
       todayRecord={todayRecord}
       balance={balance}
+      initialLeaveRequests={myLeaves}
       initialYear={year}
       initialMonth={month}
       today={today}

@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { applyLeave } from '../actions';
-import type { LeaveBalance, LeaveType } from '@/types/attendance';
-import { LEAVE_LABELS } from '@/types/attendance';
+import type { LeaveBalance, LeaveRequest, LeaveType } from '@/types/attendance';
+import { LEAVE_LABELS, ALL_LEAVE_TYPES, LEAVE_TO_BALANCE } from '@/types/attendance';
 
 interface Props {
   open: boolean;
@@ -13,15 +13,14 @@ interface Props {
   employeeId: string;
   employeeName: string;
   balance: LeaveBalance;
+  onApplied?: (req: LeaveRequest) => void;
 }
-
-const LEAVE_TYPES: LeaveType[] = ['casual', 'privilege', 'marriage', 'medical'];
 
 function todayISO(): string {
   return new Date().toISOString().split('T')[0];
 }
 
-export function ApplyLeaveModal({ open, onOpenChange, employeeId, employeeName, balance }: Props) {
+export function ApplyLeaveModal({ open, onOpenChange, employeeId, employeeName, balance, onApplied }: Props) {
   const [leaveType, setLeaveType] = useState<LeaveType>('casual');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
@@ -53,8 +52,9 @@ export function ApplyLeaveModal({ open, onOpenChange, employeeId, employeeName, 
 
   if (!open) return null;
 
-  const b = balance[leaveType];
-  const remaining = b.total - b.used;
+  const b = balance[LEAVE_TO_BALANCE[leaveType]];
+  const isUnlimited = b.total === 0;
+  const remaining = isUnlimited ? null : b.total - b.used;
 
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -75,6 +75,18 @@ export function ApplyLeaveModal({ open, onOpenChange, employeeId, employeeName, 
 
     if (result.ok) {
       toast.success('Leave request submitted successfully');
+      onApplied?.({
+        employeeId,
+        employeeName,
+        fromDate,
+        toDate,
+        leaveType,
+        reason: reason.trim(),
+        status: 'pending',
+        approvedBy: null,
+        approvedAt: null,
+        createdAt: new Date().toISOString(),
+      });
       onOpenChange(false);
     } else {
       toast.error(result.error);
@@ -109,12 +121,12 @@ export function ApplyLeaveModal({ open, onOpenChange, employeeId, employeeName, 
               onChange={(e) => setLeaveType(e.target.value as LeaveType)}
               className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-[13px] text-slate-700 outline-none focus:border-[#0C447C] focus:ring-2 focus:ring-[#0C447C]/10 transition"
             >
-              {LEAVE_TYPES.map((t) => (
+              {ALL_LEAVE_TYPES.map((t) => (
                 <option key={t} value={t}>{LEAVE_LABELS[t]}</option>
               ))}
             </select>
             <p className="text-[11px] text-slate-400">
-              {remaining} day{remaining !== 1 ? 's' : ''} remaining
+              {isUnlimited ? 'Unlimited (unpaid)' : `${remaining} day${remaining !== 1 ? 's' : ''} remaining`}
             </p>
           </div>
 

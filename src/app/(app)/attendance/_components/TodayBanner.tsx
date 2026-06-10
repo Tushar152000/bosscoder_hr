@@ -10,6 +10,7 @@ interface Props {
   employeeId: string;
   todayRecord: AttendanceRecord | null;
   displayDate: string;
+  onRecordChange?: (record: AttendanceRecord) => void;
 }
 
 function formatTime(iso: string | null): string {
@@ -29,12 +30,9 @@ function formatDuration(minutes: number): string {
   return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
-export function TodayBanner({ employeeId, todayRecord: initial, displayDate }: Props) {
+export function TodayBanner({ employeeId, todayRecord: initial, displayDate, onRecordChange }: Props) {
   const [record, setRecord] = useState(initial);
   const [isPending, startTransition] = useTransition();
-
-  const dayOfWeek = new Date().getDay();
-  if (dayOfWeek === 0 || dayOfWeek === 6) return null;
 
   const checkedIn = !!record?.checkIn;
   const checkedOut = !!record?.checkOut;
@@ -44,6 +42,7 @@ export function TodayBanner({ employeeId, todayRecord: initial, displayDate }: P
       const result = await checkInOut(employeeId);
       if (result.ok) {
         setRecord(result.data);
+        onRecordChange?.(result.data);
         toast.success(result.data.checkOut ? 'Checked out successfully' : 'Checked in successfully');
       } else {
         toast.error(result.error);

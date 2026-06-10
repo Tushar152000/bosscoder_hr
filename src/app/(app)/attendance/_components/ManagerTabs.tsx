@@ -14,6 +14,7 @@ interface Props {
   initialRecords: AttendanceRecord[];
   todayRecord: AttendanceRecord | null;
   balance: LeaveBalance;
+  initialLeaveRequests: LeaveRequest[];
   initialYear: number;
   initialMonth: number;
   today: string;
@@ -32,6 +33,7 @@ export function ManagerTabs({
   initialRecords,
   todayRecord,
   balance,
+  initialLeaveRequests,
   initialYear,
   initialMonth,
   today,
@@ -79,9 +81,9 @@ export function ManagerTabs({
             ].join(' ')}
           >
             My Team
-            {initialPendingLeaves.length > 0 && (
+            {initialPendingLeaves.filter((l) => l.status === 'pending').length > 0 && (
               <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-amber-100 px-1.5 text-[10px] font-bold text-amber-700">
-                {initialPendingLeaves.length}
+                {initialPendingLeaves.filter((l) => l.status === 'pending').length}
               </span>
             )}
           </button>
@@ -95,6 +97,7 @@ export function ManagerTabs({
           initialRecords={initialRecords}
           todayRecord={todayRecord}
           balance={balance}
+          initialLeaveRequests={initialLeaveRequests}
           initialYear={initialYear}
           initialMonth={initialMonth}
           today={today}

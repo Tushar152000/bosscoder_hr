@@ -13,6 +13,7 @@ import type {
   LeaveRequest,
   LeaveType,
 } from '@/types/attendance';
+import { HALF_DAY_LEAVE_TYPES, LEAVE_DEDUCTION, LEAVE_TO_BALANCE } from '@/types/attendance';
 
 export type TeamMember = {
   employeeId: string;
@@ -202,25 +203,15 @@ export async function getLeaveBalance(employeeId: string): Promise<LeaveBalance>
     .doc(`${employeeId}_${year}`)
     .get();
 
-  if (!snap.exists) {
-    return {
-      employeeId,
-      casual: { total: 9, used: 0 },
-      privilege: { total: 9, used: 0 },
-      marriage: { total: 5, used: 0 },
-      medical: { total: 10, used: 0 },
-      year,
-    };
-  }
-
-  const d = snap.data()!;
+  const d = snap.exists ? snap.data()! : {};
   return {
     employeeId,
-    casual: d.casual ?? { total: 9, used: 0 },
-    privilege: d.privilege ?? { total: 9, used: 0 },
-    marriage: d.marriage ?? { total: 5, used: 0 },
-    medical: d.medical ?? { total: 10, used: 0 },
     year,
+    casual:    d.casual    ?? { total: 9,  used: 0 },
+    privilege: d.privilege ?? { total: 9,  used: 0 },
+    marriage:  d.marriage  ?? { total: 5,  used: 0 },
+    medical:   d.medical   ?? { total: 10, used: 0 },
+    unpaid:    d.unpaid    ?? { total: 0,  used: 0 },
   };
 }
 
@@ -249,7 +240,7 @@ export async function applyLeave(data: {
   }
 }
 
-// ─── Manager actions ──────────────────────────────────────────────────────────
+// ─── Leave request history ────────────────────────────────────────────────────
 
 function docToLeaveRequest(id: string, data: FirebaseFirestore.DocumentData): LeaveRequest {
   return {
@@ -263,9 +254,24 @@ function docToLeaveRequest(id: string, data: FirebaseFirestore.DocumentData): Le
     status: data.status,
     approvedBy: data.approvedBy ?? null,
     approvedAt: tsToISO(data.approvedAt),
+    rejectionReason: data.rejectionReason ?? undefined,
     createdAt: tsToISO(data.createdAt) ?? new Date().toISOString(),
   };
 }
+
+export async function getMyLeaveRequests(employeeId: string): Promise<LeaveRequest[]> {
+  await requireUser();
+  const snap = await adminDb
+    .collection(LEAVE_REQUESTS)
+    .where('employeeId', '==', employeeId)
+    .get();
+  return snap.docs
+    .map((d) => docToLeaveRequest(d.id, d.data()))
+    .sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1))
+    .slice(0, 20);
+}
+
+// ─── Manager actions ──────────────────────────────────────────────────────────
 
 function getDatesInRange(fromDate: string, toDate: string): string[] {
   const dates: string[] = [];
@@ -336,8 +342,7 @@ export async function getPendingLeaveRequestsForTeam(
       .where('employeeId', 'in', chunk)
       .get();
     for (const doc of snap.docs) {
-      const r = docToLeaveRequest(doc.id, doc.data());
-      if (r.status === 'pending') results.push(r);
+      results.push(docToLeaveRequest(doc.id, doc.data()));
     }
   }
   return results;
@@ -382,7 +387,7 @@ export async function approveLeave(leaveId: string): Promise<ActionResult> {
         date,
         checkIn: null,
         checkOut: null,
-        status: 'leave' as AttendanceStatus,
+        status: (HALF_DAY_LEAVE_TYPES.has(leaveType) ? 'half-day' : 'leave') as AttendanceStatus,
         duration: 0,
         remarks: `Leave: ${leave.reason ?? ''}`,
         editedBy: user.uid,
@@ -396,16 +401,18 @@ export async function approveLeave(leaveId: string): Promise<ActionResult> {
   const year = new Date(fromDate + 'T00:00:00').getFullYear();
   const balanceRef = adminDb.collection(LEAVE_BALANCES).doc(`${employeeId}_${year}`);
   const balanceSnap = await balanceRef.get();
+  const balanceKey = LEAVE_TO_BALANCE[leaveType];
+  const deduction = LEAVE_DEDUCTION[leaveType] * daysCount;
 
   if (balanceSnap.exists) {
     batch.update(balanceRef, {
-      [`${leaveType}.used`]: FieldValue.increment(daysCount),
+      [`${balanceKey}.used`]: FieldValue.increment(deduction),
     });
   } else {
-    const DEFAULTS: Record<string, number> = { casual: 9, privilege: 9, marriage: 5, medical: 10 };
+    const DEFAULTS: Record<string, number> = { casual: 9, privilege: 9, marriage: 5, medical: 10, unpaid: 0 };
     const newBalance: Record<string, unknown> = { employeeId, year };
     for (const [k, v] of Object.entries(DEFAULTS)) {
-      newBalance[k] = { total: v, used: k === leaveType ? daysCount : 0 };
+      newBalance[k] = { total: v, used: k === balanceKey ? deduction : 0 };
     }
     batch.set(balanceRef, newBalance);
   }
@@ -419,7 +426,7 @@ export async function approveLeave(leaveId: string): Promise<ActionResult> {
   }
 }
 
-export async function rejectLeave(leaveId: string): Promise<ActionResult> {
+export async function rejectLeave(leaveId: string, rejectionReason?: string): Promise<ActionResult> {
   const user = await requireUser();
   if (!hasAnyRole(user.roles, 'manager', 'hr', 'founder')) {
     return { ok: false, error: 'Forbidden' };
@@ -438,6 +445,7 @@ export async function rejectLeave(leaveId: string): Promise<ActionResult> {
       status: 'rejected',
       approvedBy: user.uid,
       approvedAt: FieldValue.serverTimestamp(),
+      ...(rejectionReason?.trim() && { rejectionReason: rejectionReason.trim() }),
     });
     revalidatePath('/attendance');
     return { ok: true };

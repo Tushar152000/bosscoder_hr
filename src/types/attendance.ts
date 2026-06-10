@@ -7,7 +7,20 @@ export type AttendanceStatus =
   | 'weekend'
   | 'pending';
 
-export type LeaveType = 'casual' | 'privilege' | 'marriage' | 'medical';
+export type LeaveType =
+  | 'casual'
+  | 'half-casual'
+  | 'privilege'
+  | 'half-privilege'
+  | 'marriage'
+  | 'half-marriage'
+  | 'medical'
+  | 'half-medical'
+  | 'unpaid'
+  | 'unpaid-half';
+
+/** The 5 balance pools (half-day types share their parent pool). */
+export type BalanceKey = 'casual' | 'privilege' | 'marriage' | 'medical' | 'unpaid';
 
 export type LeaveRequestStatus = 'pending' | 'approved' | 'rejected';
 
@@ -36,38 +49,90 @@ export interface LeaveRequest {
   status: LeaveRequestStatus;
   approvedBy: string | null;
   approvedAt: string | null;
+  rejectionReason?: string;
   createdAt: string;
 }
 
+/** Only 5 pools — half-day leave types deduct 0.5 from their parent pool. */
 export interface LeaveBalance {
   employeeId: string;
-  casual: { total: number; used: number };
+  casual:    { total: number; used: number };
   privilege: { total: number; used: number };
-  marriage: { total: number; used: number };
-  medical: { total: number; used: number };
+  marriage:  { total: number; used: number };
+  medical:   { total: number; used: number };
+  unpaid:    { total: number; used: number };
   year: number;
 }
 
 export const LEAVE_LABELS: Record<LeaveType, string> = {
-  casual: 'Casual Leave',
-  privilege: 'Privilege Leave',
-  marriage: 'Marriage Leave',
-  medical: 'Long Term Medical Leave',
+  casual:           'Casual Leave',
+  'half-casual':    'Half Casual Leave',
+  privilege:        'Privilege Leave',
+  'half-privilege': 'Half Privilege Leave',
+  marriage:         'Marriage Leave',
+  'half-marriage':  'Half Marriage Leave',
+  medical:          'Long Term Medical Leave',
+  'half-medical':   'Half Long Term Medical Leave',
+  unpaid:           'Unpaid Leave',
+  'unpaid-half':    'Unpaid Half Day',
 };
 
-export const LEAVE_DEFAULTS: Record<LeaveType, number> = {
-  casual: 9,
-  privilege: 9,
-  marriage: 5,
-  medical: 10,
+export const BALANCE_LABELS: Record<BalanceKey, string> = {
+  casual:    'Casual Leave',
+  privilege: 'Privilege Leave',
+  marriage:  'Marriage Leave',
+  medical:   'Long Term Medical Leave',
+  unpaid:    'Unpaid Leave',
 };
+
+/** Which balance pool each leave type draws from. */
+export const LEAVE_TO_BALANCE: Record<LeaveType, BalanceKey> = {
+  casual:           'casual',
+  'half-casual':    'casual',
+  privilege:        'privilege',
+  'half-privilege': 'privilege',
+  marriage:         'marriage',
+  'half-marriage':  'marriage',
+  medical:          'medical',
+  'half-medical':   'medical',
+  unpaid:           'unpaid',
+  'unpaid-half':    'unpaid',
+};
+
+/** Days deducted per calendar day for each leave type. */
+export const LEAVE_DEDUCTION: Record<LeaveType, number> = {
+  casual:           1,
+  'half-casual':    0.5,
+  privilege:        1,
+  'half-privilege': 0.5,
+  marriage:         1,
+  'half-marriage':  0.5,
+  medical:          1,
+  'half-medical':   0.5,
+  unpaid:           1,
+  'unpaid-half':    0.5,
+};
+
+/** All leave types in display order. */
+export const ALL_LEAVE_TYPES: LeaveType[] = [
+  'casual', 'half-casual',
+  'privilege', 'half-privilege',
+  'marriage', 'half-marriage',
+  'medical', 'half-medical',
+  'unpaid', 'unpaid-half',
+];
+
+/** Leave types that produce half-day attendance records when approved. */
+export const HALF_DAY_LEAVE_TYPES = new Set<LeaveType>([
+  'half-casual', 'half-privilege', 'half-marriage', 'half-medical', 'unpaid-half',
+]);
 
 export const STATUS_DISPLAY: Record<AttendanceStatus, string> = {
-  present: 'Present',
-  absent: 'Absent',
+  present:    'Present',
+  absent:     'Absent',
   'half-day': 'Half Day',
-  leave: 'Leave',
-  holiday: 'Holiday',
-  weekend: 'Weekend',
-  pending: 'Pending',
+  leave:      'Leave',
+  holiday:    'Holiday',
+  weekend:    'Weekend',
+  pending:    'Pending',
 };

@@ -7,8 +7,9 @@ import { AttendanceCalendar } from './AttendanceCalendar';
 import { AttendanceTable } from './AttendanceTable';
 import { LeaveBalanceCard } from './LeaveBalanceCard';
 import { ApplyLeaveModal } from './ApplyLeaveModal';
+import { MyLeaveRequestsCard } from './MyLeaveRequestsCard';
 import { getMonthAttendance } from '../actions';
-import type { AttendanceRecord, LeaveBalance } from '@/types/attendance';
+import type { AttendanceRecord, LeaveBalance, LeaveRequest } from '@/types/attendance';
 import type { Role } from '@/lib/auth/roles';
 
 interface Props {
@@ -22,6 +23,7 @@ interface Props {
   today: string;
   displayDate: string;
   roles: Role[];
+  initialLeaveRequests?: LeaveRequest[];
   hideBanner?: boolean;
   hideHeader?: boolean;
   isPrivileged?: boolean;
@@ -38,6 +40,7 @@ export function EmployeeView({
   today,
   displayDate,
   roles,
+  initialLeaveRequests = [],
   hideBanner = false,
   hideHeader = false,
   isPrivileged = false,
@@ -45,8 +48,13 @@ export function EmployeeView({
   const [year, setYear] = useState(initialYear);
   const [month, setMonth] = useState(initialMonth);
   const [records, setRecords] = useState<AttendanceRecord[]>(initialRecords);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(initialLeaveRequests);
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [isFetching, startTransition] = useTransition();
+
+  function handleLeaveApplied(req: LeaveRequest) {
+    setLeaveRequests((prev) => [req, ...prev]);
+  }
 
   const canEditStatus =
     isPrivileged ||
@@ -83,6 +91,14 @@ export function EmployeeView({
               employeeId={employeeId}
               todayRecord={todayRecord}
               displayDate={displayDate}
+              onRecordChange={(updated) =>
+                setRecords((prev) => {
+                  const idx = prev.findIndex((r) => r.date === updated.date);
+                  return idx >= 0
+                    ? prev.map((r) => (r.date === updated.date ? updated : r))
+                    : [...prev, updated];
+                })
+              }
             />
           )}
 
@@ -114,8 +130,9 @@ export function EmployeeView({
         </div>
 
         {/* Right column */}
-        <div className="lg:sticky lg:top-6 h-fit">
+        <div className="lg:sticky lg:top-6 h-fit space-y-4">
           <LeaveBalanceCard balance={balance} records={records} />
+          <MyLeaveRequestsCard requests={leaveRequests} />
         </div>
       </div>
 
@@ -125,6 +142,7 @@ export function EmployeeView({
         employeeId={employeeId}
         employeeName={employeeName}
         balance={balance}
+        onApplied={handleLeaveApplied}
       />
     </div>
   );
