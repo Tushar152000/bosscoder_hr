@@ -6,7 +6,6 @@ export const metadata = { title: 'Settings' };
 
 export default async function SettingsLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
-
   const privileged = isPrivileged(user.roles);
 
   return (
