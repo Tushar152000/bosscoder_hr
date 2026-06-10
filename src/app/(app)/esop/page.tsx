@@ -28,11 +28,11 @@ export default async function EsopPage() {
   const isFounder = user.roles.includes('founder');
 
   const me = await getEmployeeByUserUid(user.uid);
+
   const rawGrants: EsopGrantWithPlan[] = me
     ? await listGrantsForEmployee(me.employeeId)
     : [];
 
-  // Ensure every grant has a vestingSchedule (backfill if stored pre-schema)
   const myGrants = rawGrants.map((g) => ({
     ...g,
     vestingSchedule: deriveVestingSchedule(g),
@@ -46,7 +46,6 @@ export default async function EsopPage() {
     0,
   );
 
-  // Primary grant (most recent) for timeline/breakdown
   const primary = myGrants[0] ?? null;
 
   const [plans, allEmployees, allGrants] = isAdmin
@@ -61,7 +60,7 @@ export default async function EsopPage() {
   const role = isFounder ? 'founder' : isAdmin ? 'hr' : 'employee';
 
   return (
-    <div className="mx-auto max-w-[1300px] py-8 space-y-6">
+    <div className="mx-auto max-w-[1250px] px-4 md:px-6  lg:px-0 py-6 md:py-8 space-y-6">
       <EsopCalculatingModal role={role} />
       <nav className="flex items-center gap-1.5 text-[14px] text-slate-400">
         <Link href="/" className="flex items-center hover:text-slate-600 transition-colors">
@@ -153,8 +152,6 @@ export default async function EsopPage() {
           </p>
         </div>
       )}
-
-      {/* ── How it works + Key terms ── */}
 
       {primary && (
         <VestingTimeline

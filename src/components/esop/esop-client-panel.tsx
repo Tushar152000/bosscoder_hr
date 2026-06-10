@@ -126,14 +126,14 @@ export function EsopClientPanel({ plans, employees, allGrants, isFounder = false
       )}
 
       {/* Section header */}
-      <div className="flex items-center justify-between pt-2 border-t border-[#E2E8F0]">
+      <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[#E2E8F0]">
         <p className="text-[10px] font-semibold tracking-[1.4px] uppercase text-[#64748b]">
           {isFounder ? 'Equity overview' : 'HR admin panel'}
         </p>
         <div className="flex gap-1 bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg p-0.5">
           {(['overview', 'plans', 'grants'] as const).map((t) => (
             <button key={t} type="button" onClick={() => setTab(t)}
-              className={`px-3 py-1.5 rounded-md text-[12px] font-medium transition capitalize ${tab === t ? 'bg-white shadow-sm text-[#0f172a]' : 'text-[#64748b] hover:text-[#0f172a]'}`}>
+              className={`px-3 py-2 sm:py-1.5 rounded-md text-[12px] font-medium transition capitalize touch-manipulation ${tab === t ? 'bg-white shadow-sm text-[#0f172a]' : 'text-[#64748b] hover:text-[#0f172a]'}`}>
               {t === 'overview' ? 'Overview' : t === 'plans' ? 'Plans' : 'Grants'}
             </button>
           ))}
@@ -292,7 +292,7 @@ export function EsopClientPanel({ plans, employees, allGrants, isFounder = false
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by employee name…"
-                className="text-[12px] bg-transparent outline-none text-[#0f172a] placeholder:text-[#64748b] w-full"
+                className="text-[16px] sm:text-[12px] bg-transparent outline-none text-[#0f172a] placeholder:text-[#64748b] w-full"
               />
             </div>
             {!isFounder && (

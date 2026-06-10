@@ -83,73 +83,85 @@ export function BroadcastForm({ departments, employeesByDept, senderName }: Prop
   }
 
   return (
-    <form onSubmit={onSubmit}>
+    <form onSubmit={onSubmit} className="pb-6">
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[300px_1fr]">
 
+        {/* ── Department selector ─────────────────────────────────── */}
         <div className="rounded-xl border border-[#E2E8F0] bg-white shadow-sm overflow-hidden self-start">
+
+          {/* Header — always visible, tap to expand/collapse */}
           <button
             type="button"
             onClick={() => setDeptPanelOpen((v) => !v)}
-            className="w-full flex items-center justify-between px-4 py-3 border-b border-[#E2E8F0] hover:bg-slate-50 transition"
+            className="w-full flex items-center justify-between px-4 py-3.5 border-b border-[#E2E8F0] hover:bg-slate-50 active:bg-slate-100 transition touch-manipulation"
           >
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-[#0C447C]" />
-              <span className="text-[13px] font-semibold text-slate-900">Departments</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <Users className="h-4 w-4 text-[#0C447C] shrink-0" />
+              <span className="text-[14px] font-semibold text-slate-900">Departments</span>
               {selectedDepts.size > 0 && (
-                <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-[#0C447C] text-white text-[10px] font-bold">
+                <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-[#0C447C] text-white text-[10px] font-bold shrink-0">
                   {selectedDepts.size}
                 </span>
               )}
             </div>
-            {deptPanelOpen ? (
-              <ChevronUp className="h-3.5 w-3.5 text-slate-400" />
-            ) : (
-              <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
-            )}
+            {deptPanelOpen
+              ? <ChevronUp className="h-4 w-4 text-slate-400 shrink-0" />
+              : <ChevronDown className="h-4 w-4 text-slate-400 shrink-0" />}
           </button>
+
+          {/* Selected dept chips — visible even when collapsed */}
+          {!deptPanelOpen && selectedDepts.size > 0 && (
+            <div className="flex flex-wrap gap-1.5 px-4 py-2.5 border-b border-[#F1F5F9] bg-[#FAFAF7]">
+              {[...selectedDepts].map((d) => (
+                <span
+                  key={d}
+                  className="inline-flex items-center text-[11px] font-medium text-[#0C447C] bg-[#EBF3FE] border border-[#B5D4F4] px-2 py-0.5 rounded-full"
+                >
+                  {d}
+                </span>
+              ))}
+            </div>
+          )}
 
           {deptPanelOpen && (
             <>
               {/* Select / deselect all */}
-              <div className="px-4 py-2 border-b border-[#F1F5F9]">
+              <div className="px-4 py-2.5 border-b border-[#F1F5F9] flex items-center justify-between">
                 <button
                   type="button"
                   onClick={toggleAll}
-                  className="text-[11px] font-medium text-[#0C447C] hover:underline"
+                  className="text-[12px] font-medium text-[#0C447C] active:opacity-70 touch-manipulation"
                 >
                   {allSelected ? 'Deselect all' : 'Select all departments'}
                 </button>
+                {selectedDepts.size > 0 && (
+                  <span className="text-[11px] text-slate-400">
+                    {recipients.length} recipient{recipients.length !== 1 ? 's' : ''}
+                  </span>
+                )}
               </div>
 
-              {/* Dept list */}
-              <div className="divide-y divide-[#F1F5F9] max-h-[400px] overflow-y-auto">
+              {/* Dept list — larger tap targets on mobile */}
+              <div className="divide-y divide-[#F1F5F9] max-h-[260px] sm:max-h-[380px] overflow-y-auto overscroll-contain">
                 {departments.map((dept) => {
                   const checked = selectedDepts.has(dept.name);
                   return (
                     <label
                       key={dept.name}
                       className={cn(
-                        'flex items-center gap-3 px-4 py-2.5 cursor-pointer hover:bg-[#F5F8FF] transition select-none',
+                        'flex items-center gap-3 px-4 py-3 sm:py-2.5 cursor-pointer hover:bg-[#F5F8FF] active:bg-[#EBF3FE] transition select-none touch-manipulation',
                         checked && 'bg-[#EBF3FE]',
                       )}
                     >
                       <div
                         className={cn(
-                          'w-4 h-4 rounded border flex items-center justify-center shrink-0 transition',
-                          checked
-                            ? 'bg-[#0C447C] border-[#0C447C]'
-                            : 'border-slate-300 bg-white',
+                          'w-5 h-5 sm:w-4 sm:h-4 rounded border flex items-center justify-center shrink-0 transition',
+                          checked ? 'bg-[#0C447C] border-[#0C447C]' : 'border-slate-300 bg-white',
                         )}
                       >
                         {checked && (
                           <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
-                            <path
-                              d="M1 4L3.5 6.5L9 1"
-                              stroke="white"
-                              strokeWidth="1.5"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
+                            <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         )}
                         <input
@@ -159,12 +171,10 @@ export function BroadcastForm({ departments, employeesByDept, senderName }: Prop
                           className="sr-only"
                         />
                       </div>
-                      <span
-                        className={cn(
-                          'flex-1 text-[13px]',
-                          checked ? 'font-medium text-slate-900' : 'text-slate-700',
-                        )}
-                      >
+                      <span className={cn(
+                        'flex-1 text-[14px] sm:text-[13px]',
+                        checked ? 'font-semibold text-slate-900' : 'text-slate-700',
+                      )}>
                         {dept.name}
                       </span>
                       <span className="text-[11px] text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full shrink-0">
@@ -179,27 +189,27 @@ export function BroadcastForm({ departments, employeesByDept, senderName }: Prop
         </div>
 
         {/* ── Email composer ──────────────────────────────────────── */}
-        <div className="rounded-xl border border-[#E2E8F0] bg-white shadow-sm p-5 flex flex-col gap-4">
+        <div className="rounded-xl border border-[#E2E8F0] bg-white shadow-sm p-4 sm:p-5 flex flex-col gap-4">
 
           {/* Header */}
-          <div className="flex items-start justify-between gap-3 pb-3 border-b border-[#E2E8F0]">
-            <div className="flex items-center gap-2.5">
+          <div className="flex items-start justify-between gap-2 pb-3 border-b border-[#E2E8F0]">
+            <div className="flex items-center gap-2.5 min-w-0">
               <div className="grid h-8 w-8 place-items-center rounded-md bg-[#EBF3FE] shrink-0">
                 <Mail className="h-4 w-4 text-[#0C447C]" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-[14px] font-semibold text-slate-900">Compose broadcast</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">
+                <p className="text-[11px] text-slate-500 mt-0.5 truncate">
                   {recipients.length > 0
-                    ? `${recipients.length} recipient${recipients.length !== 1 ? 's' : ''} across ${selectedDepts.size} dept${selectedDepts.size !== 1 ? 's' : ''}`
+                    ? `${recipients.length} recipient${recipients.length !== 1 ? 's' : ''} · ${selectedDepts.size} dept${selectedDepts.size !== 1 ? 's' : ''}`
                     : 'Select departments to add recipients'}
                 </p>
               </div>
             </div>
             {recipients.length > 0 && (
-              <span className="inline-flex items-center gap-1.5 shrink-0 text-[11px] font-medium text-[#0F6E56] bg-[#E1F5EE] px-2.5 py-1 rounded-full">
+              <span className="inline-flex items-center gap-1 shrink-0 text-[11px] font-medium text-[#0F6E56] bg-[#E1F5EE] px-2 py-1 rounded-full">
                 <span className="w-1.5 h-1.5 rounded-full bg-[#1D9E75]" />
-                {recipients.length} recipient{recipients.length !== 1 ? 's' : ''}
+                {recipients.length}
               </span>
             )}
           </div>
@@ -207,7 +217,7 @@ export function BroadcastForm({ departments, employeesByDept, senderName }: Prop
           {/* From (read-only) */}
           <div className="flex flex-col gap-1.5">
             <label className="text-[12px] font-medium text-slate-700">From</label>
-            <div className="h-10 flex items-center rounded-md border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[13px] text-slate-500">
+            <div className="h-11 sm:h-10 flex items-center rounded-md border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[14px] sm:text-[13px] text-slate-500 truncate">
               {senderName} · Bosscoder HR Team
             </div>
           </div>
@@ -223,7 +233,7 @@ export function BroadcastForm({ departments, employeesByDept, senderName }: Prop
               onChange={(e) => setSubject(e.target.value)}
               required
               placeholder="e.g. Important update from HR"
-              className="h-10 w-full rounded-md border border-[#E2E8F0] bg-white px-3 text-[13px] text-slate-900 placeholder:text-slate-400 focus:border-[#0C447C] focus:outline-none focus:ring-2 focus:ring-[#0C447C]/20"
+              className="h-11 sm:h-10 w-full rounded-md border border-[#E2E8F0] bg-white px-3 text-[16px] sm:text-[13px] text-slate-900 placeholder:text-slate-400 focus:border-[#0C447C] focus:outline-none focus:ring-2 focus:ring-[#0C447C]/20"
             />
           </div>
 
@@ -236,9 +246,9 @@ export function BroadcastForm({ departments, employeesByDept, senderName }: Prop
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               required
-              rows={9}
-              placeholder="Write your message here…&#10;&#10;Recipients will be greeted by their first name."
-              className="w-full rounded-md border border-[#E2E8F0] bg-white px-3 py-2.5 text-[13px] text-slate-900 placeholder:text-slate-400 resize-none focus:border-[#0C447C] focus:outline-none focus:ring-2 focus:ring-[#0C447C]/20"
+              rows={6}
+              placeholder={'Write your message here…\n\nRecipients will be greeted by their first name.'}
+              className="w-full rounded-md border border-[#E2E8F0] bg-white px-3 py-2.5 text-[16px] sm:text-[13px] text-slate-900 placeholder:text-slate-400 resize-none focus:border-[#0C447C] focus:outline-none focus:ring-2 focus:ring-[#0C447C]/20 sm:rows-9"
             />
             <p className="text-[11px] text-slate-400">
               Each email starts with &quot;Hi [First name],&quot; and is signed with your name.
@@ -247,15 +257,15 @@ export function BroadcastForm({ departments, employeesByDept, senderName }: Prop
 
           {/* Error */}
           {error && (
-            <div className="flex items-start gap-2 rounded-md border border-[#FAC8C6] bg-[#FAECE7] px-3 py-2.5 text-[12px] text-[#993C1D]">
+            <div className="flex items-start gap-2 rounded-md border border-[#FAC8C6] bg-[#FAECE7] px-3 py-2.5 text-[13px] text-[#993C1D]">
               <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-              {error}
+              <span>{error}</span>
             </div>
           )}
 
           {/* Success */}
           {result && (
-            <div className="flex items-start gap-2 rounded-md border border-[#B7DDD0] bg-[#E1F5EE] px-3 py-2.5 text-[12px] text-[#0F6E56]">
+            <div className="flex items-start gap-2 rounded-md border border-[#B7DDD0] bg-[#E1F5EE] px-3 py-2.5 text-[13px] text-[#0F6E56]">
               <CheckCircle2 className="h-4 w-4 shrink-0 mt-0.5" />
               <div>
                 <p className="font-semibold">Email sent successfully</p>
@@ -266,9 +276,7 @@ export function BroadcastForm({ departments, employeesByDept, senderName }: Prop
                 {result.failures.length > 0 && (
                   <ul className="mt-1 space-y-0.5">
                     {result.failures.map((f, i) => (
-                      <li key={i} className="text-[10px] text-[#993C1D]">
-                        {f}
-                      </li>
+                      <li key={i} className="text-[10px] text-[#993C1D] break-all">{f}</li>
                     ))}
                   </ul>
                 )}
@@ -276,19 +284,20 @@ export function BroadcastForm({ departments, employeesByDept, senderName }: Prop
             </div>
           )}
 
-          {/* Submit */}
+          {/* Submit — full width, tall tap target on mobile */}
           <Button
             type="submit"
             variant="primary"
-            className="w-full gap-2 mt-1"
+            className="w-full gap-2 h-12 sm:h-10 text-[15px] sm:text-[14px] mt-1 touch-manipulation"
             isLoading={isPending}
             disabled={isPending || recipients.length === 0}
           >
             {!isPending && <Send className="h-4 w-4" />}
-            {!isPending &&
-              (recipients.length === 0
+            {!isPending && (
+              recipients.length === 0
                 ? 'Select recipients first'
-                : `Send to ${recipients.length} recipient${recipients.length !== 1 ? 's' : ''}`)}
+                : `Send to ${recipients.length} recipient${recipients.length !== 1 ? 's' : ''}`
+            )}
           </Button>
         </div>
       </div>

@@ -7,7 +7,7 @@ export default async function NotificationsSettingsPage() {
   await requireUser();
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-[18px] font-semibold text-slate-900">Notifications</h1>
         <p className="text-[13px] text-slate-500 mt-0.5">
@@ -21,7 +21,7 @@ export default async function NotificationsSettingsPage() {
 
 function Placeholder({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-xl px-5 py-10 flex flex-col items-center gap-3 text-center">
+    <div className="bg-white border border-slate-200 rounded-xl w-full px-5 py-10 flex flex-col items-center gap-3 text-center">
       <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
         <Icon className="h-5 w-5 text-slate-400" />
       </div>

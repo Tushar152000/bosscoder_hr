@@ -73,7 +73,8 @@ export function ShareBreakdown({ sharesGranted, sharesVested, perShareValue, ves
         <div className="px-5 py-4 border-b border-[#E2E8F0]">
           <p className="text-[13px] font-semibold text-[#0f172a]">Vesting schedule</p>
         </div>
-        <table className="w-full text-left">
+        <div className="overflow-x-auto">
+        <table className="w-full text-left min-w-[340px]">
           <thead className="border-b border-[#E2E8F0] bg-[#F8FAFC]">
             <tr className="text-[10px] font-semibold uppercase tracking-[0.5px] text-[#64748b]">
               <th className="px-5 py-2.5">Date</th>
@@ -106,6 +107,7 @@ export function ShareBreakdown({ sharesGranted, sharesVested, perShareValue, ves
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   );

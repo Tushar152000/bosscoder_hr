@@ -32,7 +32,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         }}
         notifications={notifications}
       />
-      <main className="w-full max-w-[1300px] mx-auto flex-1 ">
+      <main className="w-full max-w-[1300px] mx-auto flex-1">
         {children}
       </main>
     </div>

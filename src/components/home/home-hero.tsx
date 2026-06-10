@@ -18,7 +18,7 @@ export function HomeHero({ firstName, timeOfDay, dateLabel, photoURL, userInitia
           <p className="text-[11px] font-semibold tracking-[1.2px] uppercase text-[#0C447C]/70 mb-1">
             {dateLabel}
           </p>
-          <h1 className="text-[24px] font-bold text-slate-900 tracking-tight leading-tight">
+          <h1 className="md:text-[24px] text-[20px] font-bold text-slate-900 tracking-tight leading-tight">
             Good {timeOfDay}, {firstName} 👋
           </h1>
           <p className="text-[13px] text-slate-500 mt-1.5">
