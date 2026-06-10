@@ -34,10 +34,51 @@ const ORG: NavItem[] = [
 
 interface Props {
   privileged: boolean;
+  mobile?: boolean;
 }
 
-export function SettingsRail({ privileged }: Props) {
+export function SettingsRail({ privileged, mobile = false }: Props) {
   const pathname = usePathname();
+
+  if (mobile) {
+    const renderGroup = (items: NavItem[]) =>
+      items.map((item) => {
+        const active = pathname === item.href;
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              'relative flex shrink-0 flex-col items-center gap-1 px-4 py-2.5 text-[11px] font-medium transition-colors',
+              active ? 'text-[#0C447C]' : 'text-slate-500 hover:text-slate-700',
+            )}
+          >
+            <item.icon className={cn('h-[18px] w-[18px]', active ? 'text-[#0C447C]' : 'text-slate-400')} />
+            <span className="whitespace-nowrap">{item.label}</span>
+            {active && (
+              <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-t-full bg-[#0C447C]" />
+            )}
+          </Link>
+        );
+      });
+
+    return (
+      <div className="relative">
+        <div className="pointer-events-none absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-white to-transparent z-10" />
+        <nav className="flex overflow-x-auto scrollbar-none border-b border-slate-200">
+          <div className="flex shrink-0">{renderGroup(PERSONAL)}</div>
+          {privileged && (
+            <>
+              <div className="flex shrink-0 items-center px-1.5">
+                <div className="h-5 w-px bg-slate-200" />
+              </div>
+              <div className="flex shrink-0">{renderGroup(ORG)}</div>
+            </>
+          )}
+        </nav>
+      </div>
+    );
+  }
 
   return (
     <nav className="flex flex-col gap-6 px-3 py-5">
