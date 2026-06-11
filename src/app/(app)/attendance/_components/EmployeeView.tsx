@@ -1,49 +1,34 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { CalendarCheck } from 'lucide-react';
-import { TodayBanner } from './TodayBanner';
+import { Clock, Plus } from 'lucide-react';
 import { AttendanceCalendar } from './AttendanceCalendar';
-import { AttendanceTable } from './AttendanceTable';
 import { LeaveBalanceCard } from './LeaveBalanceCard';
 import { ApplyLeaveModal } from './ApplyLeaveModal';
 import { MyLeaveRequestsCard } from './MyLeaveRequestsCard';
 import { getMonthAttendance } from '../actions';
 import type { AttendanceRecord, LeaveBalance, LeaveRequest } from '@/types/attendance';
-import type { Role } from '@/lib/auth/roles';
 
 interface Props {
   employeeId: string;
   employeeName: string;
   initialRecords: AttendanceRecord[];
-  todayRecord: AttendanceRecord | null;
   balance: LeaveBalance;
   initialYear: number;
   initialMonth: number;
   today: string;
-  displayDate: string;
-  roles: Role[];
   initialLeaveRequests?: LeaveRequest[];
-  hideBanner?: boolean;
-  hideHeader?: boolean;
-  isPrivileged?: boolean;
 }
 
 export function EmployeeView({
   employeeId,
   employeeName,
   initialRecords,
-  todayRecord,
   balance,
   initialYear,
   initialMonth,
   today,
-  displayDate,
-  roles,
   initialLeaveRequests = [],
-  hideBanner = false,
-  hideHeader = false,
-  isPrivileged = false,
 }: Props) {
   const [year, setYear] = useState(initialYear);
   const [month, setMonth] = useState(initialMonth);
@@ -52,13 +37,11 @@ export function EmployeeView({
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [isFetching, startTransition] = useTransition();
 
+  const pendingCount = leaveRequests.filter((r) => r.status === 'pending').length;
+
   function handleLeaveApplied(req: LeaveRequest) {
     setLeaveRequests((prev) => [req, ...prev]);
   }
-
-  const canEditStatus =
-    isPrivileged ||
-    roles.some((r): boolean => (['hr', 'founder', 'manager'] as Role[]).includes(r));
 
   function handleMonthChange(newYear: number, newMonth: number) {
     setYear(newYear);
@@ -70,69 +53,51 @@ export function EmployeeView({
   }
 
   return (
-    <div className="px-4 md:px-6 py-8 space-y-6">
-      {!hideHeader && (
-        <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EBF3FE]">
-            <CalendarCheck className="h-4.5 w-4.5 text-[#0C447C]" />
-          </div>
-          <div>
-            <h1 className="text-[22px] font-semibold text-slate-900 leading-tight">Attendance</h1>
-            <p className="text-[13px] text-slate-500">Track your daily attendance and manage leave requests.</p>
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_300px]">
-        {/* Left column */}
-        <div className="space-y-5 min-w-0">
-          {!hideBanner && (
-            <TodayBanner
-              employeeId={employeeId}
-              todayRecord={todayRecord}
-              displayDate={displayDate}
-              onRecordChange={(updated) =>
-                setRecords((prev) => {
-                  const idx = prev.findIndex((r) => r.date === updated.date);
-                  return idx >= 0
-                    ? prev.map((r) => (r.date === updated.date ? updated : r))
-                    : [...prev, updated];
-                })
-              }
-            />
-          )}
-
-          <div className={isFetching ? 'pointer-events-none opacity-60 transition-opacity' : 'transition-opacity'}>
+    <div className="px-4 pb-8 md:px-0">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_280px]">
+        
+        <div className="min-w-0 space-y-3">
+          <div
+            className={
+              isFetching ? 'pointer-events-none opacity-60 transition-opacity' : 'transition-opacity'
+            }
+          >
             <AttendanceCalendar
               year={year}
               month={month}
               records={records}
               today={today}
+              leaveRequests={leaveRequests}
               onMonthChange={handleMonthChange}
             />
           </div>
 
+          {pendingCount > 0 && (
+            <div className="flex items-center gap-2.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5">
+              <Clock className="h-3.5 w-3.5 shrink-0 text-amber-600" />
+              <p className="text-[12px] text-amber-800">
+                <span className="font-medium">
+                  {pendingCount} leave request{pendingCount > 1 ? 's' : ''}
+                </span>{' '}
+                pending approval — shown in orange on the calendar.
+              </p>
+            </div>
+          )}
+
           <button
             onClick={() => setLeaveOpen(true)}
-            className="rounded-xl bg-[#0C447C] px-4 py-2 text-[13px] font-medium text-white hover:bg-[#0a3a6a] transition"
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-zinc-200 bg-white py-2.5 text-[13px] font-medium text-zinc-700 transition hover:bg-zinc-50"
           >
-            Apply Leave
+            <Plus className="h-4 w-4" />
+            Apply for leave
           </button>
-
-          <AttendanceTable
-            employeeId={employeeId}
-            records={records}
-            year={year}
-            month={month}
-            canEditStatus={canEditStatus}
-            onRecordsChange={setRecords}
-          />
+             <MyLeaveRequestsCard requests={leaveRequests} />
         </div>
 
-        {/* Right column */}
-        <div className="lg:sticky lg:top-6 h-fit space-y-4">
+
+        <div className="space-y-4">
           <LeaveBalanceCard balance={balance} records={records} />
-          <MyLeaveRequestsCard requests={leaveRequests} />
+       
         </div>
       </div>
 

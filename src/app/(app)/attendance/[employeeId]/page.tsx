@@ -6,7 +6,6 @@ import { hasAnyRole } from '@/lib/auth/roles';
 import { getEmployeeById } from '@/lib/firestore/employees';
 import {
   getMonthAttendance,
-  getAttendanceRecord,
   getLeaveBalance,
   getPendingLeaveRequestsForTeam,
 } from '../actions';
@@ -39,17 +38,8 @@ export default async function EmployeeAttendancePage({ params }: Props) {
   const month = now.getMonth() + 1;
   const today = now.toISOString().split('T')[0];
 
-  const ordinal = (n: number) => {
-    const v = n % 100;
-    const s = ['th', 'st', 'nd', 'rd'];
-    return n + (s[(v - 20) % 10] || s[v] || s[0]);
-  };
-  const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  const displayDate = `${ordinal(now.getDate())} ${MONTH_SHORT[now.getMonth()]} ${year}`;
-
-  const [records, todayRecord, balance, pendingLeaves] = await Promise.all([
+  const [records, balance, pendingLeaves] = await Promise.all([
     getMonthAttendance(employeeId, year, month),
-    getAttendanceRecord(employeeId, today),
     getLeaveBalance(employeeId),
     getPendingLeaveRequestsForTeam([employeeId]),
   ]);
@@ -86,16 +76,10 @@ export default async function EmployeeAttendancePage({ params }: Props) {
         employeeId={employeeId}
         employeeName={emp.displayName}
         initialRecords={records}
-        todayRecord={todayRecord}
         balance={balance}
         initialYear={year}
         initialMonth={month}
         today={today}
-        displayDate={displayDate}
-        roles={user.roles}
-        hideBanner
-        hideHeader
-        isPrivileged
       />
 
       {/* Pending leave requests for this employee */}

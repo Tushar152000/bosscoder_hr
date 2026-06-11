@@ -1,29 +1,27 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { AttendanceRecord, AttendanceStatus } from '@/types/attendance';
-import { STATUS_DISPLAY } from '@/types/attendance';
+import type { AttendanceRecord, AttendanceStatus, LeaveRequest } from '@/types/attendance';
+import { STATUS_DISPLAY, LEAVE_LABELS } from '@/types/attendance';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
-const DAY_HEADERS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => 2023 + i);
+const MONTH_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAY_HEADERS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 interface StatusStyle {
   dot: string;
-  bg: string;
 }
 
 const STATUS_STYLES: Partial<Record<AttendanceStatus, StatusStyle>> = {
-  present:    { dot: 'bg-emerald-500', bg: 'bg-emerald-50' },
-  absent:     { dot: 'bg-red-500',     bg: 'bg-red-50' },
-  'half-day': { dot: 'bg-amber-400',   bg: 'bg-amber-50' },
-  leave:      { dot: 'bg-blue-500',    bg: 'bg-blue-50' },
-  pending:    { dot: 'bg-slate-400',   bg: '' },
+  present:    { dot: 'bg-green-500' },
+  absent:     { dot: 'bg-red-500' },
+  'half-day': { dot: 'bg-amber-400' },
+  leave:      { dot: 'bg-blue-500' },
 };
 
 interface Props {
@@ -31,28 +29,12 @@ interface Props {
   month: number;
   records: AttendanceRecord[];
   today: string;
+  leaveRequests?: LeaveRequest[];
   onMonthChange: (year: number, month: number) => void;
 }
 
 function pad(n: number): string {
   return String(n).padStart(2, '0');
-}
-
-function formatTime(iso: string | null): string {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleTimeString('en-IN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true,
-  });
-}
-
-function formatDuration(minutes: number): string {
-  if (!minutes) return '—';
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
-  if (h === 0) return `${m}m`;
-  return m === 0 ? `${h}h` : `${h}h ${m}m`;
 }
 
 function formatDisplayDate(dateStr: string): string {
@@ -63,18 +45,37 @@ function formatDisplayDate(dateStr: string): string {
   });
 }
 
-export function AttendanceCalendar({ year, month, records, today, onMonthChange }: Props) {
+export function AttendanceCalendar({
+  year,
+  month,
+  records,
+  today,
+  leaveRequests = [],
+  onMonthChange,
+}: Props) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerYear, setPickerYear] = useState(year);
 
   const recordByDate = new Map(records.map((r) => [r.date, r]));
+
+  const pendingLeaveByDate = new Map<string, LeaveRequest>();
+  for (const req of leaveRequests.filter((r) => r.status === 'pending')) {
+    const cur = new Date(req.fromDate + 'T00:00:00');
+    const end = new Date(req.toDate + 'T00:00:00');
+    while (cur <= end) {
+      const d = cur.toISOString().split('T')[0];
+      if (!pendingLeaveByDate.has(d)) pendingLeaveByDate.set(d, req);
+      cur.setDate(cur.getDate() + 1);
+    }
+  }
+
   const daysInMonth = new Date(year, month, 0).getDate();
   const firstDayOfWeek = new Date(year, month - 1, 1).getDay();
 
   const cells: Array<string | null> = [
     ...Array<null>(firstDayOfWeek).fill(null),
-    ...Array.from({ length: daysInMonth }, (_, i) =>
-      `${year}-${pad(month)}-${pad(i + 1)}`
-    ),
+    ...Array.from({ length: daysInMonth }, (_, i) => `${year}-${pad(month)}-${pad(i + 1)}`),
   ];
 
   const todayDate = new Date();
@@ -94,70 +95,129 @@ export function AttendanceCalendar({ year, month, records, today, onMonthChange 
   }
 
   function handleDayClick(dateStr: string) {
-    if (!recordByDate.get(dateStr) || dateStr > today) return;
+    const hasRecord = !!recordByDate.get(dateStr);
+    const hasPending = pendingLeaveByDate.has(dateStr);
+    if (!hasRecord && !hasPending) return;
     setSelectedDate((prev) => (prev === dateStr ? null : dateStr));
   }
 
   const selectedRecord = selectedDate ? recordByDate.get(selectedDate) ?? null : null;
+  const selectedPendingLeave = selectedDate ? pendingLeaveByDate.get(selectedDate) ?? null : null;
 
   return (
-    <div className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm space-y-4">
-      {/* Controls */}
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1">
+    <div className="rounded-xl border border-zinc-200 bg-white p-4">
+
+      {/* Nav row */}
+      <div className="mb-4 flex items-center justify-between gap-2">
+
+        {/* Left: arrows + month-year picker trigger */}
+        <div className="relative flex items-center gap-0.5">
           <button
             onClick={prevMonth}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-700"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
           <button
             onClick={nextMonth}
             disabled={!canGoNext}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition disabled:opacity-30"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-30"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
-          <select
-            value={month}
-            onChange={(e) => onMonthChange(year, Number(e.target.value))}
-            className="bg-transparent text-[13px] font-semibold text-slate-700 outline-none cursor-pointer ml-1"
+
+          <button
+            onClick={() => { setPickerYear(year); setPickerOpen((v) => !v); }}
+            className="ml-1 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition hover:bg-zinc-100"
           >
-            {MONTH_NAMES.map((name, i) => (
-              <option key={i} value={i + 1}>{name}</option>
-            ))}
-          </select>
-          <select
-            value={year}
-            onChange={(e) => onMonthChange(Number(e.target.value), month)}
-            className="bg-transparent text-[13px] font-semibold text-slate-700 outline-none cursor-pointer"
-          >
-            {YEAR_OPTIONS.map((y) => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
+            <span className="text-[14px] font-semibold text-dark-blue">
+              {MONTH_NAMES[month - 1]} {year}
+            </span>
+            <ChevronDown
+              className={cn(
+                'h-3.5 w-3.5 text-zinc-400 transition-transform duration-150',
+                pickerOpen && 'rotate-180',
+              )}
+            />
+          </button>
+
+   
+          {pickerOpen && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setPickerOpen(false)} />
+              <div className="absolute left-0 top-full z-20 mt-2 w-64 rounded-xl border border-zinc-200 bg-white p-3 shadow-xl">
+                {/* Year nav */}
+                <div className="mb-3 flex items-center justify-between">
+                  <button
+                    onClick={() => setPickerYear((y) => y - 1)}
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </button>
+                  <span className="text-[13px] font-semibold text-zinc-800">{pickerYear}</span>
+                  <button
+                    onClick={() => setPickerYear((y) => Math.min(y + 1, currentYear))}
+                    disabled={pickerYear >= currentYear}
+                    className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-30"
+                  >
+                    <ChevronRight className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                {/* Month grid */}
+                <div className="grid grid-cols-3 gap-1">
+                  {MONTH_SHORT.map((name, i) => {
+                    const m = i + 1;
+                    const isActive = pickerYear === year && m === month;
+                    const isFutureMonth =
+                      pickerYear > currentYear ||
+                      (pickerYear === currentYear && m > currentMonth);
+                    return (
+                      <button
+                        key={m}
+                        disabled={isFutureMonth}
+                        onClick={() => { onMonthChange(pickerYear, m); setPickerOpen(false); }}
+                        className={cn(
+                          'rounded-[8px] py-2  text-[12px] font-medium transition flex justify-center items-center',
+                          isActive
+                            ? 'bg-zinc-400 text-white'
+                            : !isFutureMonth
+                            ? 'text-zinc-700 hover:bg-zinc-100'
+                            : 'cursor-not-allowed text-zinc-300',
+                        )}
+                      >
+                        {name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
         </div>
+
+        {/* Right: Today button */}
         <button
-          onClick={() => onMonthChange(currentYear, currentMonth)}
-          className="rounded-lg border border-slate-200 px-3 py-1 text-[12px] font-medium text-slate-600 hover:bg-slate-50 transition"
+          onClick={() => { onMonthChange(currentYear, currentMonth); setPickerOpen(false); }}
+          className="rounded-lg border border-zinc-400 bg-white px-3 py-1.5 text-[14px] font-medium text-zinc-600 transition hover:border-zinc-300 hover:bg-zinc-50"
         >
           Today
         </button>
       </div>
 
-      {/* Day-of-week headers */}
-      <div className="grid grid-cols-7 text-center">
+    
+      <div className="mb-0.5 grid grid-cols-7">
         {DAY_HEADERS.map((d) => (
-          <div key={d} className="py-1 text-[11px] font-semibold text-slate-400">
+          <div key={d} className="flex h-8 items-center justify-center text-[10px] font-medium uppercase tracking-wide text-zinc-400">
             {d}
           </div>
         ))}
       </div>
 
-      {/* Calendar grid */}
-      <div className="grid grid-cols-7">
+    
+      <div className="grid grid-cols-7 gap-0.5">
         {cells.map((dateStr, idx) => {
-          if (!dateStr) return <div key={`blank-${idx}`} />;
+          if (!dateStr) return <div key={`blank-${idx}`} className="h-10" />;
 
           const record = recordByDate.get(dateStr);
           const isToday = dateStr === today;
@@ -165,89 +225,169 @@ export function AttendanceCalendar({ year, month, records, today, onMonthChange 
           const dayNum = new Date(dateStr + 'T00:00:00').getDate();
           const status = record?.status ?? null;
           const style = status ? STATUS_STYLES[status] : null;
+          const isPendingLeave = !record && pendingLeaveByDate.has(dateStr);
           const isSelected = selectedDate === dateStr;
-          const isClickable = !!record && !isFuture;
+          const isClickable = !!record || isPendingLeave;
+
+         
+          const cellBg = !isFuture
+            ? isPendingLeave
+              ? 'bg-orange-50 hover:bg-orange-100'
+              : status === 'present'
+              ? 'bg-green-50 hover:bg-green-100'
+              : status === 'absent'
+              ? 'bg-red-50 hover:bg-red-100'
+              : status === 'half-day'
+              ? 'bg-amber-50 hover:bg-amber-100'
+              : status === 'leave'
+              ? 'bg-sky-50 hover:bg-sky-100'
+              : isClickable
+              ? 'hover:bg-zinc-50'
+              : ''
+            : '';
+
+    
+          const numColor = isPendingLeave
+            ? 'text-orange-700 font-medium'
+            : status === 'present'
+            ? 'text-green-700'
+            : status === 'absent'
+            ? 'text-red-600'
+            : status === 'half-day'
+            ? 'text-amber-700'
+            : status === 'leave'
+            ? 'text-blue-700'
+            : 'text-zinc-500';
 
           return (
             <div
               key={dateStr}
-              onClick={() => handleDayClick(dateStr)}
+              onClick={() => (isClickable ? handleDayClick(dateStr) : undefined)}
               className={cn(
-                'mx-0.5 my-0.5 flex flex-col items-center rounded-lg py-1.5 transition',
-                isClickable && 'cursor-pointer hover:ring-1 hover:ring-slate-300',
-                isFuture && 'opacity-30',
-                !isFuture && style?.bg,
-                isToday && 'ring-2 ring-[#0C447C]/30',
-                isSelected && 'ring-2 ring-[#0C447C]/50',
+                'flex h-12 flex-col items-center justify-center gap-[3px] rounded-[8px] transition',
+                isClickable && 'cursor-pointer',
+                isFuture && !isPendingLeave && 'opacity-30',
+                !isSelected && cellBg,
+                isSelected && 'ring-1 ring-inset ring-zinc-900/20 bg-zinc-100',
               )}
             >
+            
               <span
                 className={cn(
-                  'text-[12px] font-medium',
-                  'text-slate-700',
-                  status === 'holiday' && 'text-slate-400',
-                  isToday && 'font-bold text-[#0C447C]',
+                  'flex h-[22px] w-[22px] items-center justify-center rounded-full text-[14px]',
+                  isToday
+                    ? 'bg-zinc-900 font-semibold text-white'
+                    : status === 'leave'
+                    ? 'bg-sky-100 font-semibold text-sky-700'
+                    : `font-medium ${numColor}`,
                 )}
               >
                 {dayNum}
               </span>
-              {status === 'holiday' ? (
-                <span className="mt-0.5 text-[9px] text-slate-400">H</span>
+
+              {/* Status indicator */}
+              {isPendingLeave ? (
+                <span className="h-[5px] w-[5px] rounded-full bg-orange-400" />
+              ) : status === 'leave' ? (
+                <span className="text-[8px] font-semibold uppercase leading-none tracking-wide text-sky-400">
+                  Leave
+                </span>
               ) : style?.dot ? (
-                <span className={cn('mt-0.5 h-1.5 w-1.5 rounded-full', style.dot)} />
+                <span className={cn('h-[5px] w-[5px] rounded-full', style.dot)} />
               ) : (
-                <span className="mt-0.5 h-1.5 w-1.5" />
+                <span className="h-[5px] w-[5px]" />
               )}
             </div>
           );
         })}
       </div>
 
-      {/* Selected day detail */}
-      {selectedRecord && selectedDate && (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-[12px] font-semibold text-slate-700">
+  
+      {selectedDate && selectedRecord && (
+        <div className="mt-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[12px] font-medium text-zinc-700">
               {formatDisplayDate(selectedDate)}
             </span>
             <button
               onClick={() => setSelectedDate(null)}
-              className="rounded p-0.5 text-slate-400 hover:bg-slate-200 transition"
+              className="rounded p-0.5 text-zinc-400 transition hover:bg-zinc-200"
             >
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
-            <span className="text-slate-400">Status</span>
-            <span className="font-medium text-slate-700">{STATUS_DISPLAY[selectedRecord.status]}</span>
-            <span className="text-slate-400">Check In</span>
-            <span className="text-slate-600">{formatTime(selectedRecord.checkIn)}</span>
-            <span className="text-slate-400">Check Out</span>
-            <span className="text-slate-600">{formatTime(selectedRecord.checkOut)}</span>
-            <span className="text-slate-400">Duration</span>
-            <span className="text-slate-600">{formatDuration(selectedRecord.duration)}</span>
+          <div className="text-[12px] text-zinc-600">
+            Status:{' '}
+            <span className="font-medium text-zinc-800">{STATUS_DISPLAY[selectedRecord.status]}</span>
           </div>
           {selectedRecord.remarks && (
-            <p className="border-t border-slate-200 pt-1.5 text-[11px] text-slate-500">
-              {selectedRecord.remarks}
-            </p>
+            <p className="mt-1 text-[11px] text-zinc-500">{selectedRecord.remarks}</p>
           )}
         </div>
       )}
 
-      {/* Legend */}
-      <div className="flex flex-wrap gap-x-4 gap-y-1 border-t border-slate-100 pt-3">
+      {/* Pending leave popup */}
+      {selectedDate && !selectedRecord && selectedPendingLeave && (
+        <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-[12px] font-medium text-amber-800">
+                {formatDisplayDate(selectedDate)}
+              </span>
+              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">
+                Pending
+              </span>
+            </div>
+            <button
+              onClick={() => setSelectedDate(null)}
+              className="rounded p-0.5 text-amber-400 transition hover:bg-amber-100"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <div className="space-y-1 text-[12px]">
+            <div>
+              <span className="text-amber-600/80">Leave type: </span>
+              <span className="font-medium text-amber-800">
+                {LEAVE_LABELS[selectedPendingLeave.leaveType]}
+              </span>
+            </div>
+            <div>
+              <span className="text-amber-600/80">Date range: </span>
+              <span className="text-amber-800">
+                {formatDisplayDate(selectedPendingLeave.fromDate)}
+                {selectedPendingLeave.fromDate !== selectedPendingLeave.toDate &&
+                  ` – ${formatDisplayDate(selectedPendingLeave.toDate)}`}
+              </span>
+            </div>
+            {selectedPendingLeave.reason && (
+              <div>
+                <span className="text-amber-600/80">Reason: </span>
+                <span className="text-amber-800">{selectedPendingLeave.reason}</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-zinc-100 pt-3">
         {[
-          { label: 'Present',  dot: 'bg-emerald-500' },
-          { label: 'Absent',   dot: 'bg-red-500' },
-          { label: 'Half-day', dot: 'bg-amber-400' },
-          { label: 'Leave',    dot: 'bg-blue-500' },
+          { label: 'Present',       dot: 'bg-green-500' },
+          { label: 'Absent',        dot: 'bg-red-500' },
+          { label: 'Half-day',      dot: 'bg-amber-400' },
+          { label: 'Pending leave', dot: 'bg-orange-500' },
         ].map(({ label, dot }) => (
           <div key={label} className="flex items-center gap-1.5">
-            <span className={cn('h-2 w-2 rounded-full', dot)} />
-            <span className="text-[11px] text-slate-500">{label}</span>
+            <span className={cn('h-[5px] w-[5px] rounded-full', dot)} />
+            <span className="text-[14px] text-zinc-400">{label}</span>
           </div>
         ))}
+        <div className="flex items-center gap-1.5">
+          <span className="flex h-[20px] w-[20px] items-center justify-center rounded-full bg-sky-100 text-[7px] font-bold text-sky-700">
+            L
+          </span>
+          <span className="text-[11px] text-zinc-400">On leave</span>
+        </div>
       </div>
     </div>
   );
