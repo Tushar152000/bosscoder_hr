@@ -61,6 +61,7 @@ const config: Config = {
         },
         'dark-blue': '#202658',
         'brand-blue': '#1371FF',
+        'light-blue': '#1371FF',
       
         tile: {
           blue: '#3b82f6',

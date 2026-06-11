@@ -101,27 +101,35 @@ function BalanceRow({ cfg, b }: { cfg: BalanceConfig; b: { total: number; used: 
   const pct = !isUnlimited && b.total > 0 ? ((b.total - b.used) / b.total) * 100 : 100;
   const isLow = !isUnlimited && remaining !== null && remaining <= 1;
   const fillColor = isLow ? '#E24B4A' : cfg.barFill;
+  const trackColor = isLow ? '#FEE2E2' : '#F4F4F5';
 
   return (
-    <div className="flex items-center gap-2.5">
-      <IconSquare bg={cfg.iconBg} color={cfg.iconColor}>
-        {cfg.icon}
-      </IconSquare>
-      <span className="w-[52px] shrink-0 text-[12px] text-zinc-500">{cfg.label}</span>
-      <div className="h-[4px] flex-1 overflow-hidden rounded-full bg-zinc-100">
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <IconSquare bg={cfg.iconBg} color={cfg.iconColor}>
+            {cfg.icon}
+          </IconSquare>
+          <span className="text-[12px] text-zinc-600">{cfg.label}</span>
+        </div>
+        <span
+          className={[
+            'shrink-0 text-[12px] tabular-nums font-medium',
+            isLow ? 'text-red-600' : 'text-zinc-400',
+          ].join(' ')}
+        >
+          {isUnlimited ? '∞' : `${remaining} / ${b.total}`}
+        </span>
+      </div>
+      <div
+        className="h-[6px] w-full overflow-hidden rounded-full"
+        style={{ backgroundColor: trackColor }}
+      >
         <div
-          className="h-full rounded-full transition-all"
+          className="h-full rounded-full transition-all duration-500"
           style={{ width: `${pct}%`, backgroundColor: fillColor }}
         />
       </div>
-      <span
-        className={[
-          'w-9 shrink-0 text-right text-[12px] tabular-nums',
-          isLow ? 'text-red-700' : 'text-zinc-400',
-        ].join(' ')}
-      >
-        {isUnlimited ? '∞' : `${remaining} / ${b.total}`}
-      </span>
     </div>
   );
 }
@@ -132,12 +140,12 @@ export function LeaveBalanceCard({ balance, records }: Props) {
   const absent  = records.filter((r) => r.status === 'absent').length;
 
   return (
-    <div className="space-y-4 rounded-[10px] border border-zinc-200 bg-white p-4">
+    <div className="w-full space-y-4 rounded-[10px] border border-zinc-200 bg-white p-4">
       <div>
         <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-zinc-400">
           Leave Balance
         </p>
-        <div className="space-y-3">
+        <div className="space-y-4">
           {BALANCE_CONFIG.map((cfg) => (
             <BalanceRow key={cfg.key} cfg={cfg} b={balance[cfg.key]} />
           ))}
@@ -148,7 +156,7 @@ export function LeaveBalanceCard({ balance, records }: Props) {
         <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-zinc-400">
           This month
         </p>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <div
             className="rounded-lg p-2 text-center"
             style={{ backgroundColor: '#EAF3DE', border: '0.5px solid #C0DD97' }}
@@ -163,13 +171,7 @@ export function LeaveBalanceCard({ balance, records }: Props) {
             <p className="text-[20px] font-medium" style={{ color: '#633806' }}>{halfDay}</p>
             <p className="mt-0.5 text-[11px]" style={{ color: '#854F0B' }}>Half day</p>
           </div>
-          <div
-            className="rounded-lg p-2 text-center"
-            style={{ backgroundColor: '#FCEBEB', border: '0.5px solid #F7C1C1' }}
-          >
-            <p className="text-[20px] font-medium" style={{ color: '#791F1F' }}>{absent}</p>
-            <p className="mt-0.5 text-[11px]" style={{ color: '#A32D2D' }}>Absent</p>
-          </div>
+         
         </div>
       </div>
     </div>

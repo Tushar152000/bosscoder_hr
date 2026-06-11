@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Clock, Plus } from 'lucide-react';
+import { Clock, Plus, X, ChevronRight } from 'lucide-react';
 import { AttendanceCalendar } from './AttendanceCalendar';
 import { LeaveBalanceCard } from './LeaveBalanceCard';
 import { ApplyLeaveModal } from './ApplyLeaveModal';
 import { MyLeaveRequestsCard } from './MyLeaveRequestsCard';
 import { getMonthAttendance } from '../actions';
-import type { AttendanceRecord, LeaveBalance, LeaveRequest } from '@/types/attendance';
+import type { AttendanceRecord, LeaveBalance, LeaveRequest, LeaveRequestStatus } from '@/types/attendance';
+import { LEAVE_LABELS } from '@/types/attendance';
 
 interface Props {
   employeeId: string;
@@ -18,6 +19,19 @@ interface Props {
   initialMonth: number;
   today: string;
   initialLeaveRequests?: LeaveRequest[];
+}
+
+const STATUS_BADGE: Record<LeaveRequestStatus, { bg: string; text: string; label: string }> = {
+  pending:  { bg: 'bg-amber-50',  text: 'text-amber-700', label: 'Pending' },
+  approved: { bg: 'bg-green-50',  text: 'text-green-700', label: 'Approved' },
+  rejected: { bg: 'bg-red-50',    text: 'text-red-600',   label: 'Rejected' },
+};
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function fmtDate(dateStr: string): string {
+  const [, m, d] = dateStr.split('-');
+  return `${parseInt(d)} ${MONTHS[parseInt(m) - 1]}`;
 }
 
 export function EmployeeView({
@@ -35,6 +49,7 @@ export function EmployeeView({
   const [records, setRecords] = useState<AttendanceRecord[]>(initialRecords);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(initialLeaveRequests);
   const [leaveOpen, setLeaveOpen] = useState(false);
+  const [leaveModalOpen, setLeaveModalOpen] = useState(false);
   const [isFetching, startTransition] = useTransition();
 
   const pendingCount = leaveRequests.filter((r) => r.status === 'pending').length;
@@ -52,10 +67,14 @@ export function EmployeeView({
     });
   }
 
+  const previewRequests = leaveRequests.slice(0, 3);
+  const extraCount = leaveRequests.length - 3;
+
   return (
     <div className="px-4 pb-8 md:px-0">
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_280px]">
-        
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_300px]">
+
+        {/* Left — calendar + actions */}
         <div className="min-w-0 space-y-3">
           <div
             className={
@@ -91,15 +110,90 @@ export function EmployeeView({
             <Plus className="h-4 w-4" />
             Apply for leave
           </button>
-             <MyLeaveRequestsCard requests={leaveRequests} />
         </div>
-
 
         <div className="space-y-4">
           <LeaveBalanceCard balance={balance} records={records} />
-       
+
+      
+          <button
+            onClick={() => setLeaveModalOpen(true)}
+            className="w-full rounded-[10px] border border-zinc-200 bg-white p-4 text-left transition hover:border-zinc-300 hover:shadow-sm"
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">
+                Leave Requests
+              </p>
+              <div className="flex items-center gap-1.5">
+                {leaveRequests.length > 0 && (
+                  <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-500">
+                    {leaveRequests.length}
+                  </span>
+                )}
+                <ChevronRight className="h-3.5 w-3.5 text-zinc-400" />
+              </div>
+            </div>
+
+            {leaveRequests.length === 0 ? (
+              <p className="text-[12px] text-zinc-400">No leave requests yet.</p>
+            ) : (
+              <div className="space-y-2.5">
+                {previewRequests.map((req) => {
+                  const badge = STATUS_BADGE[req.status];
+                  return (
+                    <div
+                      key={req.id ?? req.createdAt}
+                      className="flex items-center justify-between gap-2"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-[12px] font-medium text-zinc-700">
+                          {LEAVE_LABELS[req.leaveType]}
+                        </p>
+                        <p className="text-[11px] text-zinc-400">
+                          {fmtDate(req.fromDate)}
+                          {req.fromDate !== req.toDate && ` – ${fmtDate(req.toDate)}`}
+                        </p>
+                      </div>
+                      <span
+                        className={[
+                          'shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium',
+                          badge.bg,
+                          badge.text,
+                        ].join(' ')}
+                      >
+                        {badge.label}
+                      </span>
+                    </div>
+                  );
+                })}
+                {extraCount > 0 && (
+                  <p className="text-[11px] text-zinc-400">+{extraCount} more</p>
+                )}
+              </div>
+            )}
+          </button>
         </div>
       </div>
+
+      {leaveModalOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-50 bg-black/30 backdrop-blur-[2px]"
+            onClick={() => setLeaveModalOpen(false)}
+          />
+          <div className="fixed inset-x-4 top-1/2 z-50 -translate-y-1/2 sm:inset-x-auto sm:left-1/2 sm:w-full sm:max-w-md sm:-translate-x-1/2">
+            <div className="relative max-h-[80vh] overflow-y-auto rounded-xl shadow-xl">
+              <button
+                onClick={() => setLeaveModalOpen(false)}
+                className="absolute right-3 top-3 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-zinc-100 text-zinc-500 transition hover:bg-zinc-200"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+              <MyLeaveRequestsCard requests={leaveRequests} />
+            </div>
+          </div>
+        </>
+      )}
 
       <ApplyLeaveModal
         open={leaveOpen}

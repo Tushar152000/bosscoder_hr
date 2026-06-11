@@ -48,7 +48,7 @@ export function MyLeaveRequestsCard({
   return (
     <div className="rounded-xl border border-zinc-200 bg-white p-4">
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">{title}</p>
+        <p className="text-[12px] font-semibold uppercase tracking-wide text-zinc-400">{title}</p>
         {requests.length > 0 && (
           <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium text-zinc-500">
             {requests.length}

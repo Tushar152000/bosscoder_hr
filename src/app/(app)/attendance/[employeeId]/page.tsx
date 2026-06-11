@@ -7,10 +7,8 @@ import { getEmployeeById } from '@/lib/firestore/employees';
 import {
   getMonthAttendance,
   getLeaveBalance,
-  getPendingLeaveRequestsForTeam,
 } from '../actions';
 import { EmployeeView } from '../_components/EmployeeView';
-import { PendingLeavesCard } from '../_components/PendingLeavesCard';
 
 interface Props {
   params: Promise<{ employeeId: string }>;
@@ -38,10 +36,9 @@ export default async function EmployeeAttendancePage({ params }: Props) {
   const month = now.getMonth() + 1;
   const today = now.toISOString().split('T')[0];
 
-  const [records, balance, pendingLeaves] = await Promise.all([
+  const [records, balance] = await Promise.all([
     getMonthAttendance(employeeId, year, month),
     getLeaveBalance(employeeId),
-    getPendingLeaveRequestsForTeam([employeeId]),
   ]);
 
   return (
@@ -82,18 +79,6 @@ export default async function EmployeeAttendancePage({ params }: Props) {
         today={today}
       />
 
-      {/* Pending leave requests for this employee */}
-      {pendingLeaves.length > 0 && (
-        <div className="px-4 md:px-6 pb-8 space-y-3">
-          <div>
-            <h2 className="text-[15px] font-semibold text-slate-800">Pending Leave Requests</h2>
-            <p className="text-[12px] text-slate-400 mt-0.5">
-              Approve or reject {emp.displayName.split(' ')[0]}&apos;s leave requests.
-            </p>
-          </div>
-          <PendingLeavesCard initialLeaves={pendingLeaves} showEmployeeName={false} />
-        </div>
-      )}
     </div>
   );
 }

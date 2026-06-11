@@ -208,7 +208,7 @@ export function AttendanceCalendar({
     
       <div className="mb-0.5 grid grid-cols-7">
         {DAY_HEADERS.map((d) => (
-          <div key={d} className="flex h-8 items-center justify-center text-[10px] font-medium uppercase tracking-wide text-zinc-400">
+          <div key={d} className="flex h-8 items-center justify-center text-[12px] font-semibold uppercase tracking-wide text-zinc-400">
             {d}
           </div>
         ))}
@@ -264,7 +264,7 @@ export function AttendanceCalendar({
               key={dateStr}
               onClick={() => (isClickable ? handleDayClick(dateStr) : undefined)}
               className={cn(
-                'flex h-12 flex-col items-center justify-center gap-[3px] rounded-[8px] transition',
+                'flex h-14 flex-col items-center justify-center gap-2 rounded-[8px] transition',
                 isClickable && 'cursor-pointer',
                 isFuture && !isPendingLeave && 'opacity-30',
                 !isSelected && cellBg,
