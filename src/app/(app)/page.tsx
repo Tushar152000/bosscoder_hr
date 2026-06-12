@@ -92,14 +92,7 @@ export default async function HomePage({
               title="Employee directory"
               description="Browse teams and reporting lines"
             />
-            <QuickCard
-              href="/attendance"
-              icon={CalendarCheck}
-              iconBg="#EBF3FE"
-              iconColor="#1D4ED8"
-              title="Attendance"
-              description="Mark attendance, track leaves and balance"
-            />
+           
             <QuickCard
               href="/performance"
               icon={TrendingUp}
@@ -115,6 +108,15 @@ export default async function HomePage({
               iconColor="#534AB7"
               title="ESOPs"
               description="Vested grants and statements"
+            />
+             <QuickCard
+              href="/"
+              icon={CalendarCheck}
+              iconBg="#EBF3FE"
+              iconColor="#1D4ED8"
+              title="Attendance & Leave"
+              description="Track attendance, apply for leaves and view your balance — launching soon"
+              comingSoon
             />
             {isHR && (
               <QuickCard
