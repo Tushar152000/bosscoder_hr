@@ -9,7 +9,8 @@ FROM node:20-alpine AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --cache /root/.npm
 
 # ──────────────────────────────────────────────────────────────────────────────
 # 2. builder — full build (next build → .next/standalone).

@@ -24,6 +24,8 @@ jobs:
         uses: google-github-actions/setup-gcloud@v2
 
       - name: Deploy to Cloud Run
+        env:
+          DOCKER_BUILDKIT: 1
         run: |
           gcloud run deploy bosscoder-hr \
             --source=. \
