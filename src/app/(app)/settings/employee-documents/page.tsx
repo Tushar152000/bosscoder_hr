@@ -72,9 +72,13 @@ export default async function EmployeeDocumentsPage({ searchParams }: PageProps)
     activeUsers = activeUsers.filter((u) => deptByUid.get(u.uid) === dept);
   }
 
+  const REQUIRED_TYPES = DOCUMENT_TYPES.filter((d) => !d.optional);
+
   const totalActive = users.filter((u) => u.active).length;
-  const uploadedCount = allDocs.length;
-  const totalPossible = totalActive * DOCUMENT_TYPES.length;
+  const uploadedCount = allDocs.filter((d) =>
+    REQUIRED_TYPES.some((t) => t.key === d.docType),
+  ).length;
+  const totalPossible = totalActive * REQUIRED_TYPES.length;
   const coveragePct =
     totalPossible > 0 ? Math.round((uploadedCount / totalPossible) * 100) : 0;
 
@@ -88,9 +92,9 @@ export default async function EmployeeDocumentsPage({ searchParams }: PageProps)
         </p>
       </div>
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {DOCUMENT_TYPES.map(({ key, label }) => {
+      {/* Summary cards — required docs only */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        {REQUIRED_TYPES.map(({ key, label }) => {
           const count = allDocs.filter((d) => d.docType === key).length;
           const pct = totalActive > 0 ? Math.round((count / totalActive) * 100) : 0;
           return (
@@ -144,7 +148,7 @@ export default async function EmployeeDocumentsPage({ searchParams }: PageProps)
           />
         </div>
         <p className="text-[11px] text-slate-400 mt-1.5">
-          {uploadedCount} of {totalPossible} documents uploaded across {totalActive} members
+          {uploadedCount} of {totalPossible} required documents uploaded across {totalActive} members
         </p>
       </div>
 
@@ -176,12 +180,17 @@ export default async function EmployeeDocumentsPage({ searchParams }: PageProps)
                   <th className="px-4 md:px-5 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap">
                     Member
                   </th>
-                  {DOCUMENT_TYPES.map(({ label }) => (
+                  {DOCUMENT_TYPES.map(({ label, optional }) => (
                     <th
                       key={label}
                       className="px-4 py-3 text-[11px] font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap text-center min-w-[110px]"
                     >
                       {label}
+                      {optional && (
+                        <span className="ml-1 normal-case text-[9px] font-medium text-slate-400 border border-slate-200 rounded px-1 py-0.5">
+                          opt
+                        </span>
+                      )}
                     </th>
                   ))}
                 </tr>
@@ -192,10 +201,10 @@ export default async function EmployeeDocumentsPage({ searchParams }: PageProps)
                   const primaryRole = u.roles[0];
                   const displayName = u.displayName ?? u.email;
                   const department = deptByUid.get(u.uid);
-                  const uploadedForUser = DOCUMENT_TYPES.filter((d) =>
+                  const uploadedForUser = REQUIRED_TYPES.filter((d) =>
                     userDocs?.has(d.key),
                   ).length;
-                  const allComplete = uploadedForUser === DOCUMENT_TYPES.length;
+                  const allComplete = uploadedForUser === REQUIRED_TYPES.length;
 
                   return (
                     <tr
@@ -235,7 +244,7 @@ export default async function EmployeeDocumentsPage({ searchParams }: PageProps)
                             {/* Segmented completion bar */}
                             <div className="flex items-center gap-1.5 mt-1.5">
                               <div className="flex gap-0.5">
-                                {DOCUMENT_TYPES.map((d) => (
+                                {REQUIRED_TYPES.map((d) => (
                                   <div
                                     key={d.key}
                                     title={d.label}
@@ -252,7 +261,7 @@ export default async function EmployeeDocumentsPage({ searchParams }: PageProps)
                                   allComplete ? 'text-emerald-600' : 'text-amber-600'
                                 }`}
                               >
-                                {uploadedForUser}/{DOCUMENT_TYPES.length}
+                                {uploadedForUser}/{REQUIRED_TYPES.length}
                               </span>
                             </div>
                           </div>

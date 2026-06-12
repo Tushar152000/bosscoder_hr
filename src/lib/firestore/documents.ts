@@ -2,7 +2,14 @@ import 'server-only';
 import { adminDb } from '@/lib/firebase/admin';
 import { HR } from '@/lib/firebase/collections';
 
-export type DocumentType = 'aadhaar' | 'pan' | 'marksheet_10' | 'marksheet_12';
+export type DocumentType =
+  | 'aadhaar'
+  | 'pan'
+  | 'marksheet_10'
+  | 'marksheet_12'
+  | 'degree'
+  | 'signed_offer_letter'
+  | 'signed_employment_contract';
 
 export interface HrDocument {
   id: string;

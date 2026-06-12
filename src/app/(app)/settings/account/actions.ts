@@ -39,7 +39,15 @@ export async function updateDobAction(formData: FormData): Promise<void> {
   revalidatePath('/');
 }
 
-const ALLOWED_DOC_TYPES: DocumentType[] = ['aadhaar', 'pan', 'marksheet_10', 'marksheet_12'];
+const ALLOWED_DOC_TYPES: DocumentType[] = [
+  'aadhaar',
+  'pan',
+  'marksheet_10',
+  'marksheet_12',
+  'degree',
+  'signed_offer_letter',
+  'signed_employment_contract',
+];
 
 export async function uploadAvatarAction(formData: FormData): Promise<{ url: string }> {
   const user = await requireUser();
