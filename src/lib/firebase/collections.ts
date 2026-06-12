@@ -16,6 +16,7 @@ export const HR = {
   auditLogs: 'hr_audit_logs',
   esopPlans: 'hr_esop_plans',
   esopGrants: 'hr_esop_grants',
+  documents: 'hr_documents',
   attendanceRecords: 'hr_attendance_records',
   leaveRequests: 'hr_leave_requests',
   leaveBalances: 'hr_leave_balances',

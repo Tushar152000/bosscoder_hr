@@ -26,6 +26,7 @@ import {
 } from '@/lib/performance/cycle-period';
 import type { EmployeePublic } from '@/types/employee';
 import type { ReviewCycle, ReviewSubmission } from '@/types/review';
+import { PerformanceComingSoonPopup } from '@/components/performance/coming-soon-popup';
 
 export const metadata = { title: 'Performance evaluation' };
 
@@ -387,8 +388,11 @@ export default async function PerformancePage({ searchParams }: Props) {
     return true;
   });
 
+  const showComingSoon = !isAdmin && queueSubs.length === 0 && !hasReports;
+
   return (
     <div className="px-4 py-6 space-y-6">
+      {showComingSoon && <PerformanceComingSoonPopup />}
       {/* ── Header ──────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-3.5">
         <div>

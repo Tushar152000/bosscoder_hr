@@ -45,20 +45,12 @@ export function BirthdayPanel({ entries }: BirthdayPanelProps) {
   const todayCount = entries.filter((e) => e.daysUntil === 0).length;
 
   return (
-    <div className="py-4 border-b border-slate-100 mb-5">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-1.5">
-          <span className="text-sm">🎂</span>
-          <span className="text-[10px] font-semibold tracking-[1.4px] uppercase text-slate-400">
-            Birthdays
-          </span>
-          {todayCount > 0 && (
-            <span className="text-[9px] font-semibold bg-pink-50 text-pink-800 px-1.5 py-0.5 rounded-md">
-              {todayCount} today
-            </span>
-          )}
-        </div>
-      </div>
+    <div className="px-4 pb-3.5">
+      {todayCount > 0 && (
+        <span className="inline-flex mb-2 text-[9px] font-semibold bg-pink-50 text-pink-700 border border-pink-200 px-1.5 py-0.5 rounded-md">
+          {todayCount} today 🎉
+        </span>
+      )}
 
       {entries.length === 0 ? (
         <p className="text-[11px] text-slate-400 text-center py-3">

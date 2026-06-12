@@ -13,6 +13,7 @@ import { initials } from "@/lib/utils";
 import { colorForName } from "@/lib/directory/colors";
 import { QuickCard } from "@/components/dashboard/quick-card";
 import { BirthdayBanner } from "@/components/home/birthday-banner";
+import { DobMissingBanner } from "@/components/home/dob-missing-banner";
 import { HomeHero } from "@/components/home/home-hero";
 import { HomeSidebar } from "@/components/home/home-sidebar";
 
@@ -74,6 +75,8 @@ export default async function HomePage({
           avatarBg={avatarBg}
         />
 
+        {me && <DobMissingBanner hasDob={!!me.dateOfBirth} />}
+
         <BirthdayBanner people={todayBirthdays} />
 
         <section>
@@ -132,15 +135,17 @@ export default async function HomePage({
               description="Company updates and stories"
               comingSoon
             />
-            <QuickCard
-              href="/"
-              icon={FileText}
-              iconBg="#FEF3E7"
-              iconColor="#B45309"
-              title="Offer letters"
-              description="Generate and manage offer letters"
-              comingSoon
-            />
+            {isHR && (
+              <QuickCard
+                href="/"
+                icon={FileText}
+                iconBg="#FEF3E7"
+                iconColor="#B45309"
+                title="Offer letters"
+                description="Generate and manage offer letters"
+                comingSoon
+              />
+            )}
           </div>
         </section>
       </div>

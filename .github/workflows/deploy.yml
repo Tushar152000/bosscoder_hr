@@ -1,13 +1,13 @@
-name: Deploy to Staging
+name: Deploy to Cloud Run
 
 on:
   push:
-    branches: [feature/attendanceSystem]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
   deploy:
-    name: Build & Deploy (Staging)
+    name: Build & Deploy
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
@@ -23,13 +23,17 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
 
-      - name: Deploy to Cloud Run (Staging)
+      - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy bosscoder-hr-staging \
+          gcloud run deploy bosscoder-hr \
             --source=. \
             --region=asia-south1 \
             --project=bosscoderplatformindia \
             --quiet
 
-      - name: Print staging URL
-        run: echo "Staging → https://hr-staging.bosscoderacademy.com"
+      - name: Print service URL
+        run: |
+          gcloud run services describe bosscoder-hr \
+            --region=asia-south1 \
+            --project=bosscoderplatformindia \
+            --format="value(status.url)"
