@@ -222,28 +222,17 @@ interface ChartInnerProps {
   selectedId: string | null;
   activeDepts: Set<string>;
   onSelect: (id: string) => void;
+  onDeselect: () => void;
   focusId: string | null;
   orphans: TreeNodeData[];
 }
 
 function OrgChartInner({
-  treeNodes, childrenMap, selectedId, activeDepts, onSelect, focusId, orphans,
+  treeNodes, childrenMap, selectedId, activeDepts, onSelect, onDeselect, focusId, orphans,
 }: ChartInnerProps) {
   const { fitView, zoomIn, zoomOut, setCenter } = useReactFlow();
 
-  const initialCollapsed = useMemo(() => {
-    const roots = new Set(treeNodes.filter(n => !n.managerId).map(n => n.id));
-    const rootChildren = new Set<string>();
-    for (const rid of roots) {
-      for (const cid of childrenMap.get(rid) ?? []) rootChildren.add(cid);
-    }
-    const s = new Set<string>();
-    for (const n of treeNodes) {
-      if (roots.has(n.id) || rootChildren.has(n.id)) continue;
-      if (n.totalDownstreamCount > 8) s.add(n.id);
-    }
-    return s;
-  }, [treeNodes, childrenMap]);
+  const initialCollapsed = useMemo(() => new Set<string>(), []);
 
   const [collapsed, setCollapsed] = useState<Set<string>>(initialCollapsed);
 
@@ -276,7 +265,7 @@ function OrgChartInner({
         selected: n.id === selectedId,
         dimmed: activeDepts.size > 0 && !activeDepts.has(n.department),
         collapsed: collapsed.has(n.id),
-        collapsible: n.directReportsCount > 4,
+        collapsible: false,
         onSelect,
         onToggle,
       },
@@ -320,10 +309,12 @@ function OrgChartInner({
         fitViewOptions={{ padding: 0.15 }}
         proOptions={{ hideAttribution: true }}
         panOnScroll
+        panOnDrag={false}
         zoomOnScroll
         nodesDraggable={false}
         nodesConnectable={false}
         elementsSelectable={false}
+        onPaneClick={onDeselect}
         minZoom={0.3}
         maxZoom={1.5}
       >
@@ -934,6 +925,7 @@ export function OrgTreeClient({
               selectedId={selectedId}
               activeDepts={activeDepts}
               onSelect={handleSelect}
+              onDeselect={() => { setSelectedId(null); pushUrl({ focus: null }); }}
               focusId={focusId}
               orphans={orphans}
             />
