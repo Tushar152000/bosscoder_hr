@@ -1,6 +1,6 @@
 import { requireUser } from '@/lib/auth/guard';
 import { getEmployeeByUserUid } from '@/lib/firestore/employees';
-import { Calendar, UserX } from 'lucide-react';
+import { UserX } from 'lucide-react';
 import {
   getMonthAttendance,
   getLeaveBalance,
@@ -9,8 +9,15 @@ import {
   getTeamMonthAttendance,
   getPendingLeaveRequestsForTeam,
 } from './actions';
+import {
+  getAllEmployeesAttendanceToday,
+  getAllLeaveBalances,
+  getAllPendingLeaves,
+} from '@/lib/actions/hr';
+import type { EmployeeAttendanceToday, EmployeeLeaveBalance } from '@/lib/actions/hr';
 import { EmployeeView } from './_components/EmployeeView';
 import { ManagerTabs } from './_components/ManagerTabs';
+import type { AttendanceRecord, LeaveRequest } from '@/types/attendance';
 
 export const metadata = { title: 'Attendance' };
 
@@ -60,36 +67,33 @@ export default async function AttendancePage() {
 
   const firstName = me.displayName.split(' ')[0];
 
-  const pageHeader = (
-    <div className="mb-6  pb-4 pt-7">
-      <h1 className="text-[20px] font-semibold text-zinc-900">
-        {greeting}, {firstName}
-      </h1>
-      <div className="mt-1 flex items-center font-medium gap-1.5">
-        <Calendar className="h-3.5 w-3.5 text-zinc-400" />
-        <span className="text-[14px] text-zinc-500">{fullDate}</span>
-        <span className="mx-0.5 text-zinc-300">·</span>
-        <span className="text-[14px] text-zinc-500">Week {weekNum}</span>
-      </div>
-    </div>
-  );
-
-  const mightManage =
-    user.roles.includes('manager') ||
-    user.roles.includes('hr') ||
-    user.roles.includes('founder');
+  const isHR      = user.roles.includes('hr') || user.roles.includes('founder');
+  const mightManage = user.roles.includes('manager') || isHR;
 
   const teamMembers = mightManage ? await getTeamMembers(me.employeeId) : [];
   const hasTeam = teamMembers.length > 0;
 
-  if (hasTeam) {
+  if (hasTeam || isHR) {
     const teamIds = teamMembers.map((e) => e.employeeId);
-    const [records, balance, myLeaves, teamRecords, pendingLeaves] = await Promise.all([
+
+    const [
+      records,
+      balance,
+      myLeaves,
+      teamRecords,
+      pendingLeaves,
+      hrAttendance,
+      hrBalances,
+      hrPending,
+    ] = await Promise.all([
       getMonthAttendance(me.employeeId, year, month),
       getLeaveBalance(me.employeeId),
       getMyLeaveRequests(me.employeeId),
-      getTeamMonthAttendance(teamIds, year, month),
-      getPendingLeaveRequestsForTeam(teamIds),
+      hasTeam ? getTeamMonthAttendance(teamIds, year, month) : Promise.resolve<AttendanceRecord[]>([]),
+      hasTeam ? getPendingLeaveRequestsForTeam(teamIds)      : Promise.resolve<LeaveRequest[]>([]),
+      isHR    ? getAllEmployeesAttendanceToday()              : Promise.resolve<EmployeeAttendanceToday[]>([]),
+      isHR    ? getAllLeaveBalances()                         : Promise.resolve<EmployeeLeaveBalance[]>([]),
+      isHR    ? getAllPendingLeaves()                         : Promise.resolve<LeaveRequest[]>([]),
     ]);
 
     return (
@@ -103,9 +107,14 @@ export default async function AttendancePage() {
           initialYear={year}
           initialMonth={month}
           today={today}
+          hasTeam={hasTeam}
           teamMembers={teamMembers}
           initialTeamRecords={teamRecords}
           initialPendingLeaves={pendingLeaves}
+          isHR={isHR}
+          initialHRAttendance={hrAttendance}
+          initialHRBalances={hrBalances}
+          initialHRPendingLeaves={hrPending}
           greeting={greeting}
           firstName={firstName}
           fullDate={fullDate}
@@ -123,7 +132,16 @@ export default async function AttendancePage() {
 
   return (
     <div>
-      {pageHeader}
+      <div className="mb-6 pb-4 pt-7">
+        <h1 className="text-[20px] font-semibold text-zinc-900">
+          {greeting}, {firstName}
+        </h1>
+        <div className="mt-1 flex items-center gap-1.5 font-medium">
+          <span className="text-[14px] text-zinc-500">{fullDate}</span>
+          <span className="mx-0.5 text-zinc-300">·</span>
+          <span className="text-[14px] text-zinc-500">Week {weekNum}</span>
+        </div>
+      </div>
       <EmployeeView
         employeeId={me.employeeId}
         employeeName={me.displayName}
