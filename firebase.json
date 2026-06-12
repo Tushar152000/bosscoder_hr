@@ -3,24 +3,46 @@
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
-  "hosting": {
-    "site": "bosscoder-hr",
-    "public": "public",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**",
-      "src/**",
-      ".next/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "run": {
-          "serviceId": "bosscoder-hr",
-          "region": "asia-south1"
+  "hosting": [
+    {
+      "site": "bosscoder-hr",
+      "public": "public",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**",
+        "src/**",
+        ".next/**"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "run": {
+            "serviceId": "bosscoder-hr",
+            "region": "asia-south1"
+          }
         }
-      }
-    ]
-  }
+      ]
+    },
+    {
+      "site": "bosscoder-hr-staging",
+      "public": "public",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**",
+        "src/**",
+        ".next/**"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "run": {
+            "serviceId": "bosscoder-hr-staging",
+            "region": "asia-south1"
+          }
+        }
+      ]
+    }
+  ]
 }

@@ -4,7 +4,7 @@ clear
 Target architecture:
 
 ```
-                    Squarespace DNS (CNAME)
+                    Cloudflare DNS (CNAME, DNS only)
                             │
                             ▼
         hr.bosscoderacademy.com  ──►  Cloud Run (asia-south1)
@@ -189,17 +189,26 @@ This prints DNS records you need to add. For a subdomain it'll be a single
 hr   CNAME   ghs.googlehosted.com.
 ```
 
-### Add the CNAME at Squarespace
+### Add the CNAME at Cloudflare
 
-1. Squarespace → **Settings → Domains → bosscoderacademy.com → DNS Settings** (or whatever they call it now — "Manage DNS")
-2. Add a **CNAME** record:
-   - Host: `hr`
-   - Points to: `ghs.googlehosted.com`
-   - TTL: leave default (or 300)
+1. Cloudflare dashboard → **bosscoderacademy.com → DNS → Records → Add record**
+2. Fill in:
+   | Field | Value |
+   |---|---|
+   | Type | `CNAME` |
+   | Name | `hr` |
+   | Target | `ghs.googlehosted.com` |
+   | Proxy status | **DNS only** (grey cloud ☁️) |
+   | TTL | Auto |
 3. Save.
 
-DNS propagation is usually 5–30 minutes. While you wait, Cloud Run provisions
-a free Google-managed TLS cert — automatic.
+> ⚠️ **Proxy status must be grey cloud (DNS only).** If it's orange (Proxied),
+> Cloudflare terminates TLS itself and Cloud Run can never provision its
+> Google-managed cert — the domain mapping will stay stuck on "Provisioning"
+> indefinitely.
+
+DNS propagation is usually instant with Cloudflare. Cloud Run then auto-provisions
+a free Google-managed TLS cert — takes 5–15 minutes.
 
 Verify status:
 ```bash
