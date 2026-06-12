@@ -13,6 +13,7 @@ import { initials } from "@/lib/utils";
 import { colorForName } from "@/lib/directory/colors";
 import { QuickCard } from "@/components/dashboard/quick-card";
 import { BirthdayBanner } from "@/components/home/birthday-banner";
+import { DobMissingBanner } from "@/components/home/dob-missing-banner";
 import { HomeHero } from "@/components/home/home-hero";
 import { HomeSidebar } from "@/components/home/home-sidebar";
 
@@ -73,6 +74,8 @@ export default async function HomePage({
           userInitials={userInitials}
           avatarBg={avatarBg}
         />
+
+        {me && <DobMissingBanner hasDob={!!me.dateOfBirth} />}
 
         <BirthdayBanner people={todayBirthdays} />
 

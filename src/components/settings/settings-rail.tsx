@@ -10,6 +10,7 @@ import {
   BarChart2,
   ShieldCheck,
   ClipboardList,
+  FolderOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -30,6 +31,7 @@ const ORG: NavItem[] = [
   { label: 'Evaluation defaults', href: '/settings/evaluation-defaults', icon: BarChart2 },
   { label: 'Roles & access', href: '/settings/roles', icon: ShieldCheck },
   { label: 'Audit log', href: '/settings/audit-log', icon: ClipboardList },
+  { label: 'Employee Docs', href: '/settings/employee-documents', icon: FolderOpen },
 ];
 
 interface Props {
