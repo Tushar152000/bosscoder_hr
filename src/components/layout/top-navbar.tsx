@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Bell, ChevronDown, ClipboardList, FileText,
-  Home, LogOut, Menu, Megaphone, Network, ScrollText,
+  Home, LogOut, Menu, Megaphone, ScrollText,
   Settings as SettingsIcon, Shield, User, Users, X,
 } from "lucide-react";
 import * as Popover from "@radix-ui/react-popover";
@@ -67,13 +67,11 @@ export function TopNavbar({ user, notifications = [] }: Props) {
 
   const canManageOfferLetters = user.permissions.includes("manage_offer_letters");
   const canManageEmployees    = user.permissions.includes("manage_employees");
-  const canSeeOrgChart        = user.roles.some((r) => ["hr", "founder", "manager"].includes(r));
 
   const navItems = [
     { href: "/",             label: "Home",           icon: Home },
     { href: "/directory",    label: "Directory",      icon: Users },
     { href: "/performance",  label: "Performance",    icon: ClipboardList },
-    ...(canSeeOrgChart        ? [{ href: "/org-chart",      label: "Org Chart",       icon: Network   }] : []),
     ...(canManageOfferLetters ? [{ href: "/offers",         label: "Offer Letters",   icon: FileText  }] : []),
     ...(canManageEmployees    ? [{ href: "/communications", label: "Communications",  icon: Megaphone }] : []),
   ];

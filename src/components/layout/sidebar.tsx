@@ -6,7 +6,6 @@ import {
   Users,
   ClipboardList,
   FileText,
-  Network,
   Shield,
   ScrollText,
   Settings,
@@ -28,13 +27,6 @@ interface NavItem {
 const NAV: NavItem[] = [
   { href: '/directory', label: 'Directory', icon: Users, group: 'main' },
   { href: '/performance', label: 'Performance', icon: ClipboardList, group: 'main' },
-  {
-    href: '/org-chart',
-    label: 'Org Chart',
-    icon: Network,
-    requiredRole: ['hr', 'founder', 'manager'] as Role[],
-    group: 'main',
-  },
   {
     href: '/offers',
     label: 'Offer Letters',
