@@ -10,34 +10,26 @@ jobs:
     name: Build & Deploy
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Deploy to Cloud Run
+      - name: Authenticate & Deploy to Cloud Run
         env:
-          DOCKER_BUILDKIT: 1
+          DOCKER_BUILDKIT: "1"
         run: |
+          echo '${{ secrets.GCP_SA_KEY }}' | base64 -d > /tmp/sa-key.json
+          gcloud auth activate-service-account --key-file=/tmp/sa-key.json
+          gcloud config set project bosscoderplatformindia
           gcloud run deploy bosscoder-hr \
             --source=. \
             --region=asia-south1 \
-            --project=bosscoderplatformindia \
             --quiet
+          rm -f /tmp/sa-key.json
 
       - name: Print service URL
         run: |
           gcloud run services describe bosscoder-hr \
             --region=asia-south1 \
-            --project=bosscoderplatformindia \
             --format="value(status.url)"
