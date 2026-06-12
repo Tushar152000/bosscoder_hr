@@ -127,15 +127,17 @@ export default async function HomePage({
               description="Company updates and stories"
               comingSoon
             />
-            <QuickCard
-              href="/"
-              icon={FileText}
-              iconBg="#FEF3E7"
-              iconColor="#B45309"
-              title="Offer letters"
-              description="Generate and manage offer letters"
-              comingSoon
-            />
+            {isHR && (
+              <QuickCard
+                href="/"
+                icon={FileText}
+                iconBg="#FEF3E7"
+                iconColor="#B45309"
+                title="Offer letters"
+                description="Generate and manage offer letters"
+                comingSoon
+              />
+            )}
           </div>
         </section>
       </div>
