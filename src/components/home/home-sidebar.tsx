@@ -59,7 +59,7 @@ export function HomeSidebar({
   const roleLabel = ROLE_LABELS[role] ?? role;
 
   return (
-    <aside className="bg-white border-l border-slate-200/70 lg:sticky lg:top-14 lg:h-[calc(100vh-3.5rem)] lg:overflow-y-auto flex flex-col">
+    <aside className="bg-white border-l border-slate-200/70 lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto flex flex-col">
 
       {/* ── Profile hero ── */}
       <div className="relative px-5 pt-7 pb-6 bg-gradient-to-b from-[#EEF5FF] to-white border-b border-slate-100 overflow-hidden">
