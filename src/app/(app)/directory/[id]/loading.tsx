@@ -2,7 +2,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function EmployeeDetailLoading() {
   return (
-    <div className="py-5 space-y-5">
+    <div className="px-6 md:px-10 py-5 space-y-5">
       {/* Breadcrumb */}
       <div className="flex items-center gap-1.5">
         <Skeleton className="h-3 w-3 rounded" />

@@ -22,6 +22,13 @@ const ROLE_LABELS: Record<string, string> = {
   employee: 'Employee',
 };
 
+const ROLE_COLORS: Record<string, string> = {
+  founder: 'bg-purple-50 text-purple-700 border-purple-200',
+  hr: 'bg-[#E6F1FB] text-[#0C447C] border-[#C3D9EF]',
+  manager: 'bg-sky-50 text-sky-700 border-sky-200',
+  employee: 'bg-slate-100 text-slate-600 border-slate-200',
+};
+
 interface HomeSidebarProps {
   displayName: string;
   designation?: string;
@@ -43,29 +50,29 @@ export function HomeSidebar({
   displayName,
   designation,
   department,
-  employeeId,
   joiningDate,
   photoURL,
   userInitials,
   avatarBg,
   role,
-  isHR,
   isFounder,
   reportingManager,
   upcomingBirthdays,
   notifications,
 }: HomeSidebarProps) {
-  const hasProfile = !!employeeId || !!designation;
+  const hasProfile = !!designation || !!department || !!joiningDate;
   const roleLabel = ROLE_LABELS[role] ?? role;
+  const roleColor = ROLE_COLORS[role] ?? ROLE_COLORS.employee;
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <aside className="bg-white border-l border-slate-200/70 lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:overflow-y-auto flex flex-col">
+    <aside className="bg-white border-l border-slate-200 lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:overflow-hidden lg:self-start flex flex-col">
 
       {/* ── Profile hero ── */}
-      <div className="relative px-5 pt-7 pb-6 bg-gradient-to-b from-[#EEF5FF] to-white border-b border-slate-100 overflow-hidden">
+      <div className="relative px-5 pt-6 pb-6 bg-gradient-to-b from-[#EEF5FF] via-[#F5F9FF] to-white border-b border-slate-200 overflow-hidden">
         {/* decorative blobs */}
-        <div className="pointer-events-none absolute -top-8 -right-8 w-32 h-32 rounded-full bg-[#0C447C]/10 blur-3xl" />
-        <div className="pointer-events-none absolute bottom-0 left-0 w-20 h-20 rounded-full bg-[#0C447C]/5 blur-2xl" />
+        <div className="pointer-events-none absolute -top-6 -right-6 w-28 h-28 rounded-full bg-[#0C447C]/10 blur-3xl" />
+        <div className="pointer-events-none absolute bottom-0 left-0 w-16 h-16 rounded-full bg-[#0C447C]/5 blur-2xl" />
 
         <div className="relative flex flex-col items-center text-center gap-3">
           {/* Avatar */}
@@ -76,27 +83,43 @@ export function HomeSidebar({
                 src={photoURL}
                 alt=""
                 referrerPolicy="no-referrer"
-                className="w-[64px] h-[64px] rounded-2xl object-cover ring-4 ring-white shadow-lg"
+                className="w-[68px] h-[68px] rounded-2xl object-cover ring-[3px] ring-white shadow-lg"
               />
             ) : (
               <div
-                className="w-[64px] h-[64px] rounded-2xl flex items-center justify-center text-white text-[22px] font-bold ring-4 ring-white shadow-lg"
+                className="w-[68px] h-[68px] rounded-2xl flex items-center justify-center text-white text-[24px] font-bold ring-[3px] ring-white shadow-lg"
                 style={{ background: avatarBg }}
               >
                 {userInitials}
               </div>
             )}
-            <span className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-emerald-400 border-[2.5px] border-white shadow-sm" />
+            <span className="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full bg-emerald-400 border-2 border-white shadow-sm" />
           </div>
 
-          {/* Name + role */}
-          <div>
-            <p className="text-[15px] font-bold text-slate-900 leading-tight">{displayName}</p>
+          {/* Name */}
+          <div className="w-full min-w-0 px-1">
+            <p
+              className="text-[15px] font-bold text-slate-900 leading-tight truncate"
+              title={displayName}
+            >
+              {displayName}
+            </p>
+
+            {/* Designation — clamp to 2 lines max so it never crashes layout */}
             {designation && (
-              <p className="text-[12px] text-slate-500 mt-0.5">{designation}</p>
+              <p
+                className="text-[11.5px] text-slate-500 mt-0.5 leading-snug line-clamp-2"
+                title={designation}
+              >
+                {designation}
+              </p>
             )}
+
+            {/* Role badge */}
             {role && (
-              <span className="inline-block mt-2 text-[10px] font-semibold tracking-wider uppercase bg-[#E6F1FB] text-[#0C447C] px-2.5 py-1 rounded-full border border-[#C3D9EF]">
+              <span
+                className={`inline-block mt-2 text-[10px] font-semibold tracking-wider uppercase px-2.5 py-0.5 rounded-full border ${roleColor}`}
+              >
                 {roleLabel}
               </span>
             )}
@@ -105,31 +128,24 @@ export function HomeSidebar({
       </div>
 
       {/* ── Body ── */}
-      <div className="flex flex-col flex-1 px-4 py-5 gap-5 min-h-0">
+      <div className="flex-1 flex flex-col px-4 py-4 gap-3 overflow-y-auto min-h-0">
 
-        {/* Profile detail card */}
+        {/* ── Profile info card ── */}
         {hasProfile ? (
-          <div className="rounded-xl border border-slate-200 bg-slate-50/60 divide-y divide-slate-100 overflow-hidden">
-            {designation && (
-              <DetailRow
-                icon={<Briefcase className="w-3.5 h-3.5" />}
-                label="Designation"
-                value={designation}
-              />
-            )}
-            {!isFounder && department && (
-              <DetailRow
-                icon={<Building2 className="w-3.5 h-3.5" />}
-                label="Department"
-                value={department}
-              />
-            )}
-            {!isFounder && reportingManager && (
-              <DetailRow
-                icon={<UserCircle2 className="w-3.5 h-3.5" />}
-                label="Reports to"
-                value={reportingManager.displayName}
-                prefix={
+          <div className="rounded-[8px] border border-slate-200 bg-slate-50/70 overflow-hidden flex-shrink-0">
+            <div className="grid divide-y divide-slate-100">
+              {designation && (
+                <InfoRow icon={<Briefcase className="w-3.5 h-3.5" />} label="Designation">
+                  <span className="truncate" title={designation}>{designation}</span>
+                </InfoRow>
+              )}
+              {!isFounder && department && (
+                <InfoRow icon={<Building2 className="w-3.5 h-3.5" />} label="Department">
+                  <span className="truncate" title={department}>{department}</span>
+                </InfoRow>
+              )}
+              {!isFounder && reportingManager && (
+                <InfoRow icon={<UserCircle2 className="w-3.5 h-3.5" />} label="Reports to">
                   <span
                     className="inline-flex items-center justify-center w-4 h-4 rounded-full text-white text-[8px] font-bold mr-1.5 shrink-0"
                     style={{
@@ -138,72 +154,75 @@ export function HomeSidebar({
                       ),
                     }}
                   >
-                    {initials(
-                      reportingManager.displayName,
-                      reportingManager.email,
-                    ).slice(0, 1)}
+                    {initials(reportingManager.displayName, reportingManager.email).slice(0, 1)}
                   </span>
-                }
-              />
-            )}
-            {joiningDate && (
-              <DetailRow
-                icon={<CalendarDays className="w-3.5 h-3.5" />}
-                label="Joined"
-                value={formatDate(joiningDate)}
-              />
-            )}
+                  <span className="truncate" title={reportingManager.displayName}>{reportingManager.displayName}</span>
+                </InfoRow>
+              )}
+              {joiningDate && (
+                <InfoRow icon={<CalendarDays className="w-3.5 h-3.5" />} label="Joined">
+                  <span className="truncate">{formatDate(joiningDate)}</span>
+                </InfoRow>
+              )}
+            </div>
           </div>
         ) : (
-          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-5 text-center">
+          <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-5 text-center flex-shrink-0">
             <p className="text-[12px] font-medium text-slate-500">Profile not linked</p>
             <p className="text-[11px] text-slate-400 mt-0.5">Contact HR to link your account.</p>
           </div>
         )}
 
-        {/* Birthdays */}
-        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-          <div className="px-4 pt-3.5 pb-1 flex items-center gap-1.5">
-            <span className="text-base leading-none">🎂</span>
-            <p className="text-[10px] font-bold tracking-[1.4px] uppercase text-slate-400">
+        {/* ── Upcoming Birthdays ── */}
+        <div className="rounded-[8px] border border-slate-200 bg-white flex flex-col" style={{ height: '152px' }}>
+          <div className="px-4 pt-2.5 pb-1.5 flex items-center gap-2 border-b border-slate-100 flex-shrink-0">
+            <span className="text-sm leading-none">🎂</span>
+            <p className="text-[10px] font-bold tracking-[1.2px] uppercase text-slate-400 flex-1">
               Upcoming Birthdays
             </p>
-          </div>
-          <BirthdayPanel entries={upcomingBirthdays} />
-        </div>
-
-        {/* Notifications */}
-        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-          <div className="px-4 pt-3.5 pb-2 flex items-center justify-between">
-            <p className="text-[10px] font-bold tracking-[1.4px] uppercase text-slate-400">
-              Notifications
-            </p>
-            {notifications.filter((n) => !n.read).length > 0 && (
-              <span className="text-[9px] font-semibold bg-[#E6F1FB] text-[#0C447C] px-1.5 py-0.5 rounded-full border border-[#C3D9EF]">
-                {notifications.filter((n) => !n.read).length} new
+            {upcomingBirthdays.filter((b) => b.daysUntil === 0).length > 0 && (
+              <span className="text-[9px] font-semibold bg-pink-50 text-pink-700 border border-pink-100 px-1.5 py-0.5 rounded-full">
+                Today 🎉
               </span>
             )}
           </div>
-          <div className="px-3 pb-3">
+          <div className="overflow-y-auto flex-1 min-h-0">
+            <BirthdayPanel entries={upcomingBirthdays} />
+          </div>
+        </div>
+
+        {/* ── Notifications ── */}
+        <div className="rounded-xl border border-slate-100 bg-white flex flex-col" style={{ height: '188px' }}>
+          <div className="px-4 pt-2.5 pb-1.5 flex items-center justify-between border-b border-slate-100 flex-shrink-0">
+            <p className="text-[10px] font-bold tracking-[1.2px] uppercase text-slate-400">
+              Notifications
+            </p>
+            {unreadCount > 0 && (
+              <span className="text-[9px] font-semibold bg-[#E6F1FB] text-[#0C447C] px-1.5 py-0.5 rounded-full border border-[#C3D9EF]">
+                {unreadCount} new
+              </span>
+            )}
+          </div>
+          <div className="overflow-y-auto flex-1 min-h-0 px-3 pb-2">
             <HomeNotifications notifications={notifications} />
           </div>
         </div>
 
-        {/* Footer settings link */}
-        <div className="mt-auto pt-1">
+        {/* ── Settings link ── */}
+        <div className="mt-auto pt-1 pb-2">
           <Link
             href="/settings"
-            className="flex items-center justify-between w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 transition-all group"
+            className="flex items-center justify-between w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-[#F5F9FF] hover:border-[#C3D9EF] transition-all group"
           >
             <div className="flex items-center gap-2.5">
               <div className="w-6 h-6 rounded-md bg-slate-100 flex items-center justify-center group-hover:bg-[#E6F1FB] transition-colors">
                 <Settings className="h-3.5 w-3.5 text-slate-400 group-hover:text-[#0C447C] transition-colors" />
               </div>
-              <span className="text-[12px] font-medium text-slate-600 group-hover:text-slate-900 transition-colors">
+              <span className="text-[12px] font-medium text-slate-600 group-hover:text-[#0C447C] transition-colors">
                 Account settings
               </span>
             </div>
-            <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-slate-500 group-hover:translate-x-0.5 transition-all" />
+            <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-[#0C447C] group-hover:translate-x-0.5 transition-all" />
           </Link>
         </div>
 
@@ -212,28 +231,21 @@ export function HomeSidebar({
   );
 }
 
-function DetailRow({
+function InfoRow({
   icon,
   label,
-  value,
-  mono,
-  prefix,
+  children,
 }: {
   icon: React.ReactNode;
   label: string;
-  value: string;
-  mono?: boolean;
-  prefix?: React.ReactNode;
+  children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-2.5 px-3.5 py-2.5">
+    <div className="flex items-center gap-2.5 px-3.5 py-2.5 min-w-0">
       <span className="text-slate-400 shrink-0">{icon}</span>
-      <span className="text-[11px] text-slate-400 shrink-0 w-[72px]">{label}</span>
-      <span
-        className={`text-[12px] font-medium text-slate-800 flex items-center min-w-0 flex-1 ${mono ? 'font-mono text-[11px]' : ''}`}
-      >
-        {prefix}
-        <span className="truncate">{value}</span>
+      <span className="text-[11px] text-slate-400 shrink-0 w-[68px]">{label}</span>
+      <span className="text-[12px] font-medium text-slate-800 flex items-center min-w-0 flex-1 overflow-hidden">
+        {children}
       </span>
     </div>
   );

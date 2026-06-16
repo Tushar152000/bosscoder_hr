@@ -83,7 +83,7 @@ export default async function EmployeeDocumentsPage({ searchParams }: PageProps)
     totalPossible > 0 ? Math.round((uploadedCount / totalPossible) * 100) : 0;
 
   return (
-    <div className="max-w-full space-y-6">
+    <div className="space-y-6">
       {/* Page header */}
       <div>
         <h1 className="text-[18px] font-semibold text-slate-900">Employee Documents</h1>

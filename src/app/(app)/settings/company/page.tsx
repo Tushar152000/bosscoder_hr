@@ -10,7 +10,7 @@ export default async function CompanySettingsPage() {
   if (!isPrivileged(user.roles)) redirect('/?error=forbidden');
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-[18px] font-semibold text-slate-900">Company</h1>
         <p className="text-[13px] text-slate-500 mt-0.5">

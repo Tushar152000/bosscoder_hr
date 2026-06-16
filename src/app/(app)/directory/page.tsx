@@ -1,6 +1,7 @@
 import { requireUser } from '@/lib/auth/guard';
 import { isPrivileged } from '@/lib/auth/roles';
 import { listEmployees } from '@/lib/firestore/employees';
+import { listHrUsers } from '@/lib/firestore/users';
 import { canEditEmployees } from '@/lib/auth/employee-access';
 import { initials } from '@/lib/utils';
 import { formatDate } from '@/lib/format';
@@ -21,9 +22,19 @@ export default async function DirectoryPage() {
   const user = await requireUser();
 
   const priv = isPrivileged(user.roles);
-  const employees = await listEmployees({ status: priv ? 'any' : 'active', limit: 500 });
+  const [employees, hrUsers] = await Promise.all([
+    listEmployees({ status: priv ? 'any' : 'active', limit: 500 }),
+    listHrUsers(),
+  ]);
 
-  const view = buildDirectoryView(employees);
+  // uid → photoURL map so we can show real profile photos
+  const photoByUid = new Map(
+    hrUsers
+      .filter((u) => u.photoURL)
+      .map((u) => [u.uid, u.photoURL as string]),
+  );
+
+  const view = buildDirectoryView(employees, photoByUid);
   const totalManagers = view.departments.reduce((s, d) => s + d.managers.length, 0);
 
   return (
@@ -36,7 +47,7 @@ export default async function DirectoryPage() {
   );
 }
 
-function toPerson(e: EmployeePublic): DirectoryPerson {
+function toPerson(e: EmployeePublic, photoByUid: Map<string, string>): DirectoryPerson {
   return {
     id: e.employeeId,
     name: e.displayName,
@@ -46,14 +57,15 @@ function toPerson(e: EmployeePublic): DirectoryPerson {
     initials: initials(e.displayName, e.email),
     joinedAt: formatDate(e.joiningDate),
     status: e.status,
+    photoURL: e.userUid ? (photoByUid.get(e.userUid) ?? null) : null,
   };
 }
 
-function toReport(e: EmployeePublic): DirectoryReport {
-  return { ...toPerson(e), type: e.employmentType };
+function toReport(e: EmployeePublic, photoByUid: Map<string, string>): DirectoryReport {
+  return { ...toPerson(e, photoByUid), type: e.employmentType };
 }
 
-function buildDirectoryView(employees: EmployeePublic[]): DirectoryView {
+function buildDirectoryView(employees: EmployeePublic[], photoByUid: Map<string, string>): DirectoryView {
   const byId = new Map(employees.map((e) => [e.employeeId, e]));
 
   const reportsByMgr = new Map<string, EmployeePublic[]>();
@@ -87,13 +99,12 @@ function buildDirectoryView(employees: EmployeePublic[]): DirectoryView {
         counted.add(mgr.employeeId);
         const reports = reportsByMgr.get(mgr.employeeId) ?? [];
         reports.forEach((r) => counted.add(r.employeeId));
-        return { user: toPerson(mgr), reports: reports.map(toReport) };
+        return { user: toPerson(mgr, photoByUid), reports: reports.map((r) => toReport(r, photoByUid)) };
       });
 
-    // Solo employees (no manager relationship in the loaded set)
     for (const e of deptEmps) {
       if (!counted.has(e.employeeId)) {
-        managers.push({ user: toPerson(e), reports: [] });
+        managers.push({ user: toPerson(e, photoByUid), reports: [] });
       }
     }
 

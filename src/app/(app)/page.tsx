@@ -57,9 +57,9 @@ export default async function HomePage({
   });
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] min-h-[calc(100vh-4rem)]">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] items-start min-h-[calc(100vh-4rem)]">
     
-      <div className="py-8 md:pr-10 pr-4 flex flex-col gap-7 min-w-0 md:px-0 px-6">
+      <div className="py-8 md:pr-10 pr-4  flex flex-col gap-7 min-w-0 md:px-10 px-6">
         {error === "forbidden" && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[13px] text-amber-700">
             You don&apos;t have permission to view that page.

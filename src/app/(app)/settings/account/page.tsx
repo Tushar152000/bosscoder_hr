@@ -53,7 +53,7 @@ export default async function AccountPage() {
   }));
 
   return (
-    <div className="max-w-full space-y-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-[18px] font-semibold text-slate-900">Account</h1>
         <p className="text-[13px] text-slate-500 mt-0.5">Your profile and platform access.</p>

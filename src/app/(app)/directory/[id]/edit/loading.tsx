@@ -24,7 +24,7 @@ function SectionSkeleton({ fields, cols = 2 }: { fields: number; cols?: number }
 
 export default function EditEmployeeLoading() {
   return (
-    <div className="py-5 space-y-5 pb-20">
+    <div className="px-6 md:px-10 py-5 space-y-5 pb-20">
       {/* Breadcrumb */}
       <div className="flex items-center gap-1.5">
         <Skeleton className="h-3 w-3 rounded" />

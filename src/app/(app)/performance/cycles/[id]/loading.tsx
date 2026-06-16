@@ -2,7 +2,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function CycleLoading() {
   return (
-    <div className="px-4 py-6 space-y-6">
+    <div className="px-6 md:px-10 py-6 space-y-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-1.5">
         <Skeleton className="h-3 w-8 rounded" />

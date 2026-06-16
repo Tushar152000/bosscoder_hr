@@ -9,6 +9,7 @@ export interface DirectoryPerson {
   initials: string;
   joinedAt: string;
   status: EmployeeStatus;
+  photoURL?: string | null;
 }
 
 export interface DirectoryReport extends DirectoryPerson {

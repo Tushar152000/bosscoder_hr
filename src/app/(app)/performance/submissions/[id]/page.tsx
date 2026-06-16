@@ -88,7 +88,7 @@ export default async function SubmissionPage({ params, searchParams }: Props) {
   const selfEvalSubmitted = pairedSelfEval?.status === 'submitted';
 
   return (
-    <div className="mx-auto max-w-[1300px] py-6 space-y-4">
+    <div className="px-6 md:px-10 py-6 space-y-4">
       <Link
         href={backHref}
         className="inline-flex items-center gap-1.5 text-[14px] font-medium text-slate-500 hover:text-slate-900 transition-colors"

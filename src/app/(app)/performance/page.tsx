@@ -391,7 +391,7 @@ export default async function PerformancePage({ searchParams }: Props) {
   const showComingSoon = !isAdmin && queueSubs.length === 0 && !hasReports;
 
   return (
-    <div className="px-4 py-6 space-y-6">
+    <div className="px-6 md:px-10 py-6 space-y-6">
       {showComingSoon && <PerformanceComingSoonPopup />}
       {/* ── Header ──────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-3.5">

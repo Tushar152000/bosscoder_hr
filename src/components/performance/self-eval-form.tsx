@@ -531,10 +531,8 @@ export function SelfEvalForm({
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3.5rem)]">
-      {dialog}
-
-  
+    <div className="flex flex-col h-[calc(100vh-3.5rem)] md:px-10 px-6">
+      {dialog}  
       <div className="flex-shrink-0 pt-5 pb-3">
         <nav className="flex items-center gap-1.5 text-[14px] text-slate-400 mb-1.5">
           <Link href="/" className="flex items-center hover:text-slate-600 transition-colors">

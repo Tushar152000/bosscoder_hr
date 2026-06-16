@@ -149,16 +149,16 @@ export function NewEmployeeForm({ initial, managers, canEditSensitive }: Props) 
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
-    <div className="py-5 pb-20 flex flex-col min-h-[calc(100vh-3.5rem)]">
+    <div className="py-5 pb-20 md:px-10 px-6 flex flex-col min-h-[calc(100vh-3.5rem)]">
   
       <div className="pb-5">
         <div className="flex items-center gap-1.5 text-[14px] text-slate-400 mb-3">
-          <Home size={12} />
-          <Link href="/" className="hover:text-slate-600 transition">Home</Link>
+          <Home size={16} />
+          <Link href="/" className="hover:text-slate-600 transition md:text-[16px] text-[14px]">Home</Link>
           <ChevronRight size={11} />
           <Link href="/directory" className="hover:text-slate-600 transition">Directory</Link>
           <ChevronRight size={11} />
-          <span className="text-slate-900">New employee</span>
+          <span className="text-slate-900 md:text-[16px] text-[14px]">New employee</span>
         </div>
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>

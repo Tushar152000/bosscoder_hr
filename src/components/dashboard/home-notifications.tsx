@@ -2,16 +2,16 @@
 
 import { useState, useTransition } from 'react';
 import Link from 'next/link';
-import { Bell, CheckCheck } from 'lucide-react';
+import { Bell, CheckCheck, ChevronRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { markNotificationsReadAction, clearAllNotificationsAction } from '@/app/(app)/notifications/actions';
 import type { NavNotification } from '@/components/layout/top-navbar';
 import { cn } from '@/lib/utils';
 
-const TONE_DOT: Record<NavNotification['tone'], string> = {
-  info: 'bg-blue-500',
-  success: 'bg-emerald-500',
-  warning: 'bg-red-500',
+const TONE_STYLES: Record<NavNotification['tone'], { dot: string; bg: string }> = {
+  info:    { dot: 'bg-blue-500',    bg: 'bg-blue-50' },
+  success: { dot: 'bg-emerald-500', bg: 'bg-emerald-50' },
+  warning: { dot: 'bg-red-500',     bg: 'bg-red-50' },
 };
 
 function timeAgo(date: Date): string {
@@ -21,6 +21,8 @@ function timeAgo(date: Date): string {
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   return `${Math.floor(diff / 86400)}d ago`;
 }
+
+const PREVIEW_COUNT = 3;
 
 interface Props {
   notifications: NavNotification[];
@@ -33,6 +35,8 @@ export function HomeNotifications({ notifications }: Props) {
   const [isPending, startTransition] = useTransition();
 
   const unreadCount = allRead ? 0 : notifications.filter((n) => !n.read).length;
+  const preview = notifications.slice(0, PREVIEW_COUNT);
+  const remaining = notifications.length - PREVIEW_COUNT;
 
   function handleMarkAllRead() {
     setAllRead(true);
@@ -53,17 +57,17 @@ export function HomeNotifications({ notifications }: Props) {
         <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
           <Bell className="h-4 w-4 text-slate-400" />
         </div>
-        <p className="text-[11px] text-slate-400">No notifications yet</p>
+        <p className="text-[11px] text-slate-400">All caught up</p>
       </div>
     );
   }
 
   return (
     <div>
-      {/* header row */}
-      <div className="flex items-center justify-between mb-2">
+      {/* Quick actions */}
+      <div className="flex items-center justify-between mb-2 pt-1">
         {unreadCount > 0 ? (
-          <span className="text-[10px] font-semibold text-[#0C447C] bg-[#E6F1FB] px-1.5 py-0.5 rounded-full">
+          <span className="text-[10px] font-semibold text-[#0C447C]">
             {unreadCount} unread
           </span>
         ) : (
@@ -78,7 +82,7 @@ export function HomeNotifications({ notifications }: Props) {
               className="flex items-center gap-1 text-[10px] font-medium text-slate-500 hover:text-slate-900 transition disabled:opacity-50"
             >
               <CheckCheck size={11} />
-              Mark all read
+              Mark read
             </button>
           )}
           <button
@@ -86,25 +90,42 @@ export function HomeNotifications({ notifications }: Props) {
             onClick={handleClearAll}
             className="text-[10px] font-medium text-slate-400 hover:text-red-500 transition"
           >
-            Clear all
+            Clear
           </button>
         </div>
       </div>
 
-      {/* list */}
+      {/* Preview list */}
       <ul className="flex flex-col gap-0.5">
-        {notifications.slice(0, 6).map((n) => {
+        {preview.map((n) => {
           const isUnread = !allRead && !n.read;
+          const tone = TONE_STYLES[n.tone];
+
           const inner = (
-            <div className="flex items-start gap-2 w-full">
-              <span className={cn('mt-1.5 w-1.5 h-1.5 rounded-full shrink-0', TONE_DOT[n.tone])} />
+            <div className="flex items-start gap-2.5 w-full">
+              {/* tone dot */}
+              <span
+                className={cn(
+                  'mt-1 w-1.5 h-1.5 rounded-full shrink-0',
+                  tone.dot,
+                )}
+              />
               <div className="flex-1 min-w-0">
-                <p className={cn('text-[11px] leading-snug truncate', isUnread ? 'font-semibold text-slate-900' : 'font-medium text-slate-600')}>
+                <p
+                  className={cn(
+                    'text-[11.5px] leading-snug',
+                    isUnread
+                      ? 'font-semibold text-slate-900'
+                      : 'font-medium text-slate-500',
+                  )}
+                >
                   {n.title}
                 </p>
                 <p className="text-[10px] text-slate-400 mt-0.5">{timeAgo(n.createdAt)}</p>
               </div>
-              {isUnread && <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />}
+              {isUnread && (
+                <span className="mt-1 w-1.5 h-1.5 rounded-full bg-[#0C447C] shrink-0" />
+              )}
             </div>
           );
 
@@ -112,18 +133,40 @@ export function HomeNotifications({ notifications }: Props) {
             <li key={n.id}>
               <Link
                 href={n.href}
-                className="flex rounded-md px-2 py-2 hover:bg-slate-50 transition-colors"
+                className={cn(
+                  'flex rounded-lg px-2 py-2 transition-colors',
+                  isUnread ? 'bg-[#F5F9FF] hover:bg-[#EEF5FF]' : 'hover:bg-slate-50',
+                )}
               >
                 {inner}
               </Link>
             </li>
           ) : (
-            <li key={n.id} className="flex rounded-md px-2 py-2">
+            <li
+              key={n.id}
+              className={cn(
+                'flex rounded-lg px-2 py-2',
+                isUnread ? 'bg-[#F5F9FF]' : '',
+              )}
+            >
               {inner}
             </li>
           );
         })}
       </ul>
+
+      {/* View all footer */}
+      <Link
+        href="/notifications"
+        className="mt-2 flex items-center justify-between w-full px-2 py-2 rounded-lg text-[11px] font-medium text-[#0C447C] hover:bg-[#EEF5FF] transition-colors group"
+      >
+        <span>
+          {remaining > 0
+            ? `View all · ${notifications.length} notifications`
+            : 'View all notifications'}
+        </span>
+        <ChevronRight className="w-3.5 h-3.5 text-[#0C447C]/60 group-hover:translate-x-0.5 transition-transform" />
+      </Link>
     </div>
   );
 }

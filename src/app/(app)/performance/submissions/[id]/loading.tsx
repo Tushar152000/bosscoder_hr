@@ -5,7 +5,7 @@ export default function SubmissionLoading() {
     <div className="flex flex-col h-[calc(100vh-3.5rem)]">
 
       {/* Fixed top: breadcrumb + header */}
-      <div className="flex-shrink-0 px-6 lg:px-8 pt-5 pb-3">
+      <div className="flex-shrink-0 px-6 md:px-10 pt-5 pb-3">
         {/* Breadcrumb */}
         <div className="flex items-center gap-1.5 mb-1.5">
           <Skeleton className="h-3 w-3 rounded-full" />
@@ -25,7 +25,7 @@ export default function SubmissionLoading() {
       </div>
 
       {/* Body row */}
-      <div className="flex-1 min-h-0 flex gap-3 overflow-hidden">
+      <div className="flex-1 min-h-0 flex gap-3 overflow-hidden px-6 md:px-10">
 
   
         <div className="w-[220px] flex-shrink-0 flex flex-col gap-2.5 py-3">
@@ -91,7 +91,7 @@ export default function SubmissionLoading() {
 
       </div>
 
-      <div className="flex-shrink-0 py-3">
+      <div className="flex-shrink-0 px-6 md:px-10 py-3">
         <div className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Skeleton className="h-3 w-28" />

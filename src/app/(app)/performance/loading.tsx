@@ -2,7 +2,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function PerformanceLoading() {
   return (
-    <div className="px-4 py-6 space-y-10">
+    <div className="px-6 md:px-10 py-6 space-y-10">
 
       {/* Page header */}
       <div className="flex flex-wrap items-center justify-between gap-3">

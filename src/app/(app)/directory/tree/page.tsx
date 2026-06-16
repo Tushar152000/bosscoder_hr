@@ -73,7 +73,7 @@ export default async function OrgTreePage() {
 
   return (
     <div className="min-h-screen bg-[#FAFAF7]">
-      <div className="mx-auto max-w-7xl px-4 lg:px-0t py-6">
+      <div className="w-full px-6 md:px-10 py-6">
         <OrgTreeClient
           nodes={nodes}
           totalPeople={nodes.length}

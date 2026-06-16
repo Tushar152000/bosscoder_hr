@@ -4,6 +4,30 @@ import { cn } from '@/lib/utils';
 import type { DirectoryManager, DirectoryPerson, DirectoryReport } from '@/types/directory';
 import type { EmployeeStatus } from '@/types/employee';
 
+function PersonAvatar({ person, size }: { person: DirectoryPerson; size: 'sm' | 'md' }) {
+  const dim = size === 'md' ? 'w-9 h-9 sm:w-8 sm:h-8' : 'w-7 h-7';
+  const text = size === 'md' ? 'text-[12px]' : 'text-[10px]';
+  if (person.photoURL) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={person.photoURL}
+        alt={person.name}
+        referrerPolicy="no-referrer"
+        className={cn(dim, 'rounded-full object-cover shrink-0')}
+      />
+    );
+  }
+  return (
+    <div
+      className={cn(dim, text, 'rounded-full flex items-center justify-center text-white font-medium shrink-0')}
+      style={{ backgroundColor: person.avatarColor }}
+    >
+      {person.initials}
+    </div>
+  );
+}
+
 const STATUS_LABEL: Record<EmployeeStatus, string> = {
   active: 'Active',
   'on-notice': 'On notice',
@@ -52,12 +76,7 @@ export function ManagerGroup({ manager }: { manager: DirectoryManager }) {
       >
         {/* Avatar + name */}
         <div className="flex items-center gap-2.5 min-w-0 w-full">
-          <div
-            className="w-9 h-9 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-white text-[12px] font-medium shrink-0"
-            style={{ backgroundColor: user.avatarColor }}
-          >
-            {user.initials}
-          </div>
+          <PersonAvatar person={user} size="md" />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className="text-[14px] sm:text-[13px] font-semibold text-slate-900 truncate">{user.name}</span>
@@ -102,12 +121,7 @@ function ReportRow({ report, isLast }: { report: DirectoryReport; isLast: boolea
 
       {/* Avatar + name */}
       <div className="flex items-center gap-2.5 min-w-0 w-full">
-        <div
-          className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-medium shrink-0"
-          style={{ backgroundColor: report.avatarColor }}
-        >
-          {report.initials}
-        </div>
+        <PersonAvatar person={report} size="sm" />
         <div className="min-w-0">
           <p className="text-[13px] sm:text-[12px] font-medium text-slate-900 truncate">{report.name}</p>
           <p className="text-[11px] text-slate-500 truncate">{report.designation}</p>

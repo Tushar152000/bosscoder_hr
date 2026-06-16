@@ -16,7 +16,7 @@ export default async function NewCyclePage() {
   const employees = await listEmployees({ status: 'active', limit: 500 });
 
   return (
-    <div className="px-4 py-6">
+    <div className="px-6 md:px-10 py-6">
 
       <nav className="mb-4 flex items-center gap-1.5 text-[14px] text-slate-400">
         <Link href="/" className="flex items-center gap-1 hover:text-slate-600 transition">

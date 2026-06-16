@@ -103,7 +103,7 @@ export default async function CycleDetailPage({ params }: Props) {
       : 0;
 
   return (
-    <div className="px-4 py-6 space-y-6">
+    <div className="px-6 md:px-10 py-6 space-y-6">
 
       <nav className="flex items-center gap-1.5 text-[14px] text-slate-400">
         <Link href="/" className="flex items-center gap-1 hover:text-slate-600 transition">

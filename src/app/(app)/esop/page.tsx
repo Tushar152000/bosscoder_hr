@@ -60,11 +60,12 @@ export default async function EsopPage() {
   const role = isFounder ? 'founder' : isAdmin ? 'hr' : 'employee';
 
   return (
-    <div className="mx-auto max-w-[1250px] px-4 md:px-6  lg:px-0 py-6 md:py-8 space-y-6">
+    <div className="px-6 md:px-10 py-6 md:py-8 space-y-6">
       <EsopCalculatingModal role={role} />
       <nav className="flex items-center gap-1.5 text-[14px] text-slate-400">
-        <Link href="/" className="flex items-center hover:text-slate-600 transition-colors">
+        <Link href="/" className="flex items-center gap-1 hover:text-slate-600 transition-colors">
           <Home size={12} />
+          <span>Home</span>
         </Link>
         <ChevronRight size={11} />
         <span className="text-slate-500 font-medium">ESOPs</span>

@@ -5,6 +5,7 @@ import { Home, ChevronRight, Lock, Pencil } from 'lucide-react';
 import { requireUser } from '@/lib/auth/guard';
 import { canEditEmployees, canViewEmployee, canViewSensitiveFor } from '@/lib/auth/employee-access';
 import { getEmployeeById, getEmployeeFull, listEmployees } from '@/lib/firestore/employees';
+import { getHrUser, listHrUsers } from '@/lib/firestore/users';
 import { writeAuditLog } from '@/lib/audit';
 import { initials } from '@/lib/utils';
 import { formatDate } from '@/lib/format';
@@ -45,13 +46,21 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
     }
   }
 
-  const manager = employee.managerId ? await getEmployeeById(employee.managerId) : null;
-  const directReports = await listEmployees({ managerId: employee.employeeId, status: 'any', limit: 200 });
+  const [manager, directReports, hrUser, allHrUsers] = await Promise.all([
+    employee.managerId ? getEmployeeById(employee.managerId) : Promise.resolve(null),
+    listEmployees({ managerId: employee.employeeId, status: 'any', limit: 200 }),
+    employee.userUid ? getHrUser(employee.userUid) : Promise.resolve(null),
+    listHrUsers(),
+  ]);
   const canEdit = canEditEmployees(user);
   const avatarColor = colorForName(employee.displayName);
+  const photoURL = hrUser?.photoURL ?? null;
+  const reportPhotoByUid = new Map(
+    allHrUsers.filter((u) => u.photoURL).map((u) => [u.uid, u.photoURL as string]),
+  );
 
   return (
-    <div className="py-5 space-y-5">
+    <div className="px-6 md:px-10 py-5 space-y-5">
       {msg && (
         <div className="flex items-center gap-2 rounded-xl border border-[#A4DFC4] bg-[#E1F5EE] px-4 py-3 text-[12px] text-[#0F6E56]">
           <Pencil size={13} className="shrink-0" />
@@ -72,12 +81,22 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
       <div className="bg-white border border-slate-200/70 rounded-xl p-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div
-              className="w-14 h-14 rounded-full flex items-center justify-center text-[17px] font-semibold text-white shrink-0"
-              style={{ backgroundColor: avatarColor }}
-            >
-              {initials(employee.displayName, employee.email)}
-            </div>
+            {photoURL ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={photoURL}
+                alt={employee.displayName}
+                referrerPolicy="no-referrer"
+                className="w-14 h-14 rounded-full object-cover shrink-0 ring-2 ring-slate-100"
+              />
+            ) : (
+              <div
+                className="w-14 h-14 rounded-full flex items-center justify-center text-[17px] font-semibold text-white shrink-0"
+                style={{ backgroundColor: avatarColor }}
+              >
+                {initials(employee.displayName, employee.email)}
+              </div>
+            )}
             <div>
               <h1 className="text-[18px] font-semibold text-slate-900">{employee.displayName}</h1>
               <p className="text-[12px] text-slate-500 mt-0.5">
@@ -190,18 +209,30 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
               <p className="text-[12px] text-slate-400">No direct reports.</p>
             ) : (
               <div className="space-y-0.5">
-                {directReports.map((r) => (
+                {directReports.map((r) => {
+                  const rPhoto = r.userUid ? (reportPhotoByUid.get(r.userUid) ?? null) : null;
+                  return (
                   <Link
                     key={r.employeeId}
                     href={`/directory/${r.employeeId}`}
                     className="flex items-center gap-2.5 rounded-lg px-2 py-2 hover:bg-slate-50 transition group"
                   >
-                    <div
-                      className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold text-white shrink-0"
-                      style={{ backgroundColor: colorForName(r.displayName) }}
-                    >
-                      {initials(r.displayName, r.email)}
-                    </div>
+                    {rPhoto ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={rPhoto}
+                        alt={r.displayName}
+                        referrerPolicy="no-referrer"
+                        className="w-7 h-7 rounded-full object-cover shrink-0"
+                      />
+                    ) : (
+                      <div
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-semibold text-white shrink-0"
+                        style={{ backgroundColor: colorForName(r.displayName) }}
+                      >
+                        {initials(r.displayName, r.email)}
+                      </div>
+                    )}
                     <div className="min-w-0">
                       <p className="text-[12px] font-medium text-slate-900 group-hover:text-[#0C447C] transition truncate">
                         {r.displayName}
@@ -209,7 +240,8 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
                       <p className="text-[11px] text-slate-400 truncate">{r.designation}</p>
                     </div>
                   </Link>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

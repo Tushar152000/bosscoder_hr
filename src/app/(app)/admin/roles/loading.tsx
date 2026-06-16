@@ -2,7 +2,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function RolesLoading() {
   return (
-    <div className="mx-auto max-w-6xl px-6 lg:px-8 py-6">
+    <div className="px-6 md:px-10 py-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-1 mb-4">
         <Skeleton className="h-3 w-8" />
