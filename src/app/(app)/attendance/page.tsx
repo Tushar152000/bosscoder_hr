@@ -71,7 +71,7 @@ export default async function AttendancePage() {
 
   const isHR      = user.roles.includes('hr') || user.roles.includes('founder');
 
-  // Staged rollout: Technology dept + their reporting managers + HR/founder only.
+  // Staged rollout — rollout departments + their reporting managers + HR/founder (see canAccessAttendance).
   if (!(await canAccessAttendance(user.roles, me))) {
     redirect('/');
   }

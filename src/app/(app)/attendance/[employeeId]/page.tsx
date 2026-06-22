@@ -29,7 +29,7 @@ export default async function EmployeeAttendancePage({ params }: Props) {
     notFound();
   }
 
-  // Staged rollout: Technology dept + their reporting managers + HR/founder only.
+  // Staged rollout — rollout departments + their reporting managers + HR/founder (see canAccessAttendance).
   const viewer = await getEmployeeByUserUid(user.uid);
   if (!(await canAccessAttendance(user.roles, viewer ?? null))) {
     notFound();

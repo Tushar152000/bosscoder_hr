@@ -44,7 +44,7 @@ export default async function HomePage({
   const isFounder = user.roles.includes("founder");
   const isHR = isPrivileged(user.roles);
 
-  // Staged rollout: Technology dept + their reporting managers + HR/founder.
+  // Staged rollout — rollout departments + their reporting managers + HR/founder (see canAccessAttendance).
   const canSeeAttendance = await canAccessAttendance(user.roles, me ?? null);
 
   const photoURL = hrUser?.photoURL ?? user.photoURL;
