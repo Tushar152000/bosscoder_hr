@@ -3,7 +3,7 @@ import { hasAnyRole, type Role } from '@/lib/auth/roles';
 import { listEmployees } from '@/lib/firestore/employees';
 
 /** Departments the attendance feature is currently rolled out to. */
-const ROLLOUT_DEPARTMENTS = ['Technology', 'Corporate Relations', 'HR & Finance', 'Finance', 'Marketing', 'Product'];
+const ROLLOUT_DEPARTMENTS = ['Technology', 'Corporate Relations', 'HR & Finance', 'Finance', 'Marketing', 'Product', 'Operations'];
 
 /**
  * Who may access Attendance during the staged rollout:
