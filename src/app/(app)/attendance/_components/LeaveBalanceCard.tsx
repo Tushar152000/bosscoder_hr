@@ -93,15 +93,46 @@ const BALANCE_CONFIG: BalanceConfig[] = [
       </svg>
     ),
   },
+  {
+    key: 'wfh',
+    label: 'Work From Home',
+    iconBg: '#EDEBFB',
+    iconColor: '#5B45C9',
+    barFill: '#7C5CE0',
+    icon: (
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M3 9.5 12 3l9 6.5" />
+        <path d="M5 9v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9" />
+        <path d="M9 21v-6h6v6" />
+      </svg>
+    ),
+  },
 ];
 
 function BalanceRow({ cfg, b }: { cfg: BalanceConfig; b: { total: number; used: number } }) {
-  const isUnlimited = b.total === 0;
-  const remaining = isUnlimited ? null : b.total - b.used;
-  const pct = !isUnlimited && b.total > 0 ? ((b.total - b.used) / b.total) * 100 : 100;
-  const isLow = !isUnlimited && remaining !== null && remaining <= 1;
-  const fillColor = isLow ? '#E24B4A' : cfg.barFill;
-  const trackColor = isLow ? '#FEE2E2' : '#F4F4F5';
+  // Uncapped pools (total 0) have no quota — show a plain count, no progress bar.
+  if (b.total === 0) {
+    return (
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <IconSquare bg={cfg.iconBg} color={cfg.iconColor}>
+            {cfg.icon}
+          </IconSquare>
+          <span className="text-[12px] text-zinc-600">{cfg.label}</span>
+        </div>
+        <span className="shrink-0 text-[12px] font-medium text-zinc-400">
+          {b.used > 0 ? `${b.used} taken` : 'On approval'}
+        </span>
+      </div>
+    );
+  }
+
+  const remaining = b.total - b.used;
+  const usedPct = Math.min(100, Math.max(0, Math.round((b.used / b.total) * 100)));
+  const isLow = remaining <= 1;
+  const isWarn = !isLow && usedPct >= 75;
+  // Consumption bar: fills as leave is used. Solid pool colour → amber → red as it runs low.
+  const fillColor = isLow ? '#E24B4A' : isWarn ? '#E0982F' : cfg.barFill;
 
   return (
     <div className="space-y-1.5">
@@ -118,17 +149,19 @@ function BalanceRow({ cfg, b }: { cfg: BalanceConfig; b: { total: number; used: 
             isLow ? 'text-red-600' : 'text-zinc-400',
           ].join(' ')}
         >
-          {isUnlimited ? '∞' : `${remaining} / ${b.total}`}
+          {remaining} / {b.total}
         </span>
       </div>
-      <div
-        className="h-[6px] w-full overflow-hidden rounded-full"
-        style={{ backgroundColor: trackColor }}
-      >
-        <div
-          className="h-full rounded-full transition-all duration-500"
-          style={{ width: `${pct}%`, backgroundColor: fillColor }}
-        />
+      <div className="flex items-center gap-2">
+        <div className="h-[6px] flex-1 overflow-hidden rounded-full bg-zinc-100">
+          <div
+            className="h-full rounded-full transition-all duration-500"
+            style={{ width: `${usedPct}%`, backgroundColor: fillColor }}
+          />
+        </div>
+        <span className="w-[54px] shrink-0 text-right text-[10px] tabular-nums text-zinc-400">
+          {usedPct}% used
+        </span>
       </div>
     </div>
   );

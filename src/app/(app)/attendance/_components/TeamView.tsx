@@ -155,7 +155,7 @@ export function TeamView({
 
   const presentToday = teamMembers.filter((m) => {
     const s = getTodayStatus(m.employeeId);
-    return s === 'present' || s === 'half-day';
+    return s === 'present' || s === 'half-day' || s === 'wfh';
   }).length;
   const onLeaveTodayCount = teamMembers.filter(
     (m) => getTodayStatus(m.employeeId) === 'leave',

@@ -26,7 +26,11 @@ const POOLS = [
   { key: 'medical'   as const, label: 'Medical',   short: 'Me' },
   { key: 'marriage'  as const, label: 'Marriage',  short: 'Ma' },
   { key: 'unpaid'    as const, label: 'Unpaid',    short: 'U'  },
+  { key: 'wfh'       as const, label: 'WFH',       short: 'W'  },
 ];
+
+/** Uncapped pools — `total` 0 means no limit; the card shows days taken, not "remaining". */
+const UNLIMITED_POOLS = new Set<string>(['unpaid', 'wfh']);
 
 type DraftEntry = { total: string; used: string };
 type Draft = Record<string, DraftEntry>;
@@ -55,13 +59,21 @@ function dayCount(from: string, to: string) {
 
 function intVal(s: string) { return Math.max(0, parseInt(s) || 0); }
 
+/** "12 Jun, 3:40 PM" from an ISO string. */
+function formatEditedAt(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) +
+    ', ' + d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
 interface Props {
+  currentUserEmail: string;
   initialAttendanceToday: EmployeeAttendanceToday[];
   initialLeaveBalances: EmployeeLeaveBalance[];
   initialPendingLeaves: LeaveRequest[];
 }
 
-export function HRView({ initialAttendanceToday, initialLeaveBalances, initialPendingLeaves }: Props) {
+export function HRView({ currentUserEmail, initialAttendanceToday, initialLeaveBalances, initialPendingLeaves }: Props) {
   // ── Leave balances local state (mutable after edits) ───────────────────────
   const [balances,    setBalances]    = useState(initialLeaveBalances);
 
@@ -74,7 +86,7 @@ export function HRView({ initialAttendanceToday, initialLeaveBalances, initialPe
   const [bulkOpen,    setBulkOpen]    = useState(false);
   const [bulkDept,    setBulkDept]    = useState('');
   const [bulkTotals,  setBulkTotals]  = useState<Record<string, string>>(
-    Object.fromEntries(POOLS.map(({ key }) => [key, key === 'medical' ? '10' : key === 'marriage' ? '5' : key === 'unpaid' ? '0' : '9'])),
+    Object.fromEntries(POOLS.map(({ key }) => [key, key === 'medical' ? '10' : key === 'marriage' ? '5' : key === 'unpaid' || key === 'wfh' ? '0' : '9'])),
   );
   const [savingBulk,  setSavingBulk]  = useState(false);
 
@@ -112,8 +124,9 @@ export function HRView({ initialAttendanceToday, initialLeaveBalances, initialPe
       ) as Record<typeof POOLS[number]['key'], { total: number; used: number }>;
 
       await updateEmployeeLeaveBalance(empId, updates);
+      const stamp = { updatedByEmail: currentUserEmail, updatedAt: new Date().toISOString() };
       setBalances((prev) =>
-        prev.map((e) => e.employeeId === empId ? { ...e, ...updates } : e),
+        prev.map((e) => e.employeeId === empId ? { ...e, ...updates, ...stamp } : e),
       );
       setEditingId(null);
       toast.success('Balance updated');
@@ -133,6 +146,7 @@ export function HRView({ initialAttendanceToday, initialLeaveBalances, initialPe
       ) as Record<typeof POOLS[number]['key'], number>;
 
       await bulkUpdateDeptLeaveBalances(bulkDept, totals);
+      const stamp = { updatedByEmail: currentUserEmail, updatedAt: new Date().toISOString() };
       setBalances((prev) =>
         prev.map((e) =>
           e.department !== bulkDept ? e : {
@@ -140,6 +154,7 @@ export function HRView({ initialAttendanceToday, initialLeaveBalances, initialPe
             ...Object.fromEntries(
               POOLS.map(({ key }) => [key, { total: totals[key], used: e[key].used }]),
             ),
+            ...stamp,
           },
         ),
       );
@@ -187,13 +202,14 @@ export function HRView({ initialAttendanceToday, initialLeaveBalances, initialPe
     if (!deptMap.has(emp.department)) deptMap.set(emp.department, { present: 0, onLeave: 0, absent: 0, halfDay: 0 });
     const d = deptMap.get(emp.department)!;
     if      (emp.status === 'present')  d.present++;
+    else if (emp.status === 'wfh')      d.present++;
     else if (emp.status === 'half-day') d.halfDay++;
     else if (emp.status === 'leave')    d.onLeave++;
     else if (emp.status === 'absent')   d.absent++;
   }
   const deptStats  = [...deptMap.entries()].sort(([a], [b]) => a.localeCompare(b));
   const awayToday  = initialAttendanceToday.filter((e) => e.status === 'leave' || e.status === 'absent');
-  const presentCount = initialAttendanceToday.filter((e) => e.status === 'present' || e.status === 'half-day').length;
+  const presentCount = initialAttendanceToday.filter((e) => e.status === 'present' || e.status === 'half-day' || e.status === 'wfh').length;
   const onLeaveCount = initialAttendanceToday.filter((e) => e.status === 'leave').length;
   const absentCount  = initialAttendanceToday.filter((e) => e.status === 'absent').length;
 
@@ -218,10 +234,10 @@ export function HRView({ initialAttendanceToday, initialLeaveBalances, initialPe
   const totalEmployees = balances.length;
   const pendingCount   = pendingLeaves.length;
   const avgBalance = totalEmployees === 0 ? 0 : (() => {
-    const nonUnpaidPools = POOLS.filter((p) => p.key !== 'unpaid');
+    const cappedPools = POOLS.filter((p) => !UNLIMITED_POOLS.has(p.key));
     const totalRemaining = balances.reduce((sum, e) =>
-      sum + nonUnpaidPools.reduce((s, { key }) => s + Math.max(0, e[key].total - e[key].used), 0), 0);
-    return totalRemaining / totalEmployees / nonUnpaidPools.length;
+      sum + cappedPools.reduce((s, { key }) => s + Math.max(0, e[key].total - e[key].used), 0), 0);
+    return totalRemaining / totalEmployees / cappedPools.length;
   })();
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -476,15 +492,17 @@ export function HRView({ initialAttendanceToday, initialLeaveBalances, initialPe
 
                       {/* View mode: compact pills */}
                       {!isEditing && (
-                        <div className="grid grid-cols-5 gap-1">
+                        <div className="grid grid-cols-6 gap-1">
                           {POOLS.map(({ key, short }) => {
+                            const unlimited = UNLIMITED_POOLS.has(key) && emp[key].total === 0;
                             const remaining = emp[key].total - emp[key].used;
-                            const isLow = key !== 'unpaid' && remaining <= 2;
+                            const isLow = !unlimited && key !== 'unpaid' && remaining <= 2;
+                            const value = unlimited ? emp[key].used : remaining;
                             return (
-                              <div key={key} title={`${key}: ${remaining} left of ${emp[key].total}`}
+                              <div key={key} title={unlimited ? `${key}: ${emp[key].used} taken (no limit)` : `${key}: ${remaining} left of ${emp[key].total}`}
                                 className={['rounded-md border px-1 py-1 text-center', isLow ? 'border-red-200 bg-red-50' : 'border-zinc-200 bg-white'].join(' ')}>
                                 <p className={['text-[9px] font-medium', isLow ? 'text-red-500' : 'text-zinc-400'].join(' ')}>{short}</p>
-                                <p className={['text-[11px] font-semibold tabular-nums', isLow ? 'text-red-700' : 'text-zinc-800'].join(' ')}>{remaining}</p>
+                                <p className={['text-[11px] font-semibold tabular-nums', isLow ? 'text-red-700' : 'text-zinc-800'].join(' ')}>{value}</p>
                               </div>
                             );
                           })}
@@ -516,6 +534,19 @@ export function HRView({ initialAttendanceToday, initialLeaveBalances, initialPe
                           ))}
                           {isSaving && <p className="pt-1 text-center text-[11px] text-zinc-400">Saving…</p>}
                         </div>
+                      )}
+
+                      {!isEditing && emp.updatedByEmail && (
+                        <p
+                          className="mt-2 truncate border-t border-zinc-100 pt-1.5 text-[10px] text-zinc-400"
+                          title={`Edited by ${emp.updatedByEmail}${emp.updatedAt ? ` · ${formatEditedAt(emp.updatedAt)}` : ''}`}
+                        >
+                          <span className="text-zinc-300">✎ </span>
+                          {emp.updatedByEmail.split('@')[0]}
+                          {emp.updatedAt && (
+                            <span className="text-zinc-300"> · {formatEditedAt(emp.updatedAt)}</span>
+                          )}
+                        </p>
                       )}
                     </div>
                   );

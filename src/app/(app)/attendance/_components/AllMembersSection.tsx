@@ -104,6 +104,7 @@ export function AllMembersSection({
           todayStatus === 'absent'   ? { label: 'Absent',   cls: 'bg-red-50 text-red-800 border-red-200' } :
           todayStatus === 'leave'    ? { label: 'On leave', cls: 'bg-blue-50 text-blue-800 border-blue-200' } :
           todayStatus === 'half-day' ? { label: 'Half day', cls: 'bg-amber-50 text-amber-800 border-amber-200' } :
+          todayStatus === 'wfh'      ? { label: 'WFH',      cls: 'bg-violet-50 text-violet-800 border-violet-200' } :
           null;
 
         return (

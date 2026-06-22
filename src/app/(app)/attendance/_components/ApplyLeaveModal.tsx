@@ -153,7 +153,9 @@ export function ApplyLeaveModal({
               ))}
             </select>
             <p className="text-[12px] text-zinc-500">
-              {isUnlimited
+              {leaveType === 'wfh'
+                ? `No limit · ${b.used} day${b.used !== 1 ? 's' : ''} taken this year`
+                : isUnlimited
                 ? 'Unlimited (unpaid)'
                 : `${remaining} day${remaining !== 1 ? 's' : ''} remaining`}
             </p>

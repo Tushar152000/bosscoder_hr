@@ -7,6 +7,7 @@ import {
   listEmployeesForBirthdays,
 } from "@/lib/firestore/employees";
 import { getHrUser } from "@/lib/firestore/users";
+import { canAccessAttendance } from "@/lib/attendance/access";
 import { listNotificationsForUser } from "@/lib/firestore/notifications";
 import { getUpcomingBirthdays } from "@/lib/birthday";
 import { initials } from "@/lib/utils";
@@ -42,6 +43,9 @@ export default async function HomePage({
 
   const isFounder = user.roles.includes("founder");
   const isHR = isPrivileged(user.roles);
+
+  // Staged rollout: Technology dept + their reporting managers + HR/founder.
+  const canSeeAttendance = await canAccessAttendance(user.roles, me ?? null);
 
   const photoURL = hrUser?.photoURL ?? user.photoURL;
   const displayName = me?.displayName ?? user.displayName ?? user.email;
@@ -109,15 +113,26 @@ export default async function HomePage({
               title="ESOPs"
               description="Vested grants and statements"
             />
-             <QuickCard
-              href="/"
-              icon={CalendarCheck}
-              iconBg="#EBF3FE"
-              iconColor="#1D4ED8"
-              title="Attendance & Leave"
-              description="Track attendance, apply for leaves and view your balance — launching soon"
-              comingSoon
-            />
+            {canSeeAttendance ? (
+              <QuickCard
+                href="/attendance"
+                icon={CalendarCheck}
+                iconBg="#EBF3FE"
+                iconColor="#1D4ED8"
+                title="Attendance & Leave"
+                description="Track attendance, apply for leaves and view your balance"
+              />
+            ) : (
+              <QuickCard
+                href="/"
+                icon={CalendarCheck}
+                iconBg="#EBF3FE"
+                iconColor="#1D4ED8"
+                title="Attendance & Leave"
+                description="Track attendance, apply for leaves and view your balance — launching soon"
+                comingSoon
+              />
+            )}
             {isHR && (
               <QuickCard
                 href="/communications"

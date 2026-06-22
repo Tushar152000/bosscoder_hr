@@ -22,6 +22,7 @@ const STATUS_STYLES: Partial<Record<AttendanceStatus, StatusStyle>> = {
   absent:     { dot: 'bg-red-500' },
   'half-day': { dot: 'bg-amber-400' },
   leave:      { dot: 'bg-blue-500' },
+  wfh:        { dot: 'bg-violet-500' },
 };
 
 interface Props {
@@ -241,6 +242,8 @@ export function AttendanceCalendar({
               ? 'bg-amber-50 hover:bg-amber-100'
               : status === 'leave'
               ? 'bg-sky-50 hover:bg-sky-100'
+              : status === 'wfh'
+              ? 'bg-violet-50 hover:bg-violet-100'
               : isClickable
               ? 'hover:bg-zinc-50'
               : ''
@@ -257,6 +260,8 @@ export function AttendanceCalendar({
             ? 'text-amber-700'
             : status === 'leave'
             ? 'text-blue-700'
+            : status === 'wfh'
+            ? 'text-violet-700'
             : 'text-zinc-500';
 
           return (
@@ -264,7 +269,7 @@ export function AttendanceCalendar({
               key={dateStr}
               onClick={() => (isClickable ? handleDayClick(dateStr) : undefined)}
               className={cn(
-                'flex h-14 flex-col items-center justify-center gap-2 rounded-[8px] transition',
+                'flex flex-col py-2 items-center justify-center gap-2 rounded-[8px] transition',
                 isClickable && 'cursor-pointer',
                 isFuture && !isPendingLeave && 'opacity-30',
                 !isSelected && cellBg,
@@ -274,9 +279,9 @@ export function AttendanceCalendar({
             
               <span
                 className={cn(
-                  'flex h-[22px] w-[22px] items-center justify-center rounded-full text-[14px]',
+                  'flex h-[42px] w-[42px] items-center justify-center rounded-full text-[14px] md:text-[16px]',
                   isToday
-                    ? 'bg-zinc-900 font-semibold text-white'
+                    ? 'bg-zinc-800 font-semibold text-white'
                     : status === 'leave'
                     ? 'bg-sky-100 font-semibold text-sky-700'
                     : `font-medium ${numColor}`,
@@ -289,8 +294,12 @@ export function AttendanceCalendar({
               {isPendingLeave ? (
                 <span className="h-[5px] w-[5px] rounded-full bg-orange-400" />
               ) : status === 'leave' ? (
-                <span className="text-[8px] font-semibold uppercase leading-none tracking-wide text-sky-400">
+                <span className="text-[8px] md:text-[10px] font-semibold uppercase leading-none tracking-wide text-sky-400">
                   Leave
+                </span>
+              ) : status === 'wfh' ? (
+                <span className="text-[8px] md:text-[10px] font-semibold uppercase leading-none tracking-wide text-violet-400">
+                  WFH
                 </span>
               ) : style?.dot ? (
                 <span className={cn('h-[5px] w-[5px] rounded-full', style.dot)} />
@@ -375,6 +384,7 @@ export function AttendanceCalendar({
           { label: 'Present',       dot: 'bg-green-500' },
           { label: 'Absent',        dot: 'bg-red-500' },
           { label: 'Half-day',      dot: 'bg-amber-400' },
+          { label: 'WFH',           dot: 'bg-violet-500' },
           { label: 'Pending leave', dot: 'bg-orange-500' },
         ].map(({ label, dot }) => (
           <div key={label} className="flex items-center gap-1.5">

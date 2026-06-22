@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation';
 import { ChevronLeft, CalendarCheck } from 'lucide-react';
 import { requireUser } from '@/lib/auth/guard';
 import { hasAnyRole } from '@/lib/auth/roles';
-import { getEmployeeById } from '@/lib/firestore/employees';
+import { getEmployeeById, getEmployeeByUserUid } from '@/lib/firestore/employees';
+import { canAccessAttendance } from '@/lib/attendance/access';
 import {
   getMonthAttendance,
   getLeaveBalance,
@@ -25,6 +26,12 @@ export default async function EmployeeAttendancePage({ params }: Props) {
   const user = await requireUser();
 
   if (!hasAnyRole(user.roles, 'manager', 'hr', 'founder')) {
+    notFound();
+  }
+
+  // Staged rollout: Technology dept + their reporting managers + HR/founder only.
+  const viewer = await getEmployeeByUserUid(user.uid);
+  if (!(await canAccessAttendance(user.roles, viewer ?? null))) {
     notFound();
   }
 

@@ -29,6 +29,7 @@ interface Props {
   initialPendingLeaves: LeaveRequest[];
   // hr
   isHR: boolean;
+  currentUserEmail: string;
   initialHRAttendance: EmployeeAttendanceToday[];
   initialHRBalances: EmployeeLeaveBalance[];
   initialHRPendingLeaves: LeaveRequest[];
@@ -55,6 +56,7 @@ export function ManagerTabs({
   initialTeamRecords,
   initialPendingLeaves,
   isHR,
+  currentUserEmail,
   initialHRAttendance,
   initialHRBalances,
   initialHRPendingLeaves,
@@ -77,14 +79,14 @@ export function ManagerTabs({
     <div>
       <div className="flex justify-between items-center py-6">
         <div>
-          <h1 className="text-[20px] font-semibold text-zinc-900">
+          <h1 className="text-[20px] md:text-[28px] font-semibold text-dark-blue">
             {greeting}, {firstName}
           </h1>
           <div className="mt-1 flex items-center gap-1.5">
             <Calendar className="h-3.5 w-3.5 text-zinc-400" />
-            <span className="text-[13px] text-zinc-500">{fullDate}</span>
+            <span className="text-[13px] md:text-[15px] text-zinc-500">{fullDate}</span>
             <span className="mx-0.5 text-zinc-300">·</span>
-            <span className="text-[13px] text-zinc-500">Week {weekNum}</span>
+            <span className="text-[13px] md:text-[15px] text-zinc-600">Week {weekNum}</span>
           </div>
         </div>
 
@@ -167,6 +169,7 @@ export function ManagerTabs({
 
       {tab === "hr" && isHR && (
         <HRView
+          currentUserEmail={currentUserEmail}
           initialAttendanceToday={initialHRAttendance}
           initialLeaveBalances={initialHRBalances}
           initialPendingLeaves={initialHRPendingLeaves}

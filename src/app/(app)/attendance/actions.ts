@@ -13,7 +13,7 @@ import type {
   LeaveRequest,
   LeaveType,
 } from '@/types/attendance';
-import { HALF_DAY_LEAVE_TYPES, LEAVE_DEDUCTION, LEAVE_TO_BALANCE } from '@/types/attendance';
+import { HALF_DAY_LEAVE_TYPES, LEAVE_DEDUCTION, LEAVE_TO_BALANCE, financialYearStart, leaveBalanceDocId } from '@/types/attendance';
 
 export type TeamMember = {
   employeeId: string;
@@ -197,10 +197,10 @@ export async function editAttendanceRecord(
 
 export async function getLeaveBalance(employeeId: string): Promise<LeaveBalance> {
   await requireUser();
-  const year = new Date().getFullYear();
+  const year = financialYearStart();
   const snap = await adminDb
     .collection(LEAVE_BALANCES)
-    .doc(`${employeeId}_${year}`)
+    .doc(leaveBalanceDocId(employeeId))
     .get();
 
   const d = snap.exists ? snap.data()! : {};
@@ -212,6 +212,7 @@ export async function getLeaveBalance(employeeId: string): Promise<LeaveBalance>
     marriage:  d.marriage  ?? { total: 5,  used: 0 },
     medical:   d.medical   ?? { total: 10, used: 0 },
     unpaid:    d.unpaid    ?? { total: 0,  used: 0 },
+    wfh:       d.wfh       ?? { total: 0,  used: 0 },
   };
 }
 
@@ -372,6 +373,13 @@ export async function approveLeave(leaveId: string): Promise<ActionResult> {
   const daysCount = dates.length;
   const batch = adminDb.batch();
 
+  const recordStatus: AttendanceStatus =
+    leaveType === 'wfh'
+      ? 'wfh'
+      : HALF_DAY_LEAVE_TYPES.has(leaveType)
+      ? 'half-day'
+      : 'leave';
+
   batch.update(leaveRef, {
     status: 'approved',
     approvedBy: user.uid,
@@ -387,9 +395,9 @@ export async function approveLeave(leaveId: string): Promise<ActionResult> {
         date,
         checkIn: null,
         checkOut: null,
-        status: (HALF_DAY_LEAVE_TYPES.has(leaveType) ? 'half-day' : 'leave') as AttendanceStatus,
+        status: recordStatus,
         duration: 0,
-        remarks: `Leave: ${leave.reason ?? ''}`,
+        remarks: `${leaveType === 'wfh' ? 'WFH' : 'Leave'}: ${leave.reason ?? ''}`,
         editedBy: user.uid,
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
@@ -398,8 +406,9 @@ export async function approveLeave(leaveId: string): Promise<ActionResult> {
     );
   }
 
-  const year = new Date(fromDate + 'T00:00:00').getFullYear();
-  const balanceRef = adminDb.collection(LEAVE_BALANCES).doc(`${employeeId}_${year}`);
+  const fromDateObj = new Date(fromDate + 'T00:00:00');
+  const year = financialYearStart(fromDateObj);
+  const balanceRef = adminDb.collection(LEAVE_BALANCES).doc(leaveBalanceDocId(employeeId, fromDateObj));
   const balanceSnap = await balanceRef.get();
   const balanceKey = LEAVE_TO_BALANCE[leaveType];
   const deduction = LEAVE_DEDUCTION[leaveType] * daysCount;
@@ -409,7 +418,7 @@ export async function approveLeave(leaveId: string): Promise<ActionResult> {
       [`${balanceKey}.used`]: FieldValue.increment(deduction),
     });
   } else {
-    const DEFAULTS: Record<string, number> = { casual: 9, privilege: 9, marriage: 5, medical: 10, unpaid: 0 };
+    const DEFAULTS: Record<string, number> = { casual: 9, privilege: 9, marriage: 5, medical: 10, unpaid: 0, wfh: 0 };
     const newBalance: Record<string, unknown> = { employeeId, year };
     for (const [k, v] of Object.entries(DEFAULTS)) {
       newBalance[k] = { total: v, used: k === balanceKey ? deduction : 0 };

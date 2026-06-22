@@ -1,17 +1,19 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { adminDb } from '@/lib/firebase/admin';
+import { adminDb, FieldValue } from '@/lib/firebase/admin';
 import { HR } from '@/lib/firebase/collections';
 import { requireUser } from '@/lib/auth/guard';
 import { hasAnyRole } from '@/lib/auth/roles';
 import { listEmployees } from '@/lib/firestore/employees';
+import { writeAuditLog } from '@/lib/audit';
 import type { LeaveRequest, AttendanceStatus, BalanceKey } from '@/types/attendance';
+import { financialYearStart, leaveBalanceDocId } from '@/types/attendance';
 
 type BalanceEntry = { total: number; used: number };
 
 const BALANCE_DEFAULTS: Record<BalanceKey, number> = {
-  casual: 9, privilege: 9, marriage: 5, medical: 10, unpaid: 0,
+  casual: 9, privilege: 9, marriage: 5, medical: 10, unpaid: 0, wfh: 0,
 };
 
 export type EmployeeAttendanceToday = {
@@ -33,6 +35,9 @@ export type EmployeeLeaveBalance = {
   marriage:  { total: number; used: number };
   medical:   { total: number; used: number };
   unpaid:    { total: number; used: number };
+  wfh:       { total: number; used: number };
+  updatedByEmail: string | null;
+  updatedAt: string | null; // ISO
 };
 
 function tsToISO(ts: FirebaseFirestore.Timestamp | null | undefined): string | null {
@@ -87,8 +92,8 @@ export async function getAllLeaveBalances(): Promise<EmployeeLeaveBalance[]> {
   const user = await requireUser();
   if (!hasAnyRole(user.roles, 'hr', 'founder')) throw new Error('Forbidden');
 
-  const year = new Date().getFullYear();
-  const yearSuffix = `_${year}`;
+  const year = financialYearStart();
+  const yearSuffix = `_FY${year}`;
 
   const [employees, balancesSnap] = await Promise.all([
     listEmployees(),
@@ -116,6 +121,9 @@ export async function getAllLeaveBalances(): Promise<EmployeeLeaveBalance[]> {
       marriage:  d.marriage  ?? { total: 5,  used: 0 },
       medical:   d.medical   ?? { total: 10, used: 0 },
       unpaid:    d.unpaid    ?? { total: 0,  used: 0 },
+      wfh:       d.wfh       ?? { total: 0,  used: 0 },
+      updatedByEmail: d.updatedByEmail ?? null,
+      updatedAt: tsToISO(d.updatedAt),
     };
   });
 }
@@ -142,15 +150,30 @@ export async function updateEmployeeLeaveBalance(
   const user = await requireUser();
   if (!hasAnyRole(user.roles, 'hr', 'founder')) throw new Error('Forbidden');
 
-  const year = new Date().getFullYear();
-  const ref = adminDb.collection(HR.leaveBalances).doc(`${employeeId}_${year}`);
+  const year = financialYearStart();
+  const ref = adminDb.collection(HR.leaveBalances).doc(leaveBalanceDocId(employeeId));
 
-  const payload: Record<string, unknown> = { employeeId, year };
+  const payload: Record<string, unknown> = {
+    employeeId,
+    year,
+    updatedBy: user.uid,
+    updatedByEmail: user.email,
+    updatedAt: FieldValue.serverTimestamp(),
+  };
   for (const [key, val] of Object.entries(updates)) {
     payload[key] = val;
   }
 
   await ref.set(payload, { merge: true });
+
+  await writeAuditLog({
+    actorUid: user.uid,
+    actorEmail: user.email,
+    action: 'leave_balance.update',
+    resource: { type: 'leave_balance', id: employeeId },
+    metadata: { year, fy: `FY${year}`, pools: updates },
+  });
+
   revalidatePath('/attendance');
 }
 
@@ -163,8 +186,8 @@ export async function bulkUpdateDeptLeaveBalances(
   const user = await requireUser();
   if (!hasAnyRole(user.roles, 'hr', 'founder')) throw new Error('Forbidden');
 
-  const year = new Date().getFullYear();
-  const yearSuffix = `_${year}`;
+  const year = financialYearStart();
+  const yearSuffix = `_FY${year}`;
   const employees = await listEmployees();
   const deptEmps = employees.filter((e) => e.department === department);
   if (deptEmps.length === 0) return;
@@ -178,7 +201,7 @@ export async function bulkUpdateDeptLeaveBalances(
     if (snap.exists) existingMap.set(snap.id, snap.data()!);
   }
 
-  const KEYS: BalanceKey[] = ['casual', 'privilege', 'marriage', 'medical', 'unpaid'];
+  const KEYS: BalanceKey[] = ['casual', 'privilege', 'marriage', 'medical', 'unpaid', 'wfh'];
   const CHUNK = 400;
 
   for (let i = 0; i < deptEmps.length; i += CHUNK) {
@@ -186,7 +209,13 @@ export async function bulkUpdateDeptLeaveBalances(
     for (const emp of deptEmps.slice(i, i + CHUNK)) {
       const ref  = adminDb.collection(HR.leaveBalances).doc(`${emp.employeeId}${yearSuffix}`);
       const prev = existingMap.get(`${emp.employeeId}${yearSuffix}`) ?? {};
-      const doc: Record<string, unknown> = { employeeId: emp.employeeId, year };
+      const doc: Record<string, unknown> = {
+        employeeId: emp.employeeId,
+        year,
+        updatedBy: user.uid,
+        updatedByEmail: user.email,
+        updatedAt: FieldValue.serverTimestamp(),
+      };
       for (const key of KEYS) {
         doc[key] = {
           total: totals[key] ?? (prev[key]?.total ?? BALANCE_DEFAULTS[key]),
@@ -197,6 +226,14 @@ export async function bulkUpdateDeptLeaveBalances(
     }
     await batch.commit();
   }
+
+  await writeAuditLog({
+    actorUid: user.uid,
+    actorEmail: user.email,
+    action: 'leave_balance.bulk_update',
+    resource: { type: 'leave_balance', id: `dept:${department}` },
+    metadata: { department, year, fy: `FY${year}`, totals, employeeCount: deptEmps.length },
+  });
 
   revalidatePath('/attendance');
 }

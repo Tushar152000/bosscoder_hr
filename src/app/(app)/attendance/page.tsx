@@ -1,5 +1,7 @@
+import { redirect } from 'next/navigation';
 import { requireUser } from '@/lib/auth/guard';
 import { getEmployeeByUserUid } from '@/lib/firestore/employees';
+import { canAccessAttendance } from '@/lib/attendance/access';
 import { UserX } from 'lucide-react';
 import {
   getMonthAttendance,
@@ -68,6 +70,12 @@ export default async function AttendancePage() {
   const firstName = me.displayName.split(' ')[0];
 
   const isHR      = user.roles.includes('hr') || user.roles.includes('founder');
+
+  // Staged rollout: Technology dept + their reporting managers + HR/founder only.
+  if (!(await canAccessAttendance(user.roles, me))) {
+    redirect('/');
+  }
+
   const mightManage = user.roles.includes('manager') || isHR;
 
   const teamMembers = mightManage ? await getTeamMembers(me.employeeId) : [];
@@ -97,7 +105,7 @@ export default async function AttendancePage() {
     ]);
 
     return (
-      <div>
+      <div className="relative overflow-hidden px-4 md:px-10">
         <ManagerTabs
           employeeId={me.employeeId}
           employeeName={me.displayName}
@@ -112,6 +120,7 @@ export default async function AttendancePage() {
           initialTeamRecords={teamRecords}
           initialPendingLeaves={pendingLeaves}
           isHR={isHR}
+          currentUserEmail={user.email}
           initialHRAttendance={hrAttendance}
           initialHRBalances={hrBalances}
           initialHRPendingLeaves={hrPending}
@@ -131,9 +140,9 @@ export default async function AttendancePage() {
   ]);
 
   return (
-    <div>
-      <div className="mb-6 pb-4 pt-7">
-        <h1 className="text-[20px] font-semibold text-zinc-900">
+    <div className='relative overflow-hidden px-4 md:px-10'>
+      <div className="mb-6 pb-4 pt-7 ">
+        <h1 className="text-[20px] md:text-[28px] font-semibold text-dark-blue">
           {greeting}, {firstName}
         </h1>
         <div className="mt-1 flex items-center gap-1.5 font-medium">
