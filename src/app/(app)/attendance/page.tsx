@@ -141,16 +141,6 @@ export default async function AttendancePage() {
 
   return (
     <div className='relative overflow-hidden px-4 md:px-10'>
-      <div className="mb-6 pb-4 pt-7 ">
-        <h1 className="text-[20px] md:text-[28px] font-semibold text-dark-blue">
-          {greeting}, {firstName}
-        </h1>
-        <div className="mt-1 flex items-center gap-1.5 font-medium">
-          <span className="text-[14px] text-zinc-500">{fullDate}</span>
-          <span className="mx-0.5 text-zinc-300">·</span>
-          <span className="text-[14px] text-zinc-500">Week {weekNum}</span>
-        </div>
-      </div>
       <EmployeeView
         employeeId={me.employeeId}
         employeeName={me.displayName}
@@ -160,6 +150,10 @@ export default async function AttendancePage() {
         initialYear={year}
         initialMonth={month}
         today={today}
+        greeting={greeting}
+        firstName={firstName}
+        fullDate={fullDate}
+        weekNum={weekNum}
       />
     </div>
   );

@@ -44,6 +44,11 @@ export function ApplyLeaveModal({
   const isUnlimited = b.total === 0;
   const remaining = isUnlimited ? null : b.total - b.used;
 
+  const canSubmit =
+    !!fromDate &&
+    (isHalfDay || (!!toDate && toDate >= fromDate)) &&
+    !!reason.trim();
+
   useEffect(() => {
     if (open) {
       setLeaveType('casual');
@@ -128,7 +133,7 @@ export function ApplyLeaveModal({
       />
       <div className="relative w-full max-w-md rounded-xl border border-zinc-200 bg-white p-5">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-[14px] font-medium text-zinc-900">Apply for leave</h2>
+          <h2 className="text-[14px] md:text-[20px] font-medium text-zinc-900">Apply for leave</h2>
           <button
             onClick={() => onOpenChange(false)}
             className="rounded-lg p-1 text-zinc-400 transition hover:bg-zinc-100"
@@ -215,8 +220,8 @@ export function ApplyLeaveModal({
             </button>
             <button
               type="submit"
-              disabled={saving}
-              className="rounded-lg bg-zinc-900 px-4 py-2 text-[13px] font-medium text-white transition hover:bg-zinc-700 disabled:opacity-60"
+              disabled={saving || !canSubmit}
+              className="rounded-lg bg-zinc-900 px-4 py-2 text-[13px] font-medium text-white transition hover:bg-zinc-700 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {saving ? 'Submitting…' : 'Submit request'}
             </button>

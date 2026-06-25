@@ -5,7 +5,11 @@ import { adminDb, Timestamp, FieldValue } from '@/lib/firebase/admin';
 import { HR } from '@/lib/firebase/collections';
 import { requireUser } from '@/lib/auth/guard';
 import { hasAnyRole } from '@/lib/auth/roles';
-import { listEmployees } from '@/lib/firestore/employees';
+import { listEmployees, getEmployeeById } from '@/lib/firestore/employees';
+import { writeNotificationsForReviewers } from '@/lib/firestore/notifications';
+import { listHrUsers } from '@/lib/firestore/users';
+import { isPrivileged } from '@/lib/auth/roles';
+import { sendLeaveRequestEmail } from '@/lib/email/leave-request';
 import type {
   AttendanceRecord,
   AttendanceStatus,
@@ -13,7 +17,7 @@ import type {
   LeaveRequest,
   LeaveType,
 } from '@/types/attendance';
-import { HALF_DAY_LEAVE_TYPES, LEAVE_DEDUCTION, LEAVE_TO_BALANCE, financialYearStart, leaveBalanceDocId } from '@/types/attendance';
+import { HALF_DAY_LEAVE_TYPES, LEAVE_DEDUCTION, LEAVE_LABELS, LEAVE_TO_BALANCE, financialYearStart, leaveBalanceDocId } from '@/types/attendance';
 
 export type TeamMember = {
   employeeId: string;
@@ -234,11 +238,85 @@ export async function applyLeave(data: {
       approvedAt: null,
       createdAt: FieldValue.serverTimestamp(),
     });
+
+    // Notify the reporting manager — best-effort, never blocks the submission.
+    await notifyManagerOfLeave(data).catch((e) => {
+      console.error('[applyLeave] manager notification failed:', e);
+    });
+
     revalidatePath('/attendance');
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Failed to submit leave' };
   }
+}
+
+/**
+ * Notifies the reviewer(s) of a new leave request, via both the in-app
+ * notification bell and email. The reviewer is the applicant's reporting
+ * manager; if no manager is on record, it falls back to all active HR users
+ * so the request is never silently stranded. Best-effort: any failure here is
+ * logged but does not fail the leave submission itself.
+ */
+async function notifyManagerOfLeave(data: {
+  employeeId: string;
+  employeeName: string;
+  fromDate: string;
+  toDate: string;
+  leaveType: LeaveType;
+  reason: string;
+}): Promise<void> {
+  // Resolve recipients: reporting manager, or HR fallback when none exists.
+  const recipients: { uid: string | null; email: string | null; displayName: string }[] = [];
+
+  const applicant = await getEmployeeById(data.employeeId);
+  const manager = applicant?.managerId ? await getEmployeeById(applicant.managerId) : null;
+
+  if (manager) {
+    recipients.push({ uid: manager.userUid, email: manager.email, displayName: manager.displayName });
+  } else {
+    // No reporting manager on record — fall back to active HR.
+    const hrUsers = (await listHrUsers()).filter(
+      (u) => u.active && isPrivileged(u.roles),
+    );
+    for (const u of hrUsers) {
+      recipients.push({ uid: u.uid, email: u.email, displayName: u.displayName ?? u.email });
+    }
+  }
+
+  if (recipients.length === 0) return;
+
+  const leaveTypeLabel = LEAVE_LABELS[data.leaveType];
+  const range = data.fromDate === data.toDate ? data.fromDate : `${data.fromDate}–${data.toDate}`;
+
+  // In-app notifications (keyed by each reviewer's auth uid).
+  await writeNotificationsForReviewers(
+    recipients
+      .filter((r) => r.uid)
+      .map((r) => ({
+        uid: r.uid!,
+        title: `${data.employeeName} requested ${leaveTypeLabel} (${range})`,
+        href: '/attendance',
+        tone: 'info' as const,
+      })),
+  );
+
+  // Email notifications.
+  await Promise.all(
+    recipients
+      .filter((r) => r.email)
+      .map((r) =>
+        sendLeaveRequestEmail({
+          to: r.email!,
+          managerName: r.displayName,
+          employeeName: data.employeeName,
+          leaveTypeLabel,
+          fromDate: data.fromDate,
+          toDate: data.toDate,
+          reason: data.reason,
+        }),
+      ),
+  );
 }
 
 // ─── Leave request history ────────────────────────────────────────────────────
