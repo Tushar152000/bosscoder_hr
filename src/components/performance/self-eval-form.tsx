@@ -47,17 +47,9 @@ const QUESTIONS: Question[] = [
   {
     key: 'contributions',
     prompt:
-      'What contributions did you make in the last month, and what was the resulting business impact?',
+      'What contributions did you make in the last quarter, and what was the resulting business impact?',
     subtitle: 'Concrete projects, deliverables, and the measurable outcome — numbers help.',
     sidebarLabel: 'Contributions & impact',
-  },
-  {
-    key: 'upcomingDeliverables',
-    prompt:
-      'What are your key deliverables and expected business impact for the upcoming month?',
-    subtitle:
-      "Pick 2–4 things you're committing to — concrete enough to revisit next cycle.",
-    sidebarLabel: 'Next month plan',
   },
   {
     key: 'culturalPillars',
@@ -66,8 +58,16 @@ const QUESTIONS: Question[] = [
     isPillar: true,
   },
   {
+    key: 'upcomingDeliverables',
+    prompt:
+      'What are your key deliverables and expected business impact for the upcoming quarter?',
+    subtitle:
+      "Pick 2–4 things you're committing to — concrete enough to revisit next cycle.",
+    sidebarLabel: 'Next quarter plan',
+  },
+  {
     key: 'biggestChallenge',
-    prompt: 'What was your biggest challenge this month and how did you handle it?',
+    prompt: 'What was your biggest challenge this quarter and how did you handle it?',
     subtitle: "Be honest — challenges aren't weaknesses. We learn from them.",
     sidebarLabel: 'Biggest challenge',
   },
@@ -392,6 +392,9 @@ export function SelfEvalForm({
   const isDirty = useRef(false);
   const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  // While a click-driven smooth scroll is in flight, ignore scroll-spy so the
+  // active question doesn't get hijacked by cards passing by mid-scroll.
+  const programmaticUntil = useRef(0);
 
   const isFinal = status === 'submitted' || status === 'locked';
   const readOnly = isFinal || !canEdit;
@@ -468,6 +471,7 @@ export function SelfEvalForm({
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
+        if (Date.now() < programmaticUntil.current) return; // ignore during click-scroll
         const topmost = entries
           .filter((e) => e.isIntersecting)
           .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
@@ -493,7 +497,16 @@ export function SelfEvalForm({
 
   function scrollTo(idx: number) {
     setActiveIdx(idx);
-    cardRefs.current[idx]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    programmaticUntil.current = Date.now() + 1000;
+    const el = cardRefs.current[idx];
+    const container = scrollContainerRef.current;
+    if (el && container) {
+      // Exact scroll to the card's top (offsetTop is relative to the now-positioned
+      // container) — avoids scrollIntoView overshooting to the next card.
+      container.scrollTo({ top: Math.max(0, el.offsetTop - 8), behavior: 'smooth' });
+    } else {
+      el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }
 
   async function handleSubmit() {
@@ -655,7 +668,7 @@ export function SelfEvalForm({
         </aside>
 
         {/* Right — only this column scrolls */}
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto py-3">
+        <div ref={scrollContainerRef} className="relative flex-1 overflow-y-auto py-3">
           <div className="flex flex-col gap-2.5">
             {status === 'submitted' && submittedAt && (
               <div className="bg-[#E1F5EE] border border-[#A4DFC4] rounded-md px-3 py-2.5 flex gap-2">
