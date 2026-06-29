@@ -23,6 +23,8 @@ import {
   CloseCycleButton,
   EditCycleDueDateButton,
   OpenCycleButton,
+  ResendCycleEmailsButton,
+  SendTestCycleEmailButton,
   SyncEmployeesButton,
 } from '@/components/performance/cycle-actions';
 import { DEPARTMENTS } from '@/lib/constants/departments';
@@ -156,6 +158,8 @@ export default async function CycleDetailPage({ params }: Props) {
             {cycle.status === 'draft' && <OpenCycleButton cycleId={cycle.cycleId} />}
             {cycle.status === 'open' && (
               <>
+                <SendTestCycleEmailButton cycleId={cycle.cycleId} />
+                <ResendCycleEmailsButton cycleId={cycle.cycleId} cycleName={cycle.name} />
                 <SyncEmployeesButton cycleId={cycle.cycleId} />
                 <CloseCycleButton cycleId={cycle.cycleId} />
               </>

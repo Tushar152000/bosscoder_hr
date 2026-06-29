@@ -8,6 +8,8 @@ import { useDialog } from '@/components/ui/modal';
 import {
   closeCycleAction,
   openCycleAction,
+  resendCycleOpenEmailsAction,
+  sendCycleTestEmailAction,
   syncCycleEmployeesAction,
   updateCycleDueDateAction,
 } from '@/app/(app)/performance/actions';
@@ -186,6 +188,88 @@ export function SyncEmployeesButton({ cycleId }: { cycleId: string }) {
       >
         {!isPending && <RefreshCw className="h-3.5 w-3.5" />}
         {!isPending && 'Sync new employees'}
+      </Button>
+    </>
+  );
+}
+
+export function SendTestCycleEmailButton({ cycleId }: { cycleId: string }) {
+  const [isPending, start] = useTransition();
+  const { alert, dialog } = useDialog();
+  return (
+    <>
+      {dialog}
+      <Button
+        variant="secondary"
+        size="sm"
+        disabled={isPending}
+        onClick={() =>
+          start(async () => {
+            const r = await sendCycleTestEmailAction(cycleId);
+            if (!r.ok) {
+              await alert({ title: 'Test send failed', body: r.error, intent: 'danger' });
+              return;
+            }
+            await alert({
+              title: 'Test sent',
+              body: `A sample of this cycle's email was sent to ${r.data.email}. Check your inbox before sending to everyone.`,
+            });
+          })
+        }
+      >
+        {!isPending && <Send className="h-3.5 w-3.5" />}
+        {isPending ? 'Sending…' : 'Send test to me'}
+      </Button>
+    </>
+  );
+}
+
+export function ResendCycleEmailsButton({
+  cycleId,
+  cycleName,
+}: {
+  cycleId: string;
+  cycleName: string;
+}) {
+  const [isPending, start] = useTransition();
+  const { confirm, alert, dialog } = useDialog();
+  return (
+    <>
+      {dialog}
+      <Button
+        variant="secondary"
+        size="sm"
+        disabled={isPending}
+        onClick={async () => {
+          const ok = await confirm({
+            title: `Email all ${cycleName} participants?`,
+            body: (
+              <span>
+                Everyone assigned a form in this cycle will get the
+                &ldquo;performance cycle is open&rdquo; email with their link.
+                Use this if the launch emails didn&apos;t go out.
+              </span>
+            ),
+            confirmLabel: 'Send emails',
+          });
+          if (!ok) return;
+          start(async () => {
+            const r = await resendCycleOpenEmailsAction(cycleId);
+            if (!r.ok) {
+              await alert({ title: 'Could not send', body: r.error, intent: 'danger' });
+              return;
+            }
+            await alert({
+              title: 'Emails sent',
+              body: `${r.data.sent} of ${r.data.attempted} delivered${
+                r.data.failed ? ` · ${r.data.failed} failed` : ''
+              }.`,
+            });
+          });
+        }}
+      >
+        {!isPending && <Send className="h-3.5 w-3.5" />}
+        {isPending ? 'Sending…' : 'Resend emails'}
       </Button>
     </>
   );
