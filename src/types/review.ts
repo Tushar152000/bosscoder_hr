@@ -78,15 +78,15 @@ export const SELF_EVAL_QUESTION_KEYS: (keyof SelfEvalAnswers)[] = [
 
 export const SELF_EVAL_QUESTION_LABELS: Record<keyof SelfEvalAnswers, string> = {
   contributions:
-    'What contributions did you make in the last month and what was the resulting business impact?',
+    'What contributions did you make in the last quarter and what was the resulting business impact?',
   upcomingDeliverables:
-    'According to you, what are your key deliverables and the expected business impact for the upcoming month?',
+    'According to you, what are your key deliverables and the expected business impact for the upcoming quarter?',
   culturalPillars:
-    'Cultural pillars (Customer centric, Fast execution, Excellent quality) — how did you showcase them in your daily work in the last month?',
+    'Cultural pillars (Customer centric, Fast execution, Excellent quality) — how did you showcase them in your daily work in the last quarter?',
   biggestChallenge:
-    'What was your biggest challenge this month and how did you handle it?',
+    'What was your biggest challenge this quarter and how did you handle it?',
   learnedOrImproved:
-    'What is one thing you learned or improved this month?',
+    'Where do you need more support from your manager or the org?',
 };
 
 /** @deprecated Self-eval no longer collects ratings — the manager rating is
