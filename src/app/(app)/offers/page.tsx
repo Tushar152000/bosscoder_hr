@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Plus, Lock, Unlock } from 'lucide-react';
+import { Plus, Lock, Unlock, FileText } from 'lucide-react';
 import { requirePermission } from '@/lib/auth/guard';
 import { listOfferLetters } from '@/lib/firestore/offer-letters';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ export default async function OffersListPage() {
   const offers = await listOfferLetters();
 
   return (
-    <div className="space-y-6">
+    <div className="offers-theme space-y-6 px-6 md:px-10 py-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold">Offer Letters</h1>
@@ -23,19 +23,27 @@ export default async function OffersListPage() {
             editable; finalized letters are locked & view-only.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/offers/new">
-            <Plus className="h-4 w-4" />
-            New offer letter
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="secondary">
+            <Link href="/offers/quick">
+              <FileText className="h-4 w-4" />
+              Quick letter
+            </Link>
+          </Button>
+          <Button asChild>
+            <Link href="/offers/new">
+              <Plus className="h-4 w-4" />
+              New offer letter
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {offers.length === 0 ? (
         <Card>
           <CardBody className="text-sm text-muted">
             No offer letters yet.{' '}
-            <Link href="/offers/new" className="text-accent-300 hover:underline">
+            <Link href="/offers/new" className="text-[#0C447C] hover:underline">
               Create the first one →
             </Link>
           </CardBody>
@@ -43,7 +51,7 @@ export default async function OffersListPage() {
       ) : (
         <div className="overflow-hidden rounded-lg border border-default bg-card">
           <table className="w-full text-left text-sm">
-            <thead className="bg-white/[0.03] text-xs uppercase tracking-wide text-muted">
+            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-muted">
               <tr>
                 <th className="px-4 py-3">Candidate</th>
                 <th className="px-4 py-3">Type</th>
@@ -55,11 +63,11 @@ export default async function OffersListPage() {
             </thead>
             <tbody>
               {offers.map((o) => (
-                <tr key={o.offerId} className="border-t border-default hover:bg-white/[0.03]">
+                <tr key={o.offerId} className="border-t border-default hover:bg-slate-50">
                   <td className="px-4 py-3">
                     <Link
                       href={`/offers/${o.offerId}`}
-                      className="block font-medium text-white hover:underline"
+                      className="block font-medium text-slate-900 hover:underline"
                     >
                       {o.candidateName}
                     </Link>

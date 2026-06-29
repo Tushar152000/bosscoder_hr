@@ -187,11 +187,13 @@ export function renderTemplate(
     /\{\{#if\s+(\w+)\}\}([\s\S]*?)\{\{\/if\}\}/g,
     (_match, key: string, body: string) => (truthy(data[key]) ? body : '')
   );
-  // 2. Replace {{var}} placeholders.
+  // 2. Replace {{var}} placeholders. Trim values so a stray leading/trailing
+  //    space (e.g. "Tushar Chauhan ") can't break wrapping markdown like
+  //    `**{{candidateName}}**` — Markdown won't bold `**text **`.
   out = out.replace(/\{\{(\w+)\}\}/g, (_match, key: string) => {
     const v = data[key];
     if (v === undefined || v === null) return '';
-    return String(v);
+    return String(v).trim();
   });
   return out;
 }

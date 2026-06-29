@@ -47,6 +47,36 @@ body {
 
 }
 
+/* ─── Light-theme scope ───────────────────────────────────────────────────────
+ * The app's base tokens are dark navy, but most product surfaces (home,
+ * attendance, communications, settings) render light. The Offer Letters
+ * section is built on the shared token-based UI primitives (Card, Input…),
+ * so we remap those tokens to light values within this scope instead of
+ * rewriting every component. */
+.offers-theme {
+  --bg: 250 250 247;             /* light shell — used for focus-ring offsets */
+  --muted: 100 116 139;          /* slate-500 */
+  --border: 226 232 240;         /* slate-200 */
+  --card: 255 255 255;           /* white */
+  --card-elevated: 248 250 252;  /* slate-50 */
+  color: #0f172a;                /* slate-900 base text */
+}
+/* Shared form primitives hardcode `text-white`; force dark text within the scope. */
+.offers-theme input,
+.offers-theme select,
+.offers-theme textarea {
+  color: #0f172a;
+}
+/* `Label` is hardcoded `text-white` — make field names dark inside the scope. */
+.offers-theme label {
+  color: #0f172a;
+}
+/* Visible placeholder (inputs otherwise inherit the now-dark text colour). */
+.offers-theme ::placeholder {
+  color: #94a3b8;   /* slate-400 */
+  opacity: 1;       /* Firefox dims placeholders by default */
+}
+
 /* Smooth, subtle transition on every interactive surface that doesn't already
  * specify its own transition. */
 button,

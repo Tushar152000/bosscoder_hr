@@ -16,11 +16,11 @@ export default async function NewOfferPage() {
   initial.bodyMarkdown = defaultBodyFor(initial.templateKey);
 
   return (
-    <div className="-mx-6 -my-8 flex h-[calc(100vh-4rem)] flex-col print:m-0 print:h-auto">
+    <div className="offers-theme flex h-[calc(100vh-3.5rem)] flex-col bg-[#FAFAF7] print:h-auto">
       <div className="no-print border-b border-default bg-card px-6 py-3">
         <Link
           href="/offers"
-          className="inline-flex items-center gap-1 text-sm text-muted hover:text-white"
+          className="inline-flex items-center gap-1 text-sm text-muted hover:text-slate-900"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to offer letters

@@ -47,6 +47,7 @@ export default async function HomePage({
 
   // Staged rollout — rollout departments + their reporting managers + HR/founder (see canAccessAttendance).
   const canSeeAttendance = await canAccessAttendance(user.roles, me ?? null);
+  const canManageOffers = user.permissions.includes("manage_offer_letters");
 
   const photoURL = hrUser?.photoURL ?? user.photoURL;
   const displayName = me?.displayName ?? user.displayName ?? user.email;
@@ -155,15 +156,14 @@ export default async function HomePage({
               description="Company updates and stories"
               comingSoon
             />
-            {isHR && (
+            {canManageOffers && (
               <QuickCard
-                href="/"
+                href="/offers"
                 icon={FileText}
                 iconBg="#FEF3E7"
                 iconColor="#B45309"
                 title="Offer letters"
-                description="Generate and manage offer letters"
-                comingSoon
+                description="Generate offer letters & quick letters on the letterhead"
               />
             )}
           </div>

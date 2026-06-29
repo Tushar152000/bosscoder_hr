@@ -26,7 +26,7 @@ export function templateKeyForDepartment(department: string): TemplateKey {
  */
 export const TEMPLATE_BODIES: Record<TemplateKey, string> = {
   // ─── Sales / Operations format ─────────────────────────────────────────────
-  'sales-ops': `**{{offerDate}}**
+'sales-ops': `**{{offerDate}}**
 
 Dear **{{candidateName}}**,
 

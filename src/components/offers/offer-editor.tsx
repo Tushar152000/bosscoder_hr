@@ -2,7 +2,10 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Printer, Save, Lock, Unlock, Trash2, RotateCcw, Download } from 'lucide-react';
+import {
+  Printer, Save, Lock, Unlock, Trash2, RotateCcw, Download,
+  Layers, UserRound, CalendarDays, IndianRupee, Contact, FileText,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
@@ -174,10 +177,10 @@ export function OfferEditor({
   const totalCtcPreview = data.annualBaseCtc + pfAnnual + data.annualVariableCtc;
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col bg-[#FAFAF7]">
       {dialog}
       {/* Toolbar */}
-      <div className="no-print sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 border-b border-default bg-card/95 px-4 py-2 backdrop-blur">
+      <div className="no-print sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 border-b border-default bg-white/95 px-4 py-2 backdrop-blur">
         <div className="flex items-center gap-3">
           <span className="text-sm font-medium">
             {offerId ? 'Edit offer letter' : 'New offer letter'}
@@ -270,7 +273,7 @@ export function OfferEditor({
           <div className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Type & template</CardTitle>
+                <CardTitle className="flex items-center gap-2"><Layers className="h-4 w-4 text-[#0C447C]" />Type & template</CardTitle>
               </CardHeader>
               <CardBody className="space-y-3">
                 <Field label="Employment type" required>
@@ -306,21 +309,23 @@ export function OfferEditor({
                   </Field>
                 )}
 
-                <div className="rounded-md bg-gray-100 px-3 py-2 text-xs text-gray-700">
-                  Format: <span className="font-medium">{TEMPLATE_LABEL[data.templateKey]}</span>
+                <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                  <span className="rounded-full bg-[#EBF3FE] px-2 py-0.5 font-medium text-[#0C447C]">Format</span>
+                  <span className="font-medium text-slate-800">{TEMPLATE_LABEL[data.templateKey]}</span>
                 </div>
               </CardBody>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Candidate</CardTitle>
+                <CardTitle className="flex items-center gap-2"><UserRound className="h-4 w-4 text-[#0C447C]" />Candidate</CardTitle>
               </CardHeader>
               <CardBody className="space-y-3">
                 <Field label="Full name" required>
                   <Input
                     value={data.candidateName}
                     onChange={(e) => set('candidateName', e.target.value)}
+                    placeholder="e.g. Aman Srivastava"
                     disabled={readOnly}
                     required
                   />
@@ -339,6 +344,7 @@ export function OfferEditor({
                     type="email"
                     value={data.candidateEmail}
                     onChange={(e) => set('candidateEmail', e.target.value)}
+                    placeholder="name@example.com"
                     disabled={readOnly}
                   />
                 </Field>
@@ -347,6 +353,7 @@ export function OfferEditor({
                     type="tel"
                     value={data.candidatePhone}
                     onChange={(e) => set('candidatePhone', e.target.value)}
+                    placeholder="+91 98765 43210"
                     disabled={readOnly}
                   />
                 </Field>
@@ -355,7 +362,7 @@ export function OfferEditor({
 
             <Card>
               <CardHeader>
-                <CardTitle>Dates & tenure</CardTitle>
+                <CardTitle className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-[#0C447C]" />Dates & tenure</CardTitle>
               </CardHeader>
               <CardBody className="space-y-3">
                 <Field label="Offer date" required>
@@ -408,7 +415,7 @@ export function OfferEditor({
 
             <Card>
               <CardHeader>
-                <CardTitle>Compensation</CardTitle>
+                <CardTitle className="flex items-center gap-2"><IndianRupee className="h-4 w-4 text-[#0C447C]" />Compensation</CardTitle>
               </CardHeader>
               <CardBody className="space-y-3">
                 {isIntern ? (
@@ -492,7 +499,7 @@ export function OfferEditor({
                           checked={data.includePf}
                           onChange={(e) => set('includePf', e.target.checked)}
                           disabled={readOnly}
-                          className="mt-0.5 h-4 w-4 rounded border-default text-[#0C447C]-600 focus:ring-[#0C447C]-500"
+                          className="mt-0.5 h-4 w-4 rounded border-default accent-[#0C447C]"
                         />
                         <span>
                           Include PF in salary table
@@ -534,7 +541,7 @@ export function OfferEditor({
                             set('includeBstIncentives', e.target.checked)
                           }
                           disabled={readOnly}
-                          className="mt-0.5 h-4 w-4 rounded border-default text-[#0C447C]-600 focus:ring-[#0C447C]-500"
+                          className="mt-0.5 h-4 w-4 rounded border-default accent-[#0C447C]"
                         />
                         <span>
                           BST Sales — performance-based incentives addendum
@@ -545,11 +552,18 @@ export function OfferEditor({
                       </label>
                     )}
 
-                    <div className="rounded-md bg-[#0C447C]-50/50 px-3 py-2 text-xs">
-                      <span className="text-muted">Total CTC preview: </span>
-                      <span className="font-semibold tabular-nums">
-                        ₹{formatINR(totalCtcPreview)}
-                      </span>
+                    <div className="rounded-lg border border-[#B5D4F4] bg-[#EBF3FE] px-3.5 py-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[12px] font-medium text-[#0C447C]">Total CTC preview</span>
+                        <span className="text-[16px] font-bold tabular-nums text-[#0C447C]">
+                          ₹{formatINR(totalCtcPreview)}
+                        </span>
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-slate-500">
+                        <span>Base ₹{formatINR(data.annualBaseCtc)}</span>
+                        {data.annualVariableCtc > 0 && <span>· Variable ₹{formatINR(data.annualVariableCtc)}</span>}
+                        {data.includePf && <span>· PF ₹{formatINR(pfAnnual)}</span>}
+                      </div>
                     </div>
                   </>
                 )}
@@ -558,7 +572,7 @@ export function OfferEditor({
 
             <Card>
               <CardHeader>
-                <CardTitle>Point of contact</CardTitle>
+                <CardTitle className="flex items-center gap-2"><Contact className="h-4 w-4 text-[#0C447C]" />Point of contact</CardTitle>
               </CardHeader>
               <CardBody className="space-y-3">
                 <Field label="POC name" required>
@@ -610,7 +624,7 @@ export function OfferEditor({
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle>Letter body</CardTitle>
+                  <CardTitle className="flex items-center gap-2"><FileText className="h-4 w-4 text-[#0C447C]" />Letter body</CardTitle>
                   <span className="text-xs text-muted">Markdown · live preview →</span>
                 </div>
               </CardHeader>
@@ -641,7 +655,7 @@ export function OfferEditor({
         </div>
 
         {/* Right: live A4 preview */}
-        <div className="overflow-y-auto bg-gray-200/60 px-6 py-8 print:overflow-visible print:bg-white print:p-0">
+        <div className="overflow-y-auto bg-slate-100 px-6 py-8 print:overflow-visible print:bg-white print:p-0">
           <OfferPreview data={data} backgroundUrl={backgroundUrl} />
         </div>
       </div>

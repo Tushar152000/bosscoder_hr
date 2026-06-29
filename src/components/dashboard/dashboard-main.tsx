@@ -89,7 +89,16 @@ export function DashboardMain({
             title="ESOPs"
             description="Vested grants and statements"
           />
-
+            {hasOfferLetters && (
+            <QuickCard
+              href="/offers"
+              icon={FileText}
+              iconBg="#FEF3E7"
+              iconColor="#B45309"
+              title="Offer letters"
+              description="Generate and manage candidate offer letters"
+            />
+          )}
           <QuickCard
             href="/"
             icon={Mail}
@@ -113,16 +122,7 @@ export function DashboardMain({
             />
           )}
 
-          {hasOfferLetters && (
-            <QuickCard
-              href="/offers"
-              icon={FileText}
-              iconBg="#FEF3E7"
-              iconColor="#B45309"
-              title="Offer letters"
-              description="Generate and manage candidate offer letters"
-            />
-          )}
+        
         </div>
       </section>
     </div>

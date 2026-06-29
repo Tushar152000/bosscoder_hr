@@ -6,7 +6,6 @@ import {
   User,
   Bell,
   Building2,
-  FileText,
   BarChart2,
   ShieldCheck,
   ClipboardList,
@@ -27,7 +26,6 @@ const PERSONAL: NavItem[] = [
 
 const ORG: NavItem[] = [
   { label: 'Company', href: '/settings/company', icon: Building2 },
-  { label: 'Offer letter', href: '/settings/offer-letter', icon: FileText },
   { label: 'Evaluation defaults', href: '/settings/evaluation-defaults', icon: BarChart2 },
   { label: 'Roles & access', href: '/settings/roles', icon: ShieldCheck },
   { label: 'Audit log', href: '/settings/audit-log', icon: ClipboardList },
