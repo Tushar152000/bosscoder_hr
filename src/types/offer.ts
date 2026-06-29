@@ -113,6 +113,7 @@ export interface OfferLetter extends OfferData {
 
 /** Settings doc — single full-page background image (header + watermark + footer
  *  baked in) plus POC defaults. */
+
 export interface OfferSettings {
   backgroundUrl: string;
   pocOptions: { name: string; designation: string; email: string }[];

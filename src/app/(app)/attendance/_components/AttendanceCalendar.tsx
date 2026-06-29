@@ -25,6 +25,16 @@ const STATUS_STYLES: Partial<Record<AttendanceStatus, StatusStyle>> = {
   wfh:        { dot: 'bg-violet-500' },
 };
 
+/** Pill colours for the day-detail popup, per status. */
+const STATUS_CHIP: Partial<Record<AttendanceStatus, string>> = {
+  present:    'bg-green-50 text-green-700 ring-green-200',
+  absent:     'bg-red-50 text-red-600 ring-red-200',
+  'half-day': 'bg-amber-50 text-amber-700 ring-amber-200',
+  leave:      'bg-sky-50 text-sky-700 ring-sky-200',
+  wfh:        'bg-violet-50 text-violet-700 ring-violet-200',
+  holiday:    'bg-zinc-100 text-zinc-600 ring-zinc-200',
+};
+
 interface Props {
   year: number;
   month: number;
@@ -200,7 +210,7 @@ export function AttendanceCalendar({
         {/* Right: Today button */}
         <button
           onClick={() => { onMonthChange(currentYear, currentMonth); setPickerOpen(false); }}
-          className="rounded-lg border border-zinc-400 bg-white px-3 py-1.5 text-[14px] font-medium text-zinc-600 transition hover:border-zinc-300 hover:bg-zinc-50"
+          className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-[13px] font-medium text-zinc-600 shadow-sm transition hover:bg-zinc-50 hover:text-zinc-900"
         >
           Today
         </button>
@@ -284,12 +294,10 @@ export function AttendanceCalendar({
 
               <span
                 className={cn(
-                  'flex h-[42px] w-[42px] items-center justify-center rounded-full text-[14px] md:text-[16px]',
+                  'flex h-[40px] w-[40px] items-center justify-center rounded-full text-[14px] md:text-[16px] transition',
                   isToday
-                    ? 'bg-zinc-800 font-semibold text-white'
-                    : status === 'leave'
-                    ? 'bg-sky-100 font-semibold text-sky-700'
-                    : `font-medium ${numColor}`,
+                    ? 'bg-gradient-to-br from-[#0C447C] to-[#2E73C4] font-semibold text-white shadow-sm'
+                    : `font-semibold ${numColor}`,
                 )}
               >
                 {dayNum}
@@ -323,10 +331,20 @@ export function AttendanceCalendar({
   
       {selectedDate && selectedRecord && (
         <div className="mt-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-[12px] font-medium text-zinc-700">
-              {formatDisplayDate(selectedDate)}
-            </span>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-[12px] font-medium text-zinc-700">
+                {formatDisplayDate(selectedDate)}
+              </span>
+              <span
+                className={cn(
+                  'rounded-full px-2 py-0.5 text-[10px] font-medium ring-1',
+                  STATUS_CHIP[selectedRecord.status] ?? 'bg-zinc-100 text-zinc-600 ring-zinc-200',
+                )}
+              >
+                {STATUS_DISPLAY[selectedRecord.status]}
+              </span>
+            </div>
             <button
               onClick={() => setSelectedDate(null)}
               className="rounded p-0.5 text-zinc-400 transition hover:bg-zinc-200"
@@ -334,12 +352,13 @@ export function AttendanceCalendar({
               <X className="h-3.5 w-3.5" />
             </button>
           </div>
-          <div className="text-[12px] text-zinc-600">
-            Status:{' '}
-            <span className="font-medium text-zinc-800">{STATUS_DISPLAY[selectedRecord.status]}</span>
-          </div>
-          {selectedRecord.remarks && (
-            <p className="mt-1 text-[11px] text-zinc-500">{selectedRecord.remarks}</p>
+          {selectedRecord.remarks ? (
+            <p className="text-[11px] text-zinc-500">
+              <span className="text-zinc-400">Reason: </span>
+              {selectedRecord.remarks.replace(/^(Leave|WFH):\s*/, '') || '—'}
+            </p>
+          ) : (
+            <p className="text-[11px] text-zinc-400">No remarks.</p>
           )}
         </div>
       )}
@@ -388,23 +407,18 @@ export function AttendanceCalendar({
         </div>
       )}
 
-      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-zinc-100 pt-3">
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-zinc-100 pt-3">
         {[
+          { label: 'Leave',         dot: 'bg-sky-500' },
           { label: 'Half-day',      dot: 'bg-amber-400' },
           { label: 'WFH',           dot: 'bg-violet-500' },
           { label: 'Pending leave', dot: 'bg-orange-500' },
         ].map(({ label, dot }) => (
           <div key={label} className="flex items-center gap-1.5">
-            <span className={cn('h-[5px] w-[5px] rounded-full', dot)} />
-            <span className="text-[14px] text-zinc-400">{label}</span>
+            <span className={cn('h-2 w-2 rounded-full', dot)} />
+            <span className="text-[11px] text-zinc-500">{label}</span>
           </div>
         ))}
-        <div className="flex items-center gap-1.5">
-          <span className="flex h-[20px] w-[20px] items-center justify-center rounded-full bg-sky-100 text-[7px] font-bold text-sky-700">
-            L
-          </span>
-          <span className="text-[11px] text-zinc-400">On leave</span>
-        </div>
       </div>
     </div>
   );
