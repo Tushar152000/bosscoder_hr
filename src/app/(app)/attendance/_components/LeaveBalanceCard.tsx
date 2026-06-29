@@ -127,7 +127,9 @@ function BalanceRow({ cfg, b }: { cfg: BalanceConfig; b: { total: number; used: 
     );
   }
 
-  const remaining = b.total - b.used;
+  // Never show a negative balance — a pool bottoms out at 0 (any excess is
+  // accounted as unpaid via the cascade).
+  const remaining = Math.max(0, b.total - b.used);
   const usedPct = Math.min(100, Math.max(0, Math.round((b.used / b.total) * 100)));
   const isLow = remaining <= 1;
   const isWarn = !isLow && usedPct >= 75;
@@ -149,7 +151,7 @@ function BalanceRow({ cfg, b }: { cfg: BalanceConfig; b: { total: number; used: 
             isLow ? 'text-red-600' : 'text-zinc-400',
           ].join(' ')}
         >
-          {remaining} / {b.total}
+          {Math.min(b.used, b.total)} / {b.total} used
         </span>
       </div>
       <div className="flex items-center gap-2">
@@ -159,19 +161,15 @@ function BalanceRow({ cfg, b }: { cfg: BalanceConfig; b: { total: number; used: 
             style={{ width: `${usedPct}%`, backgroundColor: fillColor }}
           />
         </div>
-        <span className="w-[54px] shrink-0 text-right text-[10px] tabular-nums text-zinc-400">
-          {usedPct}% used
+        <span className="w-[40px] shrink-0 text-right text-[10px] tabular-nums text-zinc-400">
+          {usedPct}%
         </span>
       </div>
     </div>
   );
 }
 
-export function LeaveBalanceCard({ balance, records }: Props) {
-  const present = records.filter((r) => r.status === 'present').length;
-  const halfDay = records.filter((r) => r.status === 'half-day').length;
-  const absent  = records.filter((r) => r.status === 'absent').length;
-
+export function LeaveBalanceCard({ balance }: Props) {
   return (
     <div className="w-full space-y-4 rounded-[10px] border border-zinc-200 bg-white p-4">
       <div>
@@ -182,29 +180,6 @@ export function LeaveBalanceCard({ balance, records }: Props) {
           {BALANCE_CONFIG.map((cfg) => (
             <BalanceRow key={cfg.key} cfg={cfg} b={balance[cfg.key]} />
           ))}
-        </div>
-      </div>
-
-      <div className="border-t border-zinc-100 pt-3">
-        <p className="mb-3 text-[11px] font-medium uppercase tracking-wide text-zinc-400">
-          This month
-        </p>
-        <div className="grid grid-cols-2 gap-2">
-          <div
-            className="rounded-lg p-2 text-center"
-            style={{ backgroundColor: '#EAF3DE', border: '0.5px solid #C0DD97' }}
-          >
-            <p className="text-[20px] font-medium" style={{ color: '#27500A' }}>{present}</p>
-            <p className="mt-0.5 text-[11px]" style={{ color: '#3B6D11' }}>Present</p>
-          </div>
-          <div
-            className="rounded-lg p-2 text-center"
-            style={{ backgroundColor: '#FAEEDA', border: '0.5px solid #FAC775' }}
-          >
-            <p className="text-[20px] font-medium" style={{ color: '#633806' }}>{halfDay}</p>
-            <p className="mt-0.5 text-[11px]" style={{ color: '#854F0B' }}>Half day</p>
-          </div>
-         
         </div>
       </div>
     </div>

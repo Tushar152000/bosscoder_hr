@@ -269,14 +269,19 @@ export function AttendanceCalendar({
               key={dateStr}
               onClick={() => (isClickable ? handleDayClick(dateStr) : undefined)}
               className={cn(
-                'flex flex-col py-2 items-center justify-center gap-2 rounded-[8px] transition',
+                'group relative flex flex-col py-2 items-center justify-center gap-2 rounded-[8px] transition',
                 isClickable && 'cursor-pointer',
                 isFuture && !isPendingLeave && 'opacity-30',
                 !isSelected && cellBg,
                 isSelected && 'ring-1 ring-inset ring-zinc-900/20 bg-zinc-100',
               )}
             >
-            
+              {isClickable && (
+                <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-zinc-900 px-2 py-1 text-[10px] font-medium text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+                  Click to see the reason
+                </span>
+              )}
+
               <span
                 className={cn(
                   'flex h-[42px] w-[42px] items-center justify-center rounded-full text-[14px] md:text-[16px]',
@@ -300,6 +305,10 @@ export function AttendanceCalendar({
               ) : status === 'wfh' ? (
                 <span className="text-[8px] md:text-[10px] font-semibold uppercase leading-none tracking-wide text-violet-400">
                   WFH
+                </span>
+              ) : status === 'half-day' ? (
+                <span className="text-[8px] md:text-[10px] font-semibold uppercase leading-none tracking-wide text-amber-500">
+                  Half day
                 </span>
               ) : style?.dot ? (
                 <span className={cn('h-[5px] w-[5px] rounded-full', style.dot)} />
@@ -381,8 +390,6 @@ export function AttendanceCalendar({
 
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-zinc-100 pt-3">
         {[
-          { label: 'Present',       dot: 'bg-green-500' },
-          { label: 'Absent',        dot: 'bg-red-500' },
           { label: 'Half-day',      dot: 'bg-amber-400' },
           { label: 'WFH',           dot: 'bg-violet-500' },
           { label: 'Pending leave', dot: 'bg-orange-500' },

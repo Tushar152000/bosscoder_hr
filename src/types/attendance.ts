@@ -121,6 +121,25 @@ export const LEAVE_DEDUCTION: Record<LeaveType, number> = {
   wfh:              1,
 };
 
+/** Default annual allotment per pool (total 0 ⇒ uncapped: unpaid + wfh). */
+export const BALANCE_DEFAULT_TOTALS: Record<BalanceKey, number> = {
+  casual: 9, privilege: 9, marriage: 5, medical: 10, unpaid: 0, wfh: 0,
+};
+
+/**
+ * Spill order when a pool runs out. Excess days cascade to the next pool —
+ * Casual → Privilege → Unpaid. Every capped pool ultimately overflows to
+ * Unpaid, so a balance never goes negative: extra days become unpaid leave.
+ */
+export const BALANCE_CASCADE: Record<BalanceKey, BalanceKey[]> = {
+  casual:    ['casual', 'privilege', 'unpaid'],
+  privilege: ['privilege', 'unpaid'],
+  marriage:  ['marriage', 'unpaid'],
+  medical:   ['medical', 'unpaid'],
+  unpaid:    ['unpaid'],
+  wfh:       ['wfh'],
+};
+
 /** All leave types in display order. */
 export const ALL_LEAVE_TYPES: LeaveType[] = [
   'casual', 'half-casual',

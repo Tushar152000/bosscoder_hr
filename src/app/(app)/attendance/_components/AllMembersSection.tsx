@@ -181,8 +181,11 @@ export function AllMembersSection({
                             {req.fromDate !== req.toDate && ` – ${formatDate(req.toDate)}`}
                             {' · '}{days} day{days !== 1 ? 's' : ''}
                           </p>
+                          {req.reason && (
+                            <p className="mt-1 text-[11px] italic text-zinc-500">&ldquo;{req.reason}&rdquo;</p>
+                          )}
                           {!approved && req.rejectionReason && (
-                            <p className="mt-1 text-[11px] italic text-zinc-400">{req.rejectionReason}</p>
+                            <p className="mt-1 text-[11px] text-red-500">Rejected: {req.rejectionReason}</p>
                           )}
                         </div>
                         <span className={[

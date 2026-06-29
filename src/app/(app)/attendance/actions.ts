@@ -13,11 +13,12 @@ import { sendLeaveRequestEmail } from '@/lib/email/leave-request';
 import type {
   AttendanceRecord,
   AttendanceStatus,
+  BalanceKey,
   LeaveBalance,
   LeaveRequest,
   LeaveType,
 } from '@/types/attendance';
-import { HALF_DAY_LEAVE_TYPES, LEAVE_DEDUCTION, LEAVE_LABELS, LEAVE_TO_BALANCE, financialYearStart, leaveBalanceDocId } from '@/types/attendance';
+import { HALF_DAY_LEAVE_TYPES, LEAVE_DEDUCTION, LEAVE_LABELS, LEAVE_TO_BALANCE, BALANCE_DEFAULT_TOTALS, BALANCE_CASCADE, financialYearStart, leaveBalanceDocId } from '@/types/attendance';
 
 export type TeamMember = {
   employeeId: string;
@@ -491,18 +492,38 @@ export async function approveLeave(leaveId: string): Promise<ActionResult> {
   const balanceKey = LEAVE_TO_BALANCE[leaveType];
   const deduction = LEAVE_DEDUCTION[leaveType] * daysCount;
 
-  if (balanceSnap.exists) {
-    batch.update(balanceRef, {
-      [`${balanceKey}.used`]: FieldValue.increment(deduction),
-    });
-  } else {
-    const DEFAULTS: Record<string, number> = { casual: 9, privilege: 9, marriage: 5, medical: 10, unpaid: 0, wfh: 0 };
-    const newBalance: Record<string, unknown> = { employeeId, year };
-    for (const [k, v] of Object.entries(DEFAULTS)) {
-      newBalance[k] = { total: v, used: k === balanceKey ? deduction : 0 };
-    }
-    batch.set(balanceRef, newBalance);
+  // Load current pools (existing values, falling back to defaults), then spill
+  // the deduction across the cascade chain (e.g. casual → privilege → unpaid),
+  // so an exhausted pool overflows to the next instead of going negative.
+  const balData = balanceSnap.exists ? balanceSnap.data()! : {};
+  const pools = {} as Record<BalanceKey, { total: number; used: number }>;
+  for (const k of Object.keys(BALANCE_DEFAULT_TOTALS) as BalanceKey[]) {
+    pools[k] = {
+      total: balData[k]?.total ?? BALANCE_DEFAULT_TOTALS[k],
+      used: balData[k]?.used ?? 0,
+    };
   }
+
+  const chain = BALANCE_CASCADE[balanceKey];
+  let remaining = deduction;
+  for (const pool of chain) {
+    if (remaining <= 0) break;
+    const cur = pools[pool];
+    if (cur.total === 0) {
+      // Bottomless pool (unpaid / wfh) — absorb the rest.
+      cur.used += remaining;
+      remaining = 0;
+    } else {
+      const take = Math.min(Math.max(0, cur.total - cur.used), remaining);
+      cur.used += take;
+      remaining -= take;
+    }
+  }
+  if (remaining > 0) pools[chain[chain.length - 1]].used += remaining;
+
+  const balPayload: Record<string, unknown> = { employeeId, year };
+  for (const k of Object.keys(BALANCE_DEFAULT_TOTALS)) balPayload[k] = pools[k as BalanceKey];
+  batch.set(balanceRef, balPayload, { merge: true });
 
   try {
     await batch.commit();
