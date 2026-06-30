@@ -270,11 +270,13 @@ const QuestionCard = forwardRef<HTMLDivElement, CardProps>(
             <div
               className={cn(
                 'relative bg-surface-muted border border-divider rounded-md p-3 text-[12px] text-slate-900 leading-relaxed whitespace-pre-wrap',
-                isLong && 'max-h-[60px] overflow-hidden'
+                // Only clamp while the form is editable (Edit expands it). In
+                // read-only / submitted view there's no Edit, so show it all.
+                isLong && !readOnly && 'max-h-[60px] overflow-hidden'
               )}
             >
               {value}
-              {isLong && (
+              {isLong && !readOnly && (
                 <div className="absolute bottom-0 left-0 right-0 h-[30px] bg-gradient-to-t from-surface-muted to-transparent pointer-events-none" />
               )}
             </div>

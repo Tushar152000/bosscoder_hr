@@ -171,13 +171,16 @@ export function buildRenderContext(data: OfferData): Record<string, string | boo
 }
 
 /**
+ 
  * Tiny mustache-like template engine that handles:
  *   - `{{var}}`              — placeholder substitution
  *   - `{{#if var}} … {{/if}}` — conditional block (rendered when var is truthy)
  *
  * Conditionals are processed first (so substitutions inside the block work
  * normally on the surviving content). No nesting support — keep it simple.
- */
+ 
+ **/
+
 export function renderTemplate(
   template: string,
   data: Record<string, string | boolean>
