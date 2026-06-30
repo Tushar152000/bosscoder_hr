@@ -495,6 +495,93 @@ export async function sendManagerNudgeAction(
   }
 }
 
+/**
+ * (Re)send the "cycle is open" email to EVERY participant of a cycle — not just
+ * reviewers of newly-created submissions (which is what open-cycle does). Use
+ * when a cycle was opened but the launch emails never went out.
+ */
+export async function resendCycleOpenEmailsAction(
+  cycleId: string,
+): Promise<ActionResult<{ attempted: number; sent: number; failed: number }>> {
+  const user = await requireUser();
+  if (!canManageCycles(user)) return { ok: false, error: 'Forbidden' };
+
+  const cycle = await getCycle(cycleId);
+  if (!cycle) return { ok: false, error: 'Cycle not found' };
+
+  try {
+    const subs = await listSubmissionsForCycle(cycleId);
+    const byReviewer = new Map<string, CycleOpenRecipient>();
+    for (const s of subs) {
+      if (!s.reviewerEmail) continue;
+      const key = s.reviewerEmail.toLowerCase();
+      let entry = byReviewer.get(key);
+      if (!entry) {
+        entry = { email: s.reviewerEmail, name: s.reviewerName, hasSelfEval: false, managerEvalSubjects: [] };
+        byReviewer.set(key, entry);
+      }
+      if (s.kind === 'self') entry.hasSelfEval = true;
+      else entry.managerEvalSubjects.push(s.subjectName);
+    }
+    const recipients = [...byReviewer.values()];
+    if (recipients.length === 0) return { ok: false, error: 'No participants found for this cycle.' };
+
+    const result = await sendCycleOpenEmails({
+      cycleId: cycle.cycleId,
+      cycleName: cycle.name,
+      cadence: cycle.cadence,
+      recipients,
+    });
+
+    await writeAuditLog({
+      actorUid: user.uid,
+      actorEmail: user.email,
+      action: 'review_cycle.nudge',
+      resource: { type: 'review_cycle', id: cycleId },
+      metadata: {
+        op: 'resend_open_emails',
+        cycleName: cycle.name,
+        attempted: result.attempted,
+        sent: result.sent,
+        failed: result.failed,
+      },
+    });
+
+    return { ok: true, data: { attempted: result.attempted, sent: result.sent, failed: result.failed } };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Failed to send emails' };
+  }
+}
+
+/** Send the cycle-open email to ONLY the current user, to preview it. */
+export async function sendCycleTestEmailAction(
+  cycleId: string,
+): Promise<ActionResult<{ email: string }>> {
+  const user = await requireUser();
+  if (!canManageCycles(user)) return { ok: false, error: 'Forbidden' };
+  const cycle = await getCycle(cycleId);
+  if (!cycle) return { ok: false, error: 'Cycle not found' };
+  try {
+    const result = await sendCycleOpenEmails({
+      cycleId: cycle.cycleId,
+      cycleName: cycle.name,
+      cadence: cycle.cadence,
+      recipients: [
+        {
+          email: user.email,
+          name: user.displayName ?? 'there',
+          hasSelfEval: true,
+          managerEvalSubjects: ['Sample Teammate'],
+        },
+      ],
+    });
+    if (result.sent < 1) return { ok: false, error: result.failures[0]?.error ?? 'Send failed' };
+    return { ok: true, data: { email: user.email } };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Send failed' };
+  }
+}
+
 export async function nudgePendingEmployees(
   cycleId: string,
 ): Promise<ActionResult<{ sent: number }>> {

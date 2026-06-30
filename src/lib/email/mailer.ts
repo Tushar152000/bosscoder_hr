@@ -14,6 +14,14 @@ function getTransporter(): Transporter | null {
   cached = nodemailer.createTransport({
     service: 'gmail',
     auth: { user, pass },
+    // Pool + throttle so bulk sends (e.g. cycle-open to 100+ people) don't open
+    // 100 simultaneous connections — Gmail refuses that and most would fail.
+    // Queued over a few connections at a steady rate instead.
+    pool: true,
+    maxConnections: 4,
+    maxMessages: 100,
+    rateDelta: 1000, // per second…
+    rateLimit: 6,    // …at most 6 messages
   });
   return cached;
 }
