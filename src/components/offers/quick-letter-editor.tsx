@@ -18,6 +18,10 @@ export interface QuickEmployee {
 interface Props {
   employees: QuickEmployee[];
   backgroundUrl: string;
+  /** Pre-filled letter body (e.g. a relieving-letter template). */
+  starterBody?: string;
+  /** Prefix for the downloaded PDF filename. */
+  filenamePrefix?: string;
 }
 
 const STARTER = `This is to inform you that…
@@ -28,11 +32,16 @@ Write the letter content here. You can use placeholders that fill from the selec
 - {{department}} — department
 - {{offerDate}} — today's date`;
 
-export function QuickLetterEditor({ employees, backgroundUrl }: Props) {
+export function QuickLetterEditor({
+  employees,
+  backgroundUrl,
+  starterBody = STARTER,
+  filenamePrefix = 'bosscoder-letter',
+}: Props) {
   const [dept, setDept] = useState('');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<QuickEmployee | null>(null);
-  const [body, setBody] = useState(STARTER);
+  const [body, setBody] = useState(starterBody);
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,7 +90,7 @@ export function QuickLetterEditor({ employees, backgroundUrl }: Props) {
     setError(null);
     setDownloading(true);
     const namePart = safeFilename(selected?.displayName ?? 'letter');
-    const result = await downloadOfferPdf({ filename: `bosscoder-letter-${namePart}-${today}` });
+    const result = await downloadOfferPdf({ filename: `${filenamePrefix}-${namePart}-${today}` });
     setDownloading(false);
     if (!result.ok) setError(result.error ?? 'Failed to generate PDF');
   }

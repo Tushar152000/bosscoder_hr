@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Plus, Lock, Unlock, FileText } from 'lucide-react';
+import { Plus, Lock, Unlock, FileText, LogOut } from 'lucide-react';
 import { requirePermission } from '@/lib/auth/guard';
 import { listOfferLetters } from '@/lib/firestore/offer-letters';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,12 @@ export default async function OffersListPage() {
             <Link href="/offers/quick">
               <FileText className="h-4 w-4" />
               Quick letter
+            </Link>
+          </Button>
+          <Button asChild variant="secondary">
+            <Link href="/offers/leaving">
+              <LogOut className="h-4 w-4" />
+              Leaving letter
             </Link>
           </Button>
           <Button asChild>
