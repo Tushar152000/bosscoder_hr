@@ -17,7 +17,7 @@ interface Props {
 const PX_PER_MM = 96 / 25.4;
 
 /** Padding values must mirror the CSS custom props in globals.css. */
-const PAD_TOP_MM = 50;
+const PAD_TOP_MM = 42; // must equal --offer-pad-top in globals.css
 const PAD_BOTTOM_MM = 38;
 const PAGE_HEIGHT_MM = 297;
 const CONTENT_HEIGHT_MM = PAGE_HEIGHT_MM - PAD_TOP_MM - PAD_BOTTOM_MM; // 209

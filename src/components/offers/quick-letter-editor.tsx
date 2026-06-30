@@ -1,10 +1,12 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Search, Download, FileText, X } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowLeft, Search, Download, FileText, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { OfferPreview } from '@/components/offers/offer-preview';
 import { downloadOfferPdf, safeFilename } from '@/lib/offers/pdf-export';
+import { formatDateLong } from '@/lib/offers/render';
 import type { OfferData } from '@/types/offer';
 
 export interface QuickEmployee {
@@ -15,6 +17,12 @@ export interface QuickEmployee {
   email: string;
 }
 
+/** A `{{key}}` placeholder in the body that the user fills via a date picker. */
+export interface DateField {
+  key: string;
+  label: string;
+}
+
 interface Props {
   employees: QuickEmployee[];
   backgroundUrl: string;
@@ -22,6 +30,13 @@ interface Props {
   starterBody?: string;
   /** Prefix for the downloaded PDF filename. */
   filenamePrefix?: string;
+  /** Optional date pickers; each fills its `{{key}}` placeholder in the body. */
+  dateFields?: DateField[];
+  /** Top-bar title shown next to the Download button. */
+  title?: string;
+  /** Top-bar back-link destination + label. */
+  backHref?: string;
+  backLabel?: string;
 }
 
 const STARTER = `This is to inform you that…
@@ -37,13 +52,30 @@ export function QuickLetterEditor({
   backgroundUrl,
   starterBody = STARTER,
   filenamePrefix = 'bosscoder-letter',
+  dateFields = [],
+  title = 'Letter',
+  backHref = '/offers',
+  backLabel = 'Back to letters',
 }: Props) {
   const [dept, setDept] = useState('');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<QuickEmployee | null>(null);
   const [body, setBody] = useState(starterBody);
+  const [dateValues, setDateValues] = useState<Record<string, string>>({});
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Replace each date field's `{{key}}` with the chosen date (or a fill-in
+  // placeholder while empty) before the body is rendered in the preview/PDF.
+  const effectiveBody = useMemo(() => {
+    let out = body;
+    for (const f of dateFields) {
+      const v = dateValues[f.key];
+      const replacement = v ? formatDateLong(v) : `[${f.label}]`;
+      out = out.split(`{{${f.key}}}`).join(replacement);
+    }
+    return out;
+  }, [body, dateFields, dateValues]);
 
   const departments = useMemo(
     () => [...new Set(employees.map((e) => e.department).filter(Boolean))].sort(),
@@ -81,9 +113,9 @@ export function QuickLetterEditor({
       pocName: '',
       pocDesignation: '',
       pocEmail: '',
-      bodyMarkdown: body,
+      bodyMarkdown: effectiveBody,
     }),
-    [selected, body, today],
+    [selected, effectiveBody, today],
   );
 
   async function handleDownload() {
@@ -96,8 +128,37 @@ export function QuickLetterEditor({
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] h-full overflow-hidden">
-      {/* ── Left: pick employee + write ───────────────────────────── */}
+    <div className="flex h-full flex-col print:h-auto">
+      {/* ── Top bar: back link · title · download ─────────────────── */}
+      <div className="no-print flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-6 py-3">
+        <Link
+          href={backHref}
+          className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {backLabel}
+        </Link>
+        <div className="flex items-center gap-3">
+          {error && (
+            <span className="max-w-[240px] truncate text-[12px] text-[#993C1D]">{error}</span>
+          )}
+          <span className="hidden text-sm font-semibold text-slate-700 sm:inline">{title}</span>
+          <Button
+            type="button"
+            variant="primary"
+            onClick={handleDownload}
+            isLoading={downloading}
+            disabled={downloading || !body.trim()}
+            className="gap-2 h-9"
+          >
+            {!downloading && <Download className="h-4 w-4" />}
+            Download PDF
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr] flex-1 overflow-hidden">
+        {/* ── Left: pick employee + write ───────────────────────────── */}
       <div className="no-print flex flex-col gap-4 overflow-y-auto border-r border-slate-200 bg-white p-4">
         {/* Step 1 — employee */}
         <div>
@@ -165,10 +226,36 @@ export function QuickLetterEditor({
           )}
         </div>
 
-        {/* Step 2 — text */}
+        {/* Step 2 — dates (optional) */}
+        {dateFields.length > 0 && (
+          <div>
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              2 · Dates
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {dateFields.map((f) => (
+                <label key={f.key} className="flex flex-col gap-1">
+                  <span className="text-[11px] font-medium capitalize text-slate-600">
+                    {f.label}
+                  </span>
+                  <input
+                    type="date"
+                    value={dateValues[f.key] ?? ''}
+                    onChange={(e) =>
+                      setDateValues((prev) => ({ ...prev, [f.key]: e.target.value }))
+                    }
+                    className="h-9 w-full rounded-md border border-[#E2E8F0] bg-white px-2.5 text-[13px] text-slate-700 outline-none focus:border-[#0C447C]"
+                  />
+                </label>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Step — text */}
         <div className="flex min-h-0 flex-1 flex-col">
           <p className="mb-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-            2 · Letter content
+            {dateFields.length > 0 ? '3' : '2'} · Letter content
           </p>
           <textarea
             value={body}
@@ -180,22 +267,6 @@ export function QuickLetterEditor({
             Supports Markdown (**bold**, lists, tables) and {'{{candidateName}}'}, {'{{designation}}'}, {'{{offerDate}}'} placeholders.
           </p>
         </div>
-
-        {error && (
-          <p className="rounded-md border border-[#FAC8C6] bg-[#FAECE7] px-3 py-2 text-[12px] text-[#993C1D]">{error}</p>
-        )}
-
-        <Button
-          type="button"
-          variant="primary"
-          onClick={handleDownload}
-          isLoading={downloading}
-          disabled={downloading || !body.trim()}
-          className="w-full gap-2 h-10"
-        >
-          {!downloading && <Download className="h-4 w-4" />}
-          Download PDF
-        </Button>
       </div>
 
       {/* ── Right: live letterhead preview ────────────────────────── */}
@@ -208,6 +279,7 @@ export function QuickLetterEditor({
         ) : (
           <OfferPreview data={data} backgroundUrl={backgroundUrl} />
         )}
+      </div>
       </div>
     </div>
   );

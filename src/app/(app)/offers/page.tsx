@@ -33,7 +33,7 @@ export default async function OffersListPage() {
           <Button asChild variant="secondary">
             <Link href="/offers/leaving">
               <LogOut className="h-4 w-4" />
-              Leaving letter
+              Relieving letter
             </Link>
           </Button>
           <Button asChild>

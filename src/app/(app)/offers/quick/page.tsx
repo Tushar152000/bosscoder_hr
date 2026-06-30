@@ -1,5 +1,3 @@
-import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
 import { requirePermission } from '@/lib/auth/guard';
 import { listEmployees } from '@/lib/firestore/employees';
 import { getOfferSettings } from '@/lib/firestore/hr-settings';
@@ -23,17 +21,14 @@ export default async function QuickLetterPage() {
   }));
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] flex-col print:h-auto">
-      <div className="no-print flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
-        <Link href="/offers" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800">
-          <ArrowLeft className="h-4 w-4" />
-          Back to offer letters
-        </Link>
-        <span className="text-sm font-semibold text-slate-700">Quick letter</span>
-      </div>
-      <div className="flex-1 overflow-hidden">
-        <QuickLetterEditor employees={people} backgroundUrl={settings.backgroundUrl} />
-      </div>
+    <div className="h-[calc(100vh-3.5rem)] print:h-auto">
+      <QuickLetterEditor
+        employees={people}
+        backgroundUrl={settings.backgroundUrl}
+        title="Quick letter"
+        backHref="/offers"
+        backLabel="Back to offer letters"
+      />
     </div>
   );
 }

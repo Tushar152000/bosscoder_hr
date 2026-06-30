@@ -1,27 +1,29 @@
-import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
 import { requirePermission } from '@/lib/auth/guard';
 import { listEmployees } from '@/lib/firestore/employees';
 import { getOfferSettings } from '@/lib/firestore/hr-settings';
 import { QuickLetterEditor, type QuickEmployee } from '@/components/offers/quick-letter-editor';
 
-export const metadata = { title: 'Leaving letter' };
+export const metadata = { title: 'Relieving letter' };
 
 const LEAVING_TEMPLATE = `**{{offerDate}}**
 
-**To Whomsoever It May Concern**
+## RELIEVING LETTER
 
-This is to certify that **{{candidateName}}** was employed with **Bosscoder Software Services Pvt. Ltd.** as **{{designation}}** in the {{department}} department.
+Dear **{{candidateName}}**,
 
-{{candidateName}} has been relieved from their duties and responsibilities with effect from {{offerDate}}, and has no dues pending with the company.
+With reference to your resignation email dated **{{resignationDate}}**, you are hereby relieved from your duties as on **{{relievingDate}}**. We confirm that you have been working with **Bosscoder Software Services Pvt. Ltd.**, as **{{designation}}** from **{{joiningDate}}** to **{{lastWorkingDate}}**.
 
-During the tenure with us, {{candidateName}}'s conduct and performance were found to be satisfactory. We thank them for their contributions and wish them all the best in their future endeavours.
+We would like to thank you for your service with Bosscoder Software Services Pvt. Ltd. & wish you the best wishes.
 
-For **Bosscoder Software Services Pvt. Ltd.**
+We wish you all the best in your future endeavors.
 
-**Rajat Kumar Garg**
+Yours Sincerely,
 
-Authorised Signatory`;
+For **Bosscoder Academy**
+
+**Rajat Garg**
+
+Co-Founder`;
 
 export default async function LeavingLetterPage() {
   await requirePermission('manage_offer_letters');
@@ -39,22 +41,22 @@ export default async function LeavingLetterPage() {
   }));
 
   return (
-    <div className="flex h-[calc(100vh-3.5rem)] flex-col print:h-auto">
-      <div className="no-print flex items-center justify-between border-b border-slate-200 bg-white px-6 py-3">
-        <Link href="/offers" className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800">
-          <ArrowLeft className="h-4 w-4" />
-          Back to letters
-        </Link>
-        <span className="text-sm font-semibold text-slate-700">Leaving letter</span>
-      </div>
-      <div className="flex-1 overflow-hidden">
-        <QuickLetterEditor
-          employees={people}
-          backgroundUrl={settings.backgroundUrl}
-          starterBody={LEAVING_TEMPLATE}
-          filenamePrefix="bosscoder-relieving-letter"
-        />
-      </div>
+    <div className="h-[calc(100vh-3.5rem)] print:h-auto">
+      <QuickLetterEditor
+        employees={people}
+        backgroundUrl={settings.backgroundUrl}
+        starterBody={LEAVING_TEMPLATE}
+        filenamePrefix="bosscoder-relieving-letter"
+        title="Relieving letter"
+        backHref="/offers"
+        backLabel="Back to letters"
+        dateFields={[
+          { key: 'resignationDate', label: 'resignation date' },
+          { key: 'relievingDate', label: 'relieving date' },
+          { key: 'joiningDate', label: 'joining date' },
+          { key: 'lastWorkingDate', label: 'last working date' },
+        ]}
+      />
     </div>
   );
 }

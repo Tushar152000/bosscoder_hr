@@ -93,7 +93,7 @@ a,
 
 /* ─── Offer letter A4 preview + print rules ──────────────────────────────── */
 :root {
-  --offer-pad-top: 50mm;
+  --offer-pad-top: 42mm;
   --offer-pad-bottom: 38mm;
   --offer-pad-x: 22mm;
 }
