@@ -10,9 +10,10 @@ import {
   listManagerEvalsForSubject,
 } from '@/lib/firestore/review-submissions';
 import { getEmployeeByUserUid, listEmployees } from '@/lib/firestore/employees';
-import { AdminBrowseSection, DrillSection, type DeptStat, type OrgStats } from '@/components/performance/browse-grid';
+import { AdminBrowseSection, DrillSection, ALL_EMPLOYEES, type DeptStat, type OrgStats } from '@/components/performance/browse-grid';
 import { CyclesTable } from '@/components/performance/cycles-table';
 import { EvalQueueSection } from '@/components/performance/eval-queue-section';
+import { AdminPerformanceTabs } from '@/components/performance/admin-performance-tabs';
 import type { ReportWithHistory } from '@/components/performance/my-team-rail';
 import type { TeamMemberSummary } from '@/components/performance/team-ratings-list';
 import {
@@ -367,6 +368,8 @@ export default async function PerformancePage({ searchParams }: Props) {
   // Admin's own self-eval is shown in a dedicated top-level section, not inside dept drill-down
   const mySelfSubs = mySubs.filter((s) => s.kind === 'self');
   const managerSubs = mySubs.filter((s) => s.kind !== 'self');
+  const isOpenStatus = (s: ReviewSubmission) =>
+    s.status === 'not-started' || s.status === 'in-progress';
   // Founders: only manager evals where the subject's self-eval is submitted (no "pending" noise)
   // Admins: manager evals only (self-eval shown separately above)
   // Regular employees: all their submissions including their own self-eval
@@ -413,81 +416,113 @@ export default async function PerformancePage({ searchParams }: Props) {
       </div>
 
 
-      {isAdmin && adminView.kind === 'tiles' && (
-        <AdminBrowseSection
-          deptStats={deptStats}
-          orgStats={orgStats}
-          openCycleId={openCycleId}
-          openCycleName={openCycleName}
-          daysUntilClose={daysUntilClose}
-          lastClosedCycleName={lastClosedCycleName}
-          decliningCount={decliningCount}
-          incompleteMgrCount={incompleteMgrCount}
-          searchableEmployees={searchableEmployees}
-          isFounder={isFounder}
-        />
-      )}
+      {isAdmin && adminView.kind === 'tiles' && (() => {
+        // Landing page: one toggle —
+        // Evaluation cycles · Departments (grid) · My evaluations · Team evaluations.
+        const selfSubs = isFounder ? [] : mySelfSubs;
+        const hasTeam = queueSubs.length > 0 || reportsWithHistory.length > 0;
+        return (
+          <AdminPerformanceTabs
+            myOpenCount={selfSubs.filter(isOpenStatus).length}
+            teamOpenCount={queueSubs.filter(isOpenStatus).length}
+            cycles={
+              <CyclesTable
+                cycles={filteredCycles}
+                fyOptions={fyOptions}
+                fy={filterFY}
+                statusParam={sp?.status ?? null}
+                view={sp?.view ?? null}
+                viewName={sp?.name ?? null}
+                canCreate={!isFounder}
+              />
+            }
+            departments={
+              <AdminBrowseSection
+                deptStats={deptStats}
+                orgStats={orgStats}
+                openCycleId={openCycleId}
+                openCycleName={openCycleName}
+                daysUntilClose={daysUntilClose}
+                lastClosedCycleName={lastClosedCycleName}
+                decliningCount={decliningCount}
+                incompleteMgrCount={incompleteMgrCount}
+                searchableEmployees={searchableEmployees}
+                isFounder={isFounder}
+              />
+            }
+            myEvaluations={
+              selfSubs.length > 0 ? (
+                <EvalQueueSection
+                  submissions={selfSubs}
+                  cyclesById={cyclesById}
+                  reportsWithHistory={[]}
+                  mgrEvalByCycle={mgrEvalByCycle}
+                  prevRatingByCycle={prevRatingByCycle}
+                  forcedView="self"
+                />
+              ) : null
+            }
+            teamEvaluations={
+              hasTeam ? (
+                <EvalQueueSection
+                  submissions={queueSubs}
+                  cyclesById={cyclesById}
+                  reportsWithHistory={reportsWithHistory}
+                  mgrEvalByCycle={mgrEvalByCycle}
+                  prevRatingByCycle={prevRatingByCycle}
+                  selfEvalStatusById={selfEvalStatusById}
+                  forcedView="manager"
+                />
+              ) : null
+            }
+          />
+        );
+      })()}
+
       {isAdmin && adminView.kind !== 'tiles' && (
-        <DrillSection title={drillTitle} subtitle={drillSubtitle} rows={drillRows} />
+        <>
+          <DrillSection
+            title={drillTitle}
+            subtitle={drillSubtitle}
+            rows={drillRows}
+            departments={deptList.map((d) => d.name)}
+            current={adminView.kind === 'dept' ? adminView.name : ALL_EMPLOYEES}
+          />
+          {(() => {
+            // Inside a department drill-down: scope the eval queue to that department,
+            // keeping the My / Team sub-toggle.
+            const deptName = adminView.kind === 'dept' ? adminView.name : null;
+            const scopedSubs = deptName
+              ? queueSubs.filter((s) => s.subjectDepartment === deptName)
+              : queueSubs;
+            const scopedReports = deptName
+              ? reportsWithHistory.filter((r) => ((r.department ?? '').trim() || 'Unassigned') === deptName)
+              : reportsWithHistory;
+            const selfSubs = isFounder ? [] : mySelfSubs;
+            const combinedSubs = [...selfSubs, ...scopedSubs];
+            return (combinedSubs.length > 0 || scopedReports.length > 0) ? (
+              <EvalQueueSection
+                submissions={combinedSubs}
+                cyclesById={cyclesById}
+                reportsWithHistory={scopedReports}
+                mgrEvalByCycle={mgrEvalByCycle}
+                prevRatingByCycle={prevRatingByCycle}
+                selfEvalStatusById={selfEvalStatusById}
+              />
+            ) : null;
+          })()}
+        </>
       )}
 
-
-      {/* Admin's own self-eval: always shown at top level, outside dept drill-down */}
-      {isAdmin && !isFounder && mySelfSubs.length > 0 && (
+      {!isAdmin && (queueSubs.length > 0 || hasReports) && (
+        // Non-admins: always show their own eval queue (with its built-in My / Team toggle)
         <EvalQueueSection
-          submissions={mySelfSubs}
+          submissions={queueSubs}
           cyclesById={cyclesById}
-          reportsWithHistory={[]}
+          reportsWithHistory={reportsWithHistory}
           mgrEvalByCycle={mgrEvalByCycle}
           prevRatingByCycle={prevRatingByCycle}
-        />
-      )}
-
-      {isAdmin ? (
-        // Admins: only show team evaluations inside a department drill-down, scoped to that dept
-        adminView.kind !== 'tiles' && (() => {
-          const deptName = adminView.kind === 'dept' ? adminView.name : null;
-          const scopedSubs = deptName
-            ? queueSubs.filter((s) => s.subjectDepartment === deptName)
-            : queueSubs;
-          const scopedReports = deptName
-            ? reportsWithHistory.filter((r) => ((r.department ?? '').trim() || 'Unassigned') === deptName)
-            : reportsWithHistory;
-          return (scopedSubs.length > 0 || scopedReports.length > 0) ? (
-            <EvalQueueSection
-              submissions={scopedSubs}
-              cyclesById={cyclesById}
-              reportsWithHistory={scopedReports}
-              mgrEvalByCycle={mgrEvalByCycle}
-              prevRatingByCycle={prevRatingByCycle}
-              selfEvalStatusById={selfEvalStatusById}
-            />
-          ) : null;
-        })()
-      ) : (
-        // Non-admins: always show their own eval queue
-        (queueSubs.length > 0 || hasReports) && (
-          <EvalQueueSection
-            submissions={queueSubs}
-            cyclesById={cyclesById}
-            reportsWithHistory={reportsWithHistory}
-            mgrEvalByCycle={mgrEvalByCycle}
-            prevRatingByCycle={prevRatingByCycle}
-            selfEvalStatusById={selfEvalStatusById}
-          />
-        )
-      )}
-
-
-      {isAdmin && adminView.kind === 'tiles' && (
-        <CyclesTable
-          cycles={filteredCycles}
-          fyOptions={fyOptions}
-          fy={filterFY}
-          statusParam={sp?.status ?? null}
-          view={sp?.view ?? null}
-          viewName={sp?.name ?? null}
-          canCreate={!isFounder}
+          selfEvalStatusById={selfEvalStatusById}
         />
       )}
     </div>

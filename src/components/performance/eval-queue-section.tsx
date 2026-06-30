@@ -16,6 +16,8 @@ interface Props {
   mgrEvalByCycle: Record<string, ReviewSubmission>;
   prevRatingByCycle: Record<string, number | null>;
   selfEvalStatusById?: Record<string, string>;
+  /** When set, render only this view and hide the internal toggle (parent controls it). */
+  forcedView?: View;
 }
 
 export function EvalQueueSection({
@@ -25,6 +27,7 @@ export function EvalQueueSection({
   mgrEvalByCycle,
   prevRatingByCycle,
   selfEvalStatusById = {},
+  forcedView,
 }: Props) {
   const hasSelf    = submissions.some((s) => s.kind === 'self');
   const hasManager = submissions.some((s) => s.kind === 'manager');
@@ -34,8 +37,9 @@ export function EvalQueueSection({
     hasManager || hasReports ? 'manager' : 'self',
   );
 
-
-  const showToggle = (hasSelf && (hasManager || hasReports));
+  // When the parent drives the view (e.g. a top-level toggle), use that and hide ours.
+  const activeView = forcedView ?? view;
+  const showToggle = !forcedView && hasSelf && (hasManager || hasReports);
 
   return (
     <div className="space-y-4">
@@ -59,7 +63,7 @@ export function EvalQueueSection({
       )}
 
 
-      {view === 'self' && hasSelf && (
+      {activeView === 'self' && hasSelf && (
         <MyQueue
           submissions={submissions}
           cyclesById={cyclesById}
@@ -69,7 +73,7 @@ export function EvalQueueSection({
         />
       )}
 
-      {view === 'manager' && (hasManager || hasReports) && (
+      {activeView === 'manager' && (hasManager || hasReports) && (
         <div className={hasManager && hasReports ? 'grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-3.5 items-start' : undefined}>
           {hasManager && (
             <MyQueue
