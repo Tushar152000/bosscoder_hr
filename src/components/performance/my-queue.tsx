@@ -235,7 +235,7 @@ export function MyQueue({
       )}
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 overflow-x-auto px-1 pb-1">
+      <div className="flex items-center gap-1 overflow-x-auto px-1 pb-1 pt-2">
         {(Object.keys(TAB_LABELS) as Tab[]).map((t) => {
           const isDanger = t === 'urgent';
           const count = t === 'submitted' ? sortedSubmitted.length : buckets[t].length;

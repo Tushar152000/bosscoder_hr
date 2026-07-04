@@ -2,12 +2,14 @@
 
 import { useState, useMemo, useTransition } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   ArrowRight,
   Bell,
   Briefcase,
   Building2,
+  ChevronDown,
   Code2,
   Search,
   Settings,
@@ -451,14 +453,60 @@ function EmptyState() {
 
 
 
+// ─── Department dropdown switcher ─────────────────────────────────────────────
+
+export const ALL_EMPLOYEES = '__all__';
+
+function DeptSwitcher({
+  departments,
+  current,
+}: {
+  departments: string[];
+  current: string; // a department name, or ALL_EMPLOYEES
+}) {
+  const router = useRouter();
+
+  function handleChange(value: string) {
+    if (value === current) return;
+    if (value === ALL_EMPLOYEES) {
+      router.push('/performance?view=all');
+    } else {
+      router.push(`/performance?view=dept&name=${encodeURIComponent(value)}`);
+    }
+  }
+
+  return (
+    <div className="relative inline-block">
+      <select
+        value={current}
+        onChange={(e) => handleChange(e.target.value)}
+        className="h-9 appearance-none rounded-lg border border-slate-200 bg-white pl-3 pr-8 text-[13px] font-medium text-slate-700 transition focus:border-[#0C447C] focus:outline-none focus:ring-2 focus:ring-[#0C447C]/20"
+        aria-label="Select department"
+      >
+        <option value={ALL_EMPLOYEES}>All employees</option>
+        {departments.map((d) => (
+          <option key={d} value={d}>
+            {d}
+          </option>
+        ))}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+    </div>
+  );
+}
+
 export function DrillSection({
   title,
   subtitle,
   rows,
+  departments,
+  current,
 }: {
   title: string;
   subtitle: string;
   rows: TeamMemberSummary[];
+  departments: string[];
+  current: string; // a department name, or ALL_EMPLOYEES
 }) {
   return (
     <section className="space-y-4">
@@ -470,8 +518,13 @@ export function DrillSection({
           <ArrowLeft className="h-3.5 w-3.5" />
           Back to departments
         </Link>
-        <h2 className="mt-1 text-[15px] font-semibold text-slate-900">{title}</h2>
-        <p className="mt-0.5 text-[12px] text-slate-500">{subtitle}</p>
+        <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-[15px] font-semibold text-slate-900">{title}</h2>
+            <p className="mt-0.5 text-[12px] text-slate-500">{subtitle}</p>
+          </div>
+          <DeptSwitcher departments={departments} current={current} />
+        </div>
       </div>
       {rows.length === 0 ? (
         <div className="rounded-xl border border-slate-200/70 bg-slate-50 p-5 text-[13px] text-slate-500">

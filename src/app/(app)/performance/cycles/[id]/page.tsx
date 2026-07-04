@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
-  ArrowRight,
   ChevronRight,
   ClipboardCheck,
   Clock,
@@ -16,9 +15,10 @@ import { canManageCycles } from '@/lib/auth/review-access';
 import { getEmployeeByUserUid } from '@/lib/firestore/employees';
 import { getCycle } from '@/lib/firestore/review-cycles';
 import { listSubmissionsForCycle } from '@/lib/firestore/review-submissions';
-import { ManagerRatingTable } from '@/components/performance/manager-rating-table';
 import { TeamMemberCard, type TeamPair } from '@/components/performance/team-member-card';
 import { YourSelfEvalCard } from '@/components/performance/your-self-eval-card';
+import { SlotTabs } from '@/components/performance/slot-tabs';
+import { DeptEvalBrowser } from '@/components/performance/dept-eval-browser';
 import {
   CloseCycleButton,
   EditCycleDueDateButton,
@@ -27,10 +27,9 @@ import {
   SendTestCycleEmailButton,
   SyncEmployeesButton,
 } from '@/components/performance/cycle-actions';
-import { DEPARTMENTS } from '@/lib/constants/departments';
 import { formatDate } from '@/lib/format';
-import { cn, initials } from '@/lib/utils';
-import type { ReviewSubmission, SubmissionStatus } from '@/types/review';
+import { cn } from '@/lib/utils';
+import type { ReviewSubmission } from '@/types/review';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -87,13 +86,6 @@ export default async function CycleDetailPage({ params }: Props) {
   const deptScopedSelfEvals = isAdmin
     ? allSelfEvals
     : allSelfEvals.filter((s) => myManagedDepts.includes(s.subjectDepartment));
-
-  const allManagerEvals = allSubs.filter((s) => s.kind === 'manager');
-  const tableScopedManagerEvals = isAdmin
-    ? allManagerEvals
-    : allManagerEvals.filter((s) => myManagedDepts.includes(s.subjectDepartment));
-  const showManagerTable =
-    (isAdmin || myManagedDepts.length > 0) && tableScopedManagerEvals.length > 0;
 
   const selfPct =
     cycle.selfCount > 0
@@ -227,26 +219,57 @@ export default async function CycleDetailPage({ params }: Props) {
         </div>
       )}
 
-      {mySelfEval && !isFounder && <YourSelfEvalCard submission={mySelfEval} />}
-
-     
-      {teamPairs.length > 0 && (
-        <section className="space-y-3">
-          <div className="flex items-center gap-2">
-            <h2 className="text-[15px] font-medium text-slate-900">Your team</h2>
-            <span className="text-[11px] text-slate-500">({teamPairs.length})</span>
-          </div>
-          <p className="text-[13px] text-slate-500">
-            You evaluate {teamPairs.length}{' '}
-            {teamPairs.length === 1 ? 'person' : 'people'} this cycle.
-          </p>
-          <div className="grid gap-3 md:grid-cols-2">
-            {teamPairs.map((pair) => (
-              <TeamMemberCard key={pair.managerEval.submissionId} pair={pair} />
-            ))}
-          </div>
-        </section>
-      )}
+      {/* ── Your own forms: toggle between "My evaluation" and "My team" ── */}
+      {(() => {
+        const selfContent =
+          mySelfEval && !isFounder ? <YourSelfEvalCard submission={mySelfEval} /> : null;
+        const teamContent =
+          teamPairs.length > 0 ? (
+            <section className="space-y-3">
+              <p className="text-[13px] text-slate-500">
+                You evaluate {teamPairs.length}{' '}
+                {teamPairs.length === 1 ? 'person' : 'people'} this cycle.
+              </p>
+              <div className="grid gap-3 md:grid-cols-2">
+                {teamPairs.map((pair) => (
+                  <TeamMemberCard key={pair.managerEval.submissionId} pair={pair} />
+                ))}
+              </div>
+            </section>
+          ) : null;
+        const selfOpen =
+          mySelfEval &&
+          (mySelfEval.status === 'not-started' || mySelfEval.status === 'in-progress')
+            ? 1
+            : 0;
+        const teamOpen = teamPairs.filter(
+          (p) =>
+            p.managerEval.status === 'not-started' ||
+            p.managerEval.status === 'in-progress',
+        ).length;
+        return selfContent || teamContent ? (
+          <SlotTabs
+            defaultKey={selfContent ? 'self' : 'team'}
+            tabs={[
+              {
+                key: 'self',
+                label: 'My evaluation',
+                icon: 'clipboard',
+                count: selfOpen,
+                content: selfContent,
+              },
+              {
+                key: 'team',
+                label: 'My team',
+                icon: 'users',
+                accent: 'purple',
+                count: teamOpen,
+                content: teamContent,
+              },
+            ]}
+          />
+        ) : null;
+      })()}
 
       {/* Empty state for non-admins with nothing assigned */}
       {!isAdmin && !mySelfEval && teamPairs.length === 0 && (
@@ -257,7 +280,7 @@ export default async function CycleDetailPage({ params }: Props) {
         </div>
       )}
 
-      {/* ── Self-evals by department (admin/dept-lead) ───────────── */}
+      {/* ── Self-evaluations by department, with a department filter ── */}
       {showDeptBrowse && (
         <section className="space-y-3">
           <h2 className="text-[15px] font-medium text-slate-900">
@@ -268,7 +291,7 @@ export default async function CycleDetailPage({ params }: Props) {
               No self-evaluations have been generated yet.
             </div>
           ) : (
-            <SelfSubsByDepartment
+            <DeptEvalBrowser
               subs={deptScopedSelfEvals}
               myEmail={myEmail}
               myUid={user.uid}
@@ -277,22 +300,6 @@ export default async function CycleDetailPage({ params }: Props) {
           )}
         </section>
       )}
-
-      {/* ── Manager rating table (admin/dept-lead) ───────────────── */}
-      {/* {showManagerTable && (
-        <section className="space-y-3">
-          <h2 className="text-[15px] font-medium text-slate-900">Manager ratings</h2>
-          <p className="text-[13px] text-slate-500">
-            Aggregate of every manager evaluation.{' '}
-            <span className="font-medium text-slate-700">Overall</span> is the average of the five
-            ratings (1 best · 5 worst).
-          </p>
-          <ManagerRatingTable
-            submissions={tableScopedManagerEvals}
-            cycleStatus={cycle.status}
-          />
-        </section>
-      )} */}
     </div>
   );
 }
@@ -365,110 +372,6 @@ function CycleStatusPill({
     <span className="inline-flex items-center gap-1 rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-2 py-0.5 text-[11px] font-medium text-slate-500">
       <FileText className="h-2.5 w-2.5" />
       Draft
-    </span>
-  );
-}
-
-// ─── Self-evals by department ─────────────────────────────────────────────────
-
-function SelfSubsByDepartment({
-  subs,
-  myEmail,
-  myUid,
-  myEmployeeId,
-}: {
-  subs: ReviewSubmission[];
-  myEmail: string;
-  myUid: string;
-  myEmployeeId: string | null;
-}) {
-  const grouped = new Map<string, ReviewSubmission[]>();
-  for (const s of subs) {
-    const isMe =
-      (s.reviewerUid && s.reviewerUid === myUid) ||
-      s.reviewerEmail.toLowerCase() === myEmail ||
-      (myEmployeeId && s.subjectEmployeeId === myEmployeeId);
-    if (isMe) continue;
-    const k = s.subjectDepartment || '— Unassigned —';
-    if (!grouped.has(k)) grouped.set(k, []);
-    grouped.get(k)!.push(s);
-  }
-  if (grouped.size === 0) {
-    return (
-      <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-5 text-[13px] text-slate-500">
-        Nothing else to view here.
-      </div>
-    );
-  }
-  const ordered: { dept: string; rows: ReviewSubmission[] }[] = [];
-  for (const d of DEPARTMENTS) {
-    if (grouped.has(d)) ordered.push({ dept: d, rows: grouped.get(d)! });
-    grouped.delete(d);
-  }
-  for (const [d, rows] of grouped) ordered.push({ dept: d, rows });
-
-  return (
-    <div className="space-y-4">
-      {ordered.map(({ dept, rows }) => {
-        const submitted = rows.filter(
-          (r) => r.status === 'submitted' || r.status === 'locked',
-        ).length;
-        return (
-          <div key={dept}>
-            <div className="mb-2 flex items-center gap-2.5">
-              <h3 className="text-[14px] font-medium text-slate-900">{dept}</h3>
-              <span className="rounded-full border border-[#E2E8F0] bg-white px-2 py-0.5 text-[11px] text-slate-600">
-                {submitted} / {rows.length} submitted
-              </span>
-            </div>
-            <div className="overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-card">
-              {rows.map((s) => (
-                <Link
-                  key={s.submissionId}
-                  href={`/performance/submissions/${s.submissionId}`}
-                  className="grid grid-cols-[1fr_120px_100px_32px] items-center gap-3 border-b border-[#E2E8F0] px-4 py-2.5 last:border-b-0 hover:bg-[#F8FAFC] transition"
-                >
-                  {/* Col 1: avatar + name */}
-                  <div className="flex min-w-0 items-center gap-2.5">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#EBF3FE] text-[10px] font-medium text-[#0C447C]">
-                      {initials(s.subjectName, s.subjectEmail)}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-[12px] font-medium text-slate-900">
-                        {s.subjectName}
-                      </p>
-                      <p className="truncate text-[10px] text-slate-500">{s.subjectEmail}</p>
-                    </div>
-                  </div>
-                  {/* Col 2: status */}
-                  <SubStatusPill status={s.status} />
-                  {/* Col 3: submitted date */}
-                  <span className="text-[11px] text-slate-500">
-                    {s.submittedAt ? formatDate(s.submittedAt) : '—'}
-                  </span>
-                  {/* Col 4: arrow */}
-                  <ArrowRight className="h-3.5 w-3.5 justify-self-end text-slate-400" />
-                </Link>
-              ))}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function SubStatusPill({ status }: { status: SubmissionStatus }) {
-  const map: Record<SubmissionStatus, { label: string; cls: string }> = {
-    submitted:     { label: 'Submitted',   cls: 'bg-[#E1F5EE] text-[#0F6E56]' },
-    'in-progress': { label: 'In progress', cls: 'bg-[#FAEEDA] text-[#854F0B]' },
-    'not-started': { label: 'Not started', cls: 'bg-[#F8FAFC] text-slate-500 border border-[#E2E8F0]' },
-    locked:        { label: 'Locked',      cls: 'bg-[#F8FAFC] text-slate-500 border border-[#E2E8F0]' },
-  };
-  const { label, cls } = map[status];
-  return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${cls}`}>
-      {label}
     </span>
   );
 }
