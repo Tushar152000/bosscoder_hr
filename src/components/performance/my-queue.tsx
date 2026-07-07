@@ -23,6 +23,8 @@ const TAB_LABELS: Record<Tab, string> = {
   submitted: 'Submitted',
   closed:    'Closed',
 };
+// Team/manager view: a completed manager-eval reads as "Reviewed" rather than "Submitted".
+const MANAGER_TAB_LABELS: Record<Tab, string> = { ...TAB_LABELS, submitted: 'Reviewed' };
 
 interface Props {
   submissions: ReviewSubmission[];
@@ -237,6 +239,7 @@ export function MyQueue({
       {/* Tabs */}
       <div className="flex items-center gap-1 overflow-x-auto px-1 pb-1 pt-2">
         {(Object.keys(TAB_LABELS) as Tab[]).map((t) => {
+          const tabLabels = isManager ? MANAGER_TAB_LABELS : TAB_LABELS;
           const isDanger = t === 'urgent';
           const count = t === 'submitted' ? sortedSubmitted.length : buckets[t].length;
           const rawCount = buckets[t].length;
@@ -253,7 +256,7 @@ export function MyQueue({
                   : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700',
               )}
             >
-              {TAB_LABELS[t]}
+              {tabLabels[t]}
               <span className={cn(
                 'inline-flex min-w-[1.25rem] justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums',
                 isActive
@@ -286,7 +289,7 @@ export function MyQueue({
 
       {/* Cards */}
       {visible.length === 0 ? (
-        <EmptyState tab={tab} hasFilter={hasActiveFilter} />
+        <EmptyState tab={tab} hasFilter={hasActiveFilter} isManager={isManager} />
       ) : (
         <>
           <div className={cn(
@@ -340,7 +343,7 @@ export function MyQueue({
   );
 }
 
-function EmptyState({ tab, hasFilter }: { tab: Tab; hasFilter?: boolean }) {
+function EmptyState({ tab, hasFilter, isManager }: { tab: Tab; hasFilter?: boolean; isManager?: boolean }) {
   if (hasFilter) {
     return (
       <div className="rounded-xl border border-slate-200/70 bg-slate-50 p-5 text-[13px] text-slate-500">
@@ -352,7 +355,9 @@ function EmptyState({ tab, hasFilter }: { tab: Tab; hasFilter?: boolean }) {
   const map: Record<Tab, { title: string; body: string }> = {
     open:      { title: 'All caught up.',      body: 'No open forms right now.' },
     urgent:    { title: 'Nothing urgent.',     body: 'No forms due within the next 14 days.' },
-    submitted: { title: 'No submissions yet.', body: 'Forms you submit will appear here.' },
+    submitted: isManager
+      ? { title: 'No reviews yet.',      body: 'Reports you evaluate will appear here.' }
+      : { title: 'No submissions yet.',  body: 'Forms you submit will appear here.' },
     closed:    { title: 'No closed forms.',    body: 'Forms from closed cycles will appear here.' },
   };
   const m = map[tab];
