@@ -58,6 +58,8 @@ function docToLeaveRequest(id: string, data: FirebaseFirestore.DocumentData): Le
     approvedBy: data.approvedBy ?? null,
     approvedAt: tsToISO(data.approvedAt),
     rejectionReason: data.rejectionReason ?? undefined,
+    attachmentUrl: data.attachmentUrl ?? undefined,
+    attachmentName: data.attachmentName ?? undefined,
     createdAt: tsToISO(data.createdAt) ?? new Date().toISOString(),
   };
 }
@@ -135,6 +137,21 @@ export async function getAllPendingLeaves(): Promise<LeaveRequest[]> {
   const snap = await adminDb
     .collection(HR.leaveRequests)
     .where('status', '==', 'pending')
+    .get();
+
+  return snap.docs
+    .map((d) => docToLeaveRequest(d.id, d.data()))
+    .sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
+}
+
+/** Full leave-request history for one employee (HR only). Most recent first. */
+export async function getEmployeeLeaveHistory(employeeId: string): Promise<LeaveRequest[]> {
+  const user = await requireUser();
+  if (!hasAnyRole(user.roles, 'hr', 'founder')) throw new Error('Forbidden');
+
+  const snap = await adminDb
+    .collection(HR.leaveRequests)
+    .where('employeeId', '==', employeeId)
     .get();
 
   return snap.docs

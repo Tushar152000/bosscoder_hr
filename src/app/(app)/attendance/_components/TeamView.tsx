@@ -260,6 +260,15 @@ export function TeamView({
                     {req.reason && (
                       <p className="mt-0.5 text-[11px] italic text-zinc-400">"{req.reason}"</p>
                     )}
+                    {req.attachmentUrl && (
+                      <a href={req.attachmentUrl} target="_blank" rel="noopener noreferrer"
+                        className="mt-1 inline-flex max-w-full items-center gap-1 text-[11px] font-medium text-brand-blue hover:underline">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                          <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                        </svg>
+                        <span className="truncate">{req.attachmentName ?? 'View document'}</span>
+                      </a>
+                    )}
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
                     <button
@@ -405,6 +414,15 @@ export function TeamView({
                               </p>
                               {req.reason && (
                                 <p className="mt-1 text-[11px] italic text-zinc-500">&ldquo;{req.reason}&rdquo;</p>
+                              )}
+                              {req.attachmentUrl && (
+                                <a href={req.attachmentUrl} target="_blank" rel="noopener noreferrer"
+                                  className="mt-1 inline-flex max-w-full items-center gap-1 rounded-md border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[11px] font-medium text-brand-blue transition hover:bg-zinc-100">
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                                    <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                                  </svg>
+                                  <span className="truncate">{req.attachmentName ?? 'View document'}</span>
+                                </a>
                               )}
                               {!approved && req.rejectionReason && (
                                 <p className="mt-1 text-[11px] text-red-500">Rejected: {req.rejectionReason}</p>

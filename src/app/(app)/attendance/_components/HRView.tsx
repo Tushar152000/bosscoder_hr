@@ -6,6 +6,7 @@ import { approveLeave, rejectLeave } from '../actions';
 import {
   updateEmployeeLeaveBalance,
   bulkUpdateDeptLeaveBalances,
+  getEmployeeLeaveHistory,
 } from '@/lib/actions/hr';
 import type { LeaveRequest } from '@/types/attendance';
 import { LEAVE_LABELS, ALL_LEAVE_TYPES } from '@/types/attendance';
@@ -90,9 +91,30 @@ export function HRView({ currentUserEmail, initialAttendanceToday, initialLeaveB
   );
   const [savingBulk,  setSavingBulk]  = useState(false);
 
+  // Away-today filter
+  const [awayDept, setAwayDept] = useState('');
+
   // Balance search/filter
   const [balanceSearch, setBalanceSearch] = useState('');
   const [balanceDept,   setBalanceDept]   = useState('');
+
+  // Leave-history popup (lazy-loaded per employee)
+  const [historyEmp,     setHistoryEmp]     = useState<EmployeeLeaveBalance | null>(null);
+  const [historyItems,   setHistoryItems]   = useState<LeaveRequest[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  async function openHistory(emp: EmployeeLeaveBalance) {
+    setHistoryEmp(emp);
+    setHistoryItems([]);
+    setHistoryLoading(true);
+    try {
+      setHistoryItems(await getEmployeeLeaveHistory(emp.employeeId));
+    } catch {
+      toast.error('Failed to load leave history');
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
 
   // Pending leaves
   const [pendingLeaves, setPendingLeaves] = useState(initialPendingLeaves);
@@ -197,26 +219,16 @@ export function HRView({ currentUserEmail, initialAttendanceToday, initialLeaveB
   }
 
   // ── Derived ────────────────────────────────────────────────────────────────
-  const deptMap = new Map<string, { present: number; onLeave: number; absent: number; halfDay: number }>();
-  for (const emp of initialAttendanceToday) {
-    if (!deptMap.has(emp.department)) deptMap.set(emp.department, { present: 0, onLeave: 0, absent: 0, halfDay: 0 });
-    const d = deptMap.get(emp.department)!;
-    if      (emp.status === 'present')  d.present++;
-    else if (emp.status === 'wfh')      d.present++;
-    else if (emp.status === 'half-day') d.halfDay++;
-    else if (emp.status === 'leave')    d.onLeave++;
-    else if (emp.status === 'absent')   d.absent++;
-  }
-  const deptStats  = [...deptMap.entries()].sort(([a], [b]) => a.localeCompare(b));
   const awayToday  = initialAttendanceToday.filter((e) => e.status === 'leave' || e.status === 'absent');
-  const presentCount = initialAttendanceToday.filter((e) => e.status === 'present' || e.status === 'half-day' || e.status === 'wfh').length;
+  const filteredAway = awayToday.filter((e) => !awayDept || e.department === awayDept);
   const onLeaveCount = initialAttendanceToday.filter((e) => e.status === 'leave').length;
-  const absentCount  = initialAttendanceToday.filter((e) => e.status === 'absent').length;
 
   const allDepts = [...new Set([
     ...initialAttendanceToday.map((e) => e.department),
     ...balances.map((e) => e.department),
-  ])].sort();
+  ])]
+    .filter((d) => d && d.trim())
+    .sort();
 
   const empDeptMap = new Map(balances.map((e) => [e.employeeId, e.department]));
 
@@ -326,6 +338,155 @@ export function HRView({ currentUserEmail, initialAttendanceToday, initialLeaveB
         </div>
       )}
 
+      {/* ── Leave-history popup ──────────────────────────────────────────── */}
+      {historyEmp && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          onClick={(e) => { if (e.target === e.currentTarget) setHistoryEmp(null); }}
+        >
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+
+          <div className="relative flex max-h-[82vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-black/5">
+            {/* Header */}
+            <div className="relative shrink-0 bg-gradient-to-br from-zinc-50 to-white px-5 pb-4 pt-5">
+              <button
+                onClick={() => setHistoryEmp(null)}
+                className="absolute right-3 top-3 rounded-lg p-1.5 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600"
+              >
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </button>
+              <div className="flex items-center gap-3 pr-8 min-w-0">
+                <div
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[14px] font-semibold ring-2 ring-white shadow-sm"
+                  style={{ backgroundColor: avatarColor(historyEmp.displayName).bg, color: avatarColor(historyEmp.displayName).text }}
+                >
+                  {getInitials(historyEmp.displayName)}
+                </div>
+                <div className="min-w-0">
+                  <h2 className="truncate text-[15px] font-semibold text-zinc-900">{historyEmp.displayName}</h2>
+                  <p className="truncate text-[12px] text-zinc-400">{historyEmp.department}</p>
+                </div>
+              </div>
+
+              {/* Summary chips */}
+              {!historyLoading && historyItems.length > 0 && (() => {
+                const approvedN = historyItems.filter((r) => r.status === 'approved').length;
+                const pendingN  = historyItems.filter((r) => r.status === 'pending').length;
+                const rejectedN = historyItems.filter((r) => r.status === 'rejected').length;
+                return (
+                  <div className="mt-4 flex flex-wrap items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-zinc-600 ring-1 ring-zinc-200">
+                      {historyItems.length} total
+                    </span>
+                    {approvedN > 0 && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-2.5 py-1 text-[11px] font-medium text-green-700 ring-1 ring-green-200">
+                        <span className="h-1.5 w-1.5 rounded-full bg-green-500" />{approvedN} approved
+                      </span>
+                    )}
+                    {pendingN > 0 && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700 ring-1 ring-amber-200">
+                        <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />{pendingN} pending
+                      </span>
+                    )}
+                    {rejectedN > 0 && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-medium text-red-700 ring-1 ring-red-200">
+                        <span className="h-1.5 w-1.5 rounded-full bg-red-500" />{rejectedN} rejected
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Body */}
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain border-t border-zinc-100 bg-zinc-50/50 px-4 py-4">
+              {historyLoading ? (
+                <div className="flex flex-col items-center justify-center gap-2 py-12">
+                  <svg className="h-5 w-5 animate-spin text-zinc-300" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.4 0 0 5.4 0 12h4z" />
+                  </svg>
+                  <p className="text-[12px] text-zinc-400">Loading history…</p>
+                </div>
+              ) : historyItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center gap-2 py-12">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-100">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-zinc-400">
+                      <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
+                    </svg>
+                  </div>
+                  <p className="text-[12px] text-zinc-400">No leave history yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {historyItems.map((req) => {
+                    const days     = dayCount(req.fromDate, req.toDate);
+                    const approved = req.status === 'approved';
+                    const pending  = req.status === 'pending';
+                    const dot      = approved ? 'bg-green-500' : pending ? 'bg-amber-500' : 'bg-red-500';
+                    const badge    = approved
+                      ? 'bg-green-50 text-green-700 ring-green-200'
+                      : pending
+                      ? 'bg-amber-50 text-amber-700 ring-amber-200'
+                      : 'bg-red-50 text-red-700 ring-red-200';
+                    return (
+                      <div
+                        key={req.id ?? req.createdAt}
+                        className="rounded-xl border border-zinc-100 bg-white p-3 shadow-sm transition hover:border-zinc-200"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className={['h-2 w-2 shrink-0 rounded-full', dot].join(' ')} />
+                            <p className="truncate text-[13px] font-semibold text-zinc-800">{LEAVE_LABELS[req.leaveType]}</p>
+                          </div>
+                          <span className={['shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium capitalize ring-1', badge].join(' ')}>
+                            {req.status}
+                          </span>
+                        </div>
+                        <div className="mt-1.5 flex items-center gap-1.5 pl-4 text-[11px] text-zinc-500">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-zinc-400">
+                            <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
+                          </svg>
+                          <span>
+                            {formatDate(req.fromDate)}
+                            {req.fromDate !== req.toDate && ` – ${formatDate(req.toDate)}`}
+                          </span>
+                          <span className="text-zinc-300">·</span>
+                          <span className="font-medium text-zinc-600">{days} day{days !== 1 ? 's' : ''}</span>
+                        </div>
+                        {req.reason && (
+                          <p className="mt-1.5 pl-4 text-[11px] italic leading-relaxed text-zinc-500">&ldquo;{req.reason}&rdquo;</p>
+                        )}
+                        {req.attachmentUrl && (
+                          <a
+                            href={req.attachmentUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="mt-1.5 ml-4 inline-flex max-w-full items-center gap-1.5 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1 text-[11px] font-medium text-brand-blue transition hover:bg-zinc-100"
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                              <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                            </svg>
+                            <span className="truncate">{req.attachmentName ?? 'View document'}</span>
+                          </a>
+                        )}
+                        {req.status === 'rejected' && req.rejectionReason && (
+                          <p className="mt-1.5 ml-4 rounded-md bg-red-50 px-2 py-1 text-[11px] text-red-600">
+                            Rejected: {req.rejectionReason}
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Dashboard stat cards ─────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
@@ -342,66 +503,43 @@ export function HRView({ currentUserEmail, initialAttendanceToday, initialLeaveB
         ))}
       </div>
 
-      {/* ── Section 1: Today's snapshot ──────────────────────────────────── */}
+      {/* ── Section 1: Away today ────────────────────────────────────────── */}
       <div>
         <div className="mb-3 flex items-center gap-2">
-          <span className="text-[14px] font-semibold uppercase tracking-wide text-brand-blue">Today's overview</span>
+          <span className="text-[14px] font-semibold uppercase tracking-wide text-brand-blue">Away today</span>
+          <span className="text-[11px] text-zinc-400">{filteredAway.length} away</span>
           <div className="flex-1 border-t border-zinc-100" />
         </div>
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {/* Dept snapshot */}
-          <div className="rounded-xl border border-zinc-200 bg-white">
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 px-4 py-3">
-              <span className="text-[13px] font-semibold text-zinc-800">Today's snapshot</span>
-              <div className="flex gap-2 text-[11px] text-zinc-400">
-                <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: '#639922' }} />{presentCount} present</span>
-                <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: '#378ADD' }} />{onLeaveCount} on leave</span>
-                <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: '#E24B4A' }} />{absentCount} absent</span>
-              </div>
-            </div>
-            <div className="divide-y divide-zinc-50 px-4">
-              {deptStats.length === 0 ? (
-                <p className="py-4 text-center text-[12px] text-zinc-400">No attendance records for today.</p>
-              ) : deptStats.map(([dept, c]) => (
-                <div key={dept} className="flex items-center justify-between py-2.5">
-                  <span className="text-[12px] font-medium text-zinc-700">{dept}</span>
-                  <div className="flex gap-1.5">
-                    {(c.present + c.halfDay) > 0 && <span className="rounded-full border border-green-200 bg-green-50 px-2 py-0.5 text-[11px] text-green-700">{c.present + c.halfDay} present</span>}
-                    {c.onLeave > 0 && <span className="rounded-full border border-blue-200 bg-blue-50 px-2 py-0.5 text-[11px] text-blue-700">{c.onLeave} on leave</span>}
-                    {c.absent > 0 && <span className="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] text-red-700">{c.absent} absent</span>}
-                    {(c.present + c.halfDay + c.onLeave + c.absent) === 0 && <span className="text-[11px] text-zinc-400">No records</span>}
-                  </div>
-                </div>
-              ))}
-            </div>
+        <div className="rounded-xl border border-zinc-200 bg-white">
+          <div className="flex flex-wrap items-center gap-2 border-b border-zinc-100 px-4 py-3">
+            <select value={awayDept} onChange={(e) => setAwayDept(e.target.value)}
+              className="rounded-lg border border-zinc-200 px-2.5 py-1.5 text-[12px] text-zinc-600 outline-none focus:border-zinc-300">
+              <option value="">All departments</option>
+              {allDepts.map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
           </div>
-          {/* Away today */}
-          <div className="rounded-xl border border-zinc-200 bg-white">
-            <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-3">
-              <span className="text-[13px] font-semibold text-zinc-800">Away today</span>
-              <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] text-zinc-500">{awayToday.length}</span>
-            </div>
-            <div className="max-h-[280px] overflow-y-auto divide-y divide-zinc-50">
-              {awayToday.length === 0 ? (
-                <p className="px-4 py-4 text-center text-[12px] text-zinc-400">Everyone is in today.</p>
-              ) : awayToday.map((emp) => {
-                const color = avatarColor(emp.displayName);
-                return (
-                  <div key={emp.employeeId} className="flex items-center gap-2.5 px-4 py-2.5">
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-medium" style={{ backgroundColor: color.bg, color: color.text }}>
-                      {getInitials(emp.displayName)}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-[12px] font-medium text-zinc-800">{emp.displayName}</p>
-                      <p className="text-[11px] text-zinc-400">{emp.department}</p>
-                    </div>
-                    <span className={['shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium', emp.status === 'leave' ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-red-200 bg-red-50 text-red-700'].join(' ')}>
-                      {emp.status === 'leave' ? 'On leave' : 'Absent'}
-                    </span>
+          <div className="max-h-[320px] overflow-y-auto divide-y divide-zinc-50">
+            {filteredAway.length === 0 ? (
+              <p className="px-4 py-6 text-center text-[12px] text-zinc-400">
+                {awayToday.length === 0 ? 'Everyone is in today.' : 'No one away in this department.'}
+              </p>
+            ) : filteredAway.map((emp) => {
+              const color = avatarColor(emp.displayName);
+              return (
+                <div key={emp.employeeId} className="flex items-center gap-2.5 px-4 py-2.5">
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-medium" style={{ backgroundColor: color.bg, color: color.text }}>
+                    {getInitials(emp.displayName)}
                   </div>
-                );
-              })}
-            </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[12px] font-medium text-zinc-800">{emp.displayName}</p>
+                    <p className="truncate text-[11px] text-zinc-400">{emp.department}</p>
+                  </div>
+                  <span className={['shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-medium', emp.status === 'leave' ? 'border-blue-200 bg-blue-50 text-blue-700' : 'border-red-200 bg-red-50 text-red-700'].join(' ')}>
+                    {emp.status === 'leave' ? 'On leave' : 'Absent'}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -461,17 +599,32 @@ export function HRView({ currentUserEmail, initialAttendanceToday, initialLeaveB
                             {getInitials(emp.displayName)}
                           </div>
                           <div className="min-w-0">
-                            <p className="truncate text-[12px] font-medium text-zinc-800">{emp.displayName}</p>
+                            <button
+                              type="button"
+                              onClick={() => openHistory(emp)}
+                              title="View leave history"
+                              className="block max-w-full truncate text-left text-[12px] font-medium text-zinc-800 transition hover:text-brand-blue hover:underline"
+                            >
+                              {emp.displayName}
+                            </button>
                             <p className="truncate text-[10px] text-zinc-400">{emp.department}</p>
                           </div>
                         </div>
                         {!isEditing ? (
-                          <button onClick={() => startEdit(emp)} title="Edit balance"
-                            className="ml-1 shrink-0 rounded-md p-1 text-zinc-300 transition hover:bg-zinc-200 hover:text-zinc-600">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                            </svg>
-                          </button>
+                          <div className="ml-1 flex shrink-0 gap-1">
+                            <button onClick={() => openHistory(emp)} title="View leave history"
+                              className="rounded-md p-1 text-zinc-300 transition hover:bg-zinc-200 hover:text-zinc-600">
+                              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10" /><path d="M12 16v-4M12 8h.01" />
+                              </svg>
+                            </button>
+                            <button onClick={() => startEdit(emp)} title="Edit balance"
+                              className="rounded-md p-1 text-zinc-300 transition hover:bg-zinc-200 hover:text-zinc-600">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                              </svg>
+                            </button>
+                          </div>
                         ) : (
                           <div className="ml-1 flex shrink-0 gap-1">
                             <button onClick={() => handleSaveIndividual(emp.employeeId)} disabled={isSaving}
@@ -621,6 +774,15 @@ export function HRView({ currentUserEmail, initialAttendanceToday, initialLeaveB
                               <div>
                                 <p className="text-[12px] font-medium text-zinc-800">{req.employeeName}</p>
                                 {req.reason && <p className="max-w-[160px] truncate text-[10px] italic text-zinc-400">"{req.reason}"</p>}
+                                {req.attachmentUrl && (
+                                  <a href={req.attachmentUrl} target="_blank" rel="noopener noreferrer"
+                                    className="mt-0.5 inline-flex max-w-[160px] items-center gap-1 text-[10px] font-medium text-brand-blue hover:underline">
+                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                                      <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                                    </svg>
+                                    <span className="truncate">{req.attachmentName ?? 'Document'}</span>
+                                  </a>
+                                )}
                               </div>
                             </div>
                           </td>

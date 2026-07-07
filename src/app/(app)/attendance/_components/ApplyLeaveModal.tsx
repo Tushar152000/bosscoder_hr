@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { useRef, useState, useEffect } from 'react';
+import { X, Paperclip, FileText } from 'lucide-react';
 import { toast } from 'sonner';
-import { applyLeave } from '../actions';
+import { applyLeave, uploadLeaveDocument } from '../actions';
 import type { LeaveBalance, LeaveRequest, LeaveType } from '@/types/attendance';
 import {
   LEAVE_LABELS,
@@ -37,7 +37,9 @@ export function ApplyLeaveModal({
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [reason, setReason] = useState('');
+  const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isHalfDay = HALF_DAY_LEAVE_TYPES.has(leaveType);
   const b = balance[LEAVE_TO_BALANCE[leaveType]];
@@ -55,6 +57,7 @@ export function ApplyLeaveModal({
       setFromDate('');
       setToDate('');
       setReason('');
+      setFile(null);
     }
   }, [open]);
 
@@ -83,6 +86,29 @@ export function ApplyLeaveModal({
 
   if (!open) return null;
 
+  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0] ?? null;
+    if (!f) { setFile(null); return; }
+    if (!ALLOWED_TYPES.includes(f.type)) {
+      toast.error('Only JPG, PNG, WEBP or PDF files are allowed');
+      e.target.value = '';
+      return;
+    }
+    if (f.size > 10 * 1024 * 1024) {
+      toast.error('File too large — max 10 MB');
+      e.target.value = '';
+      return;
+    }
+    setFile(f);
+  }
+
+  function removeFile() {
+    setFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!fromDate) { toast.error('Please select a date'); return; }
@@ -93,6 +119,23 @@ export function ApplyLeaveModal({
     const effectiveToDate = isHalfDay ? fromDate : toDate;
 
     setSaving(true);
+
+    // Upload the supporting document first (if any) so the URL can be stored on the request.
+    let attachmentUrl: string | undefined;
+    let attachmentName: string | undefined;
+    if (file) {
+      const fd = new FormData();
+      fd.append('file', file);
+      const up = await uploadLeaveDocument(fd);
+      if (!up.ok) {
+        setSaving(false);
+        toast.error(up.error);
+        return;
+      }
+      attachmentUrl = up.data.url;
+      attachmentName = up.data.name;
+    }
+
     const result = await applyLeave({
       employeeId,
       employeeName,
@@ -100,6 +143,8 @@ export function ApplyLeaveModal({
       toDate: effectiveToDate,
       leaveType,
       reason: reason.trim(),
+      attachmentUrl,
+      attachmentName,
     });
     setSaving(false);
 
@@ -115,6 +160,8 @@ export function ApplyLeaveModal({
         status: 'pending',
         approvedBy: null,
         approvedAt: null,
+        attachmentUrl,
+        attachmentName,
         createdAt: new Date().toISOString(),
       });
       onOpenChange(false);
@@ -207,6 +254,45 @@ export function ApplyLeaveModal({
               placeholder="Brief reason for the leave…"
               className="w-full resize-none rounded-lg border border-zinc-200 bg-white px-3 py-2 text-[13px] text-zinc-700 outline-none transition focus:border-zinc-400 placeholder:text-zinc-400"
             />
+          </div>
+
+          {/* Supporting document */}
+          <div className="space-y-1">
+            <label className="text-[12px] font-medium text-zinc-600">
+              Supporting document <span className="font-normal text-zinc-400">(optional)</span>
+            </label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+            {!file ? (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="flex w-full items-center justify-center gap-2 rounded-lg border border-dashed border-zinc-300 bg-zinc-50 px-3 py-2.5 text-[13px] text-zinc-500 transition hover:border-zinc-400 hover:bg-zinc-100"
+              >
+                <Paperclip className="h-3.5 w-3.5" />
+                Attach a file
+              </button>
+            ) : (
+              <div className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2">
+                <FileText className="h-4 w-4 shrink-0 text-zinc-400" />
+                <span className="min-w-0 flex-1 truncate text-[13px] text-zinc-700">{file.name}</span>
+                <span className="shrink-0 text-[11px] text-zinc-400">{(file.size / 1024 / 1024).toFixed(1)} MB</span>
+                <button
+                  type="button"
+                  onClick={removeFile}
+                  className="shrink-0 rounded-md p-1 text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600"
+                  aria-label="Remove file"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
+            <p className="text-[11px] text-zinc-400">JPG, PNG, WEBP or PDF · max 10 MB</p>
           </div>
 
           {/* Actions */}

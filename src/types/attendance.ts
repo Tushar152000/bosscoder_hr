@@ -52,6 +52,8 @@ export interface LeaveRequest {
   approvedBy: string | null;
   approvedAt: string | null;
   rejectionReason?: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
   createdAt: string;
 }
 

@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { adminDb, Timestamp, FieldValue } from '@/lib/firebase/admin';
+import { adminDb, adminStorage, Timestamp, FieldValue } from '@/lib/firebase/admin';
 import { HR } from '@/lib/firebase/collections';
 import { requireUser } from '@/lib/auth/guard';
 import { hasAnyRole } from '@/lib/auth/roles';
@@ -221,6 +221,42 @@ export async function getLeaveBalance(employeeId: string): Promise<LeaveBalance>
   };
 }
 
+/**
+ * Uploads a supporting document for a leave request to Cloud Storage and
+ * returns its public URL + original filename. Accepts images and PDFs (max 10 MB).
+ */
+export async function uploadLeaveDocument(
+  formData: FormData,
+): Promise<ActionResult<{ url: string; name: string }>> {
+  const user = await requireUser();
+
+  const file = formData.get('file') as File | null;
+  if (!file || file.size === 0) return { ok: false, error: 'No file provided' };
+  if (file.size > 10 * 1024 * 1024) return { ok: false, error: 'File too large — max 10 MB' };
+
+  const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+  if (!allowed.includes(file.type)) {
+    return { ok: false, error: 'Only JPG, PNG, WEBP or PDF files are allowed' };
+  }
+
+  try {
+    const ext = (file.name.split('.').pop() ?? 'pdf').toLowerCase();
+    const storagePath = `hr/leave-documents/${user.uid}/${Date.now()}.${ext}`;
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const bucket = adminStorage.bucket();
+    const fileRef = bucket.file(storagePath);
+
+    await fileRef.save(buffer, { metadata: { contentType: file.type } });
+    await fileRef.makePublic();
+
+    const url = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
+    return { ok: true, data: { url, name: file.name } };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Failed to upload document' };
+  }
+}
+
 export async function applyLeave(data: {
   employeeId: string;
   employeeName: string;
@@ -228,12 +264,17 @@ export async function applyLeave(data: {
   toDate: string;
   leaveType: LeaveType;
   reason: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
 }): Promise<ActionResult> {
   await requireUser();
 
   try {
+    const { attachmentUrl, attachmentName, ...rest } = data;
     await adminDb.collection(LEAVE_REQUESTS).add({
-      ...data,
+      ...rest,
+      ...(attachmentUrl  ? { attachmentUrl }  : {}),
+      ...(attachmentName ? { attachmentName } : {}),
       status: 'pending',
       approvedBy: null,
       approvedAt: null,
@@ -335,6 +376,8 @@ function docToLeaveRequest(id: string, data: FirebaseFirestore.DocumentData): Le
     approvedBy: data.approvedBy ?? null,
     approvedAt: tsToISO(data.approvedAt),
     rejectionReason: data.rejectionReason ?? undefined,
+    attachmentUrl: data.attachmentUrl ?? undefined,
+    attachmentName: data.attachmentName ?? undefined,
     createdAt: tsToISO(data.createdAt) ?? new Date().toISOString(),
   };
 }
