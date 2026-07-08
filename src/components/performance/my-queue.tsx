@@ -63,7 +63,7 @@ export function MyQueue({
       const urgency = urgencyOf(sub.status, daysLeft);
       const isUrgent = isPending && (urgency === 'critical' || urgency === 'overdue');
       const selfEvalStatus = sub.kind === 'manager'
-        ? (selfEvalStatusById[sub.subjectEmployeeId] ?? null)
+        ? (selfEvalStatusById[`${sub.cycleId}::${sub.subjectEmployeeId}`] ?? null)
         : null;
       return { sub, deadline, daysLeft, isPending, isUrgent, urgency, selfEvalStatus };
     });

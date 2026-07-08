@@ -85,14 +85,19 @@ export default async function PerformancePage({ searchParams }: Props) {
   // Detect open cycle early — needed for both tiles and drill views
   const openCycle = cycles.find((c) => c.status === 'open') ?? null;
 
-  // Fetch open cycle submissions for self-eval status lookup (needed by manager eval cards)
-  const openCycleAllSubs = openCycle
-    ? await listSubmissionsForCycle(openCycle.cycleId)
-    : [];
-  // subjectEmployeeId → self-eval status for the open cycle
+  // Self-eval status lookup for manager-eval cards. More than one cycle can be
+  // open at once, so gather self-evals from EVERY open cycle and key them by
+  // `${cycleId}::${subjectEmployeeId}`. Keying by subject alone would let one
+  // cycle's status leak onto another cycle's card — or, if the wrong open cycle
+  // is picked, make every card's self-eval status go missing (cards then read
+  // "Awaiting self-eval" even after the report submitted their self-evaluation).
+  const openCycles = cycles.filter((c) => c.status === 'open');
+  const openCyclesSubs = (
+    await Promise.all(openCycles.map((c) => listSubmissionsForCycle(c.cycleId)))
+  ).flat();
   const selfEvalStatusById: Record<string, string> = {};
-  for (const s of openCycleAllSubs) {
-    if (s.kind === 'self') selfEvalStatusById[s.subjectEmployeeId] = s.status;
+  for (const s of openCyclesSubs) {
+    if (s.kind === 'self') selfEvalStatusById[`${s.cycleId}::${s.subjectEmployeeId}`] = s.status;
   }
 
   // employeeId → displayName lookup for resolving manager names
@@ -375,7 +380,7 @@ export default async function PerformancePage({ searchParams }: Props) {
   // Regular employees: all their submissions including their own self-eval
   const queueSubs = isFounder
     ? managerSubs.filter((s) => {
-        const selfStatus = selfEvalStatusById[s.subjectEmployeeId];
+        const selfStatus = selfEvalStatusById[`${s.cycleId}::${s.subjectEmployeeId}`];
         return selfStatus === 'submitted' || selfStatus === 'locked';
       })
     : isAdmin
