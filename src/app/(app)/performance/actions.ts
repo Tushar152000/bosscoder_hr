@@ -17,6 +17,7 @@ import {
   updateCycleDueDate,
 } from '@/lib/firestore/review-cycles';
 import {
+  ensureManagerEvalForSubject,
   generateSubmissionsForCycle,
   getSubmission,
   lockAllForCycle,
@@ -24,7 +25,11 @@ import {
   saveSelfEval,
   type NewSubmissionInfo,
 } from '@/lib/firestore/review-submissions';
-import { getAllEmployeesForTree } from '@/lib/firestore/employees';
+import {
+  getAllEmployeesForTree,
+  getEmployeeById,
+  getEmployeeByUserUid,
+} from '@/lib/firestore/employees';
 import {
   sendCycleOpenEmails,
   type CycleOpenRecipient,
@@ -341,6 +346,56 @@ export async function saveSelfEvalAction(args: {
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Save failed' };
+  }
+}
+
+/**
+ * Start a manager-eval for a subject who has NO assigned manager, with the
+ * current HR/founder as the reviewer. Creates the form on demand (idempotent)
+ * and returns its id so the caller can open it. Only cycle managers may do this.
+ */
+export async function startManagerEvalForUnassigned(args: {
+  cycleId: string;
+  subjectEmployeeId: string;
+}): Promise<ActionResult<{ submissionId: string }>> {
+  const user = await requireUser();
+  if (!canManageCycles(user)) return { ok: false, error: 'Forbidden' };
+
+  const cycle = await getCycle(args.cycleId);
+  if (!cycle) return { ok: false, error: 'Cycle not found' };
+  if (cycle.status !== 'open') return { ok: false, error: 'This cycle is not open.' };
+
+  const subject = await getEmployeeById(args.subjectEmployeeId);
+  if (!subject) return { ok: false, error: 'Employee not found' };
+  if (subject.managerId) {
+    return { ok: false, error: 'This person already has a manager assigned to evaluate them.' };
+  }
+
+  const me = await getEmployeeByUserUid(user.uid);
+  try {
+    const { submissionId, created } = await ensureManagerEvalForSubject({
+      cycle: { cycleId: cycle.cycleId, cycleName: cycle.name },
+      subject,
+      reviewer: {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName ?? me?.displayName ?? user.email,
+        employeeId: me?.employeeId ?? null,
+      },
+    });
+    if (created) {
+      await writeAuditLog({
+        actorUid: user.uid,
+        actorEmail: user.email,
+        action: 'review.submit',
+        resource: { type: 'review_submission', id: submissionId },
+        metadata: { op: 'start_unassigned_manager_eval', cycleId: cycle.cycleId, subject: subject.employeeId },
+      });
+    }
+    revalidatePath('/performance');
+    return { ok: true, data: { submissionId } };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Failed to start evaluation' };
   }
 }
 

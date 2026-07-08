@@ -4,14 +4,16 @@ import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight, ChevronDown } from 'lucide-react';
 import { DEPARTMENTS } from '@/lib/constants/departments';
-import { formatDate } from '@/lib/format';
-import { initials } from '@/lib/utils';
+import { cn, initials } from '@/lib/utils';
 import type { ReviewSubmission, SubmissionStatus } from '@/types/review';
 
 const ALL_DEPTS = '__all__';
 
 interface Props {
+  /** Self-eval submissions, one per subject. Rows are built from these. */
   subs: ReviewSubmission[];
+  /** subjectEmployeeId → that person's manager-eval (any status), for the rating column. */
+  managerBySubject?: Record<string, ReviewSubmission>;
   myEmail: string;
   myUid: string;
   myEmployeeId: string | null;
@@ -25,6 +27,7 @@ interface Props {
  */
 export function DeptEvalBrowser({
   subs,
+  managerBySubject = {},
   myEmail,
   myUid,
   myEmployeeId,
@@ -106,38 +109,87 @@ export function DeptEvalBrowser({
             <div className="mb-2 flex items-center gap-2.5">
               <h3 className="text-[14px] font-medium text-slate-900">{d}</h3>
               <span className="rounded-full border border-[#E2E8F0] bg-white px-2 py-0.5 text-[11px] text-slate-600">
-                {submitted} / {rows.length} submitted
+                {submitted} / {rows.length} self-eval submitted
               </span>
             </div>
             <div className="overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-card">
-              {rows.map((s) => (
-                <Link
-                  key={s.submissionId}
-                  href={`/performance/submissions/${s.submissionId}`}
-                  className="grid grid-cols-[1fr_120px_100px_32px] items-center gap-3 border-b border-[#E2E8F0] px-4 py-2.5 last:border-b-0 hover:bg-[#F8FAFC] transition"
-                >
-                  <div className="flex min-w-0 items-center gap-2.5">
-                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#EBF3FE] text-[10px] font-medium text-[#0C447C]">
-                      {initials(s.subjectName, s.subjectEmail)}
+              {/* Column header */}
+              <div className="grid grid-cols-[1fr_104px_168px_28px] items-center gap-3 border-b border-[#E2E8F0] bg-[#F8FAFC] px-4 py-2 text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                <span>Employee</span>
+                <span>Self-eval</span>
+                <span>Manager rating</span>
+                <span />
+              </div>
+              {rows.map((s) => {
+                const mgr = managerBySubject[s.subjectEmployeeId] ?? null;
+                // Open the fullest view available: the manager-eval page shows the
+                // self-eval answers read-only PLUS the manager's rating & notes.
+                const href = `/performance/submissions/${mgr?.submissionId ?? s.submissionId}`;
+                return (
+                  <Link
+                    key={s.submissionId}
+                    href={href}
+                    className="grid grid-cols-[1fr_104px_168px_28px] items-center gap-3 border-b border-[#E2E8F0] px-4 py-2.5 last:border-b-0 hover:bg-[#F8FAFC] transition"
+                  >
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#EBF3FE] text-[10px] font-medium text-[#0C447C]">
+                        {initials(s.subjectName, s.subjectEmail)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-[12px] font-medium text-slate-900">
+                          {s.subjectName}
+                        </p>
+                        <p className="truncate text-[10px] text-slate-500">{s.subjectEmail}</p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-[12px] font-medium text-slate-900">
-                        {s.subjectName}
-                      </p>
-                      <p className="truncate text-[10px] text-slate-500">{s.subjectEmail}</p>
-                    </div>
-                  </div>
-                  <SubStatusPill status={s.status} />
-                  <span className="text-[11px] text-slate-500">
-                    {s.submittedAt ? formatDate(s.submittedAt) : '—'}
-                  </span>
-                  <ArrowRight className="h-3.5 w-3.5 justify-self-end text-slate-400" />
-                </Link>
-              ))}
+                    <SubStatusPill status={s.status} />
+                    <ManagerRatingCell mgr={mgr} />
+                    <ArrowRight className="h-3.5 w-3.5 justify-self-end text-slate-400" />
+                  </Link>
+                );
+              })}
             </div>
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/** Lower rating = better in this org (1 = top, 5 = lowest), so tones invert. */
+function ratingTone(r: number): string {
+  if (r <= 2) return 'bg-[#E1F5EE] text-[#0F6E56]';
+  if (r <= 3) return 'bg-slate-100 text-slate-700';
+  if (r <= 4) return 'bg-[#FAEEDA] text-[#854F0B]';
+  return 'bg-[#FAECE7] text-[#993C1D]';
+}
+
+function ManagerRatingCell({ mgr }: { mgr: ReviewSubmission | null }) {
+  if (!mgr) {
+    return <span className="text-[11px] text-slate-400">No manager</span>;
+  }
+  const done = mgr.status === 'submitted' || mgr.status === 'locked';
+  const rating = mgr.managerOverallRating;
+  return (
+    <div className="flex min-w-0 items-center gap-2">
+      {done && rating != null ? (
+        <span
+          className={cn(
+            'inline-flex shrink-0 items-center rounded-md px-1.5 py-0.5 text-[12px] font-semibold tabular-nums',
+            ratingTone(rating),
+          )}
+        >
+          {rating.toFixed(1)}
+          <span className="ml-0.5 text-[9px] font-medium opacity-70">/5</span>
+        </span>
+      ) : (
+        <span className="inline-flex shrink-0 items-center rounded-full border border-[#E2E8F0] bg-[#F8FAFC] px-2 py-0.5 text-[10px] font-medium text-slate-500">
+          {mgr.status === 'in-progress' ? 'In progress' : 'Awaiting'}
+        </span>
+      )}
+      {mgr.reviewerName && (
+        <span className="truncate text-[10px] text-slate-500">{mgr.reviewerName}</span>
+      )}
     </div>
   );
 }

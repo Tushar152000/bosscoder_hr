@@ -125,10 +125,15 @@ export default async function PerformancePage({ searchParams }: Props) {
         history: await listSubmittedManagerEvalsForSubject(e.employeeId),
         openCycleEval: openCycle
           ? {
+              cycleId: openCycle.cycleId,
               cycleName: openCycle.name,
               selfStatus: null, // self-eval status not fetched for teamRows (use drill view for that)
               managerSubId: managerSub?.submissionId ?? null,
               managerStatus: managerSub?.status ?? null,
+              // teamRows are the user's OWN direct reports (managerSub is drawn
+              // from their own submissions), so they may evaluate them.
+              canEvaluate: managerSub != null,
+              canStartEval: false,
             }
           : null,
       };
@@ -319,6 +324,13 @@ export default async function PerformancePage({ searchParams }: Props) {
         const managerSub = drillOpenSubs.find(
           (s) => s.kind === 'manager' && s.subjectEmployeeId === e.employeeId,
         ) ?? null;
+        // Actionable only when the logged-in user is THIS eval's assigned reviewer.
+        // HR/founders browsing get read-only (view once submitted), not "Evaluate".
+        const canEvaluate =
+          !!managerSub &&
+          ((!!managerSub.reviewerUid && managerSub.reviewerUid === user.uid) ||
+            (!!managerSub.reviewerEmail &&
+              managerSub.reviewerEmail.toLowerCase() === user.email.toLowerCase()));
         return {
           employeeId: e.employeeId,
           displayName: e.displayName,
@@ -329,10 +341,15 @@ export default async function PerformancePage({ searchParams }: Props) {
           history: await listSubmittedManagerEvalsForSubject(e.employeeId),
           openCycleEval: openCycle
             ? {
+                cycleId: openCycle.cycleId,
                 cycleName: openCycle.name,
                 selfStatus: selfSub?.status ?? null,
                 managerSubId: managerSub?.submissionId ?? null,
                 managerStatus: managerSub?.status ?? null,
+                canEvaluate,
+                // No manager-eval exists AND the person has no manager assigned →
+                // HR/founder (this drill view is admin-only) may start one.
+                canStartEval: managerSub == null && !e.managerId,
               }
             : null,
         };
