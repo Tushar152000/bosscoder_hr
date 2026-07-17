@@ -26,11 +26,19 @@ function getTransporter(): Transporter | null {
   return cached;
 }
 
+export interface SendAttachment {
+  filename: string;
+  content: Buffer;
+  contentType?: string;
+}
+
 export interface SendArgs {
   to: string;
   subject: string;
   text: string;
   html: string;
+  replyTo?: string;
+  attachments?: SendAttachment[];
 }
 
 export async function sendMail(args: SendArgs): Promise<{ ok: boolean; error?: string }> {
@@ -43,9 +51,11 @@ export async function sendMail(args: SendArgs): Promise<{ ok: boolean; error?: s
     await t.sendMail({
       from: `Bosscoder Workspace <${from}>`,
       to: args.to,
+      replyTo: args.replyTo,
       subject: args.subject,
       text: args.text,
       html: args.html,
+      attachments: args.attachments,
     });
     return { ok: true };
   } catch (e) {

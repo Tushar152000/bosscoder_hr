@@ -2,7 +2,7 @@ import type { EncryptedField } from '@/lib/crypto/encrypt';
 
 export type EmploymentType = 'full-time' | 'internship';
 export type OfferStatus = 'draft' | 'finalized' | 'archived';
-export type TemplateKey = 'sales-ops' | 'other-dept' | 'intern';
+export type TemplateKey = 'sales-ops' | 'other-dept' | 'intern' | 'relieving' | 'experience';
 export type PocName = 'Shreya' | 'Charvi';
 
 /**

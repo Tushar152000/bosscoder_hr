@@ -174,6 +174,44 @@ I Agree,
 \\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_
 
 Name, Signature & Date`,
+
+  // ─── Relieving letter ───────────────────────────────────────────────────────
+  relieving: `**{{offerDate}}**
+
+## RELIEVING LETTER
+
+Dear **{{candidateName}}**,
+
+With reference to your resignation email dated **{{resignationDate}}**, you are hereby relieved from your duties as on **{{relievingDate}}**. We confirm that you have been working with **Bosscoder Software Services Pvt. Ltd.**, as **{{designation}}** from **{{joiningDate}}** to **{{lastWorkingDate}}**.
+
+We would like to thank you for your service with Bosscoder Software Services Pvt. Ltd. & wish you the best wishes.
+
+We wish you all the best in your future endeavors.
+
+Yours Sincerely,
+
+For **Bosscoder Academy**
+
+**Rajat Garg**
+
+Co-Founder`,
+
+  // ─── Experience letter ──────────────────────────────────────────────────────
+  experience: `**{{offerDate}}**
+
+## TO WHOM IT MAY CONCERN
+
+To whomsoever it may concern, this is to certify that **{{candidateName}}** was employed as **{{designation}}** in the **{{department}}** Department from **{{joiningDate}}** to **{{lastWorkingDate}}**.
+
+Throughout their tenure, they have diligently fulfilled their responsibilities as **{{designation}}** and we appreciate the positive impact they have made. They have worked under the guidance of **Rajat Garg**.
+
+We extend our heartfelt appreciation for their hard work and commitment during their time with us. We wish them all the best in their future endeavors and trust that they will excel in their next role.
+
+Yours Sincerely
+
+**Rajat Garg**
+
+(Co-Founder)`,
 };
 
 export function defaultBodyFor(templateKey: TemplateKey): string {

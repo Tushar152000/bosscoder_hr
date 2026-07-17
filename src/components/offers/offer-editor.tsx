@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import {
   Printer, Save, Lock, Unlock, Trash2, RotateCcw, Download,
   Layers, UserRound, CalendarDays, IndianRupee, Contact, FileText,
@@ -18,11 +19,12 @@ import { OfferPreview } from '@/components/offers/offer-preview';
 import { DEPARTMENTS } from '@/lib/constants/departments';
 import { defaultBodyFor, templateKeyForDepartment } from '@/lib/offers/templates';
 import { formatINR } from '@/lib/offers/render';
-import { downloadOfferPdf, safeFilename } from '@/lib/offers/pdf-export';
+import { downloadOfferPdf, generateOfferPdfBase64, safeFilename } from '@/lib/offers/pdf-export';
 import {
   createOfferAction,
   deleteOfferAction,
   finalizeOfferAction,
+  sendOfferEmailAction,
   updateOfferAction,
 } from '@/app/(app)/offers/actions';
 import type { OfferData, OfferStatus, TemplateKey } from '@/types/offer';
@@ -39,6 +41,11 @@ const TEMPLATE_LABEL: Record<TemplateKey, string> = {
   'sales-ops': 'Sales / Operations format',
   'other-dept': 'Other departments format',
   intern: 'Internship format',
+  // Not selectable from this editor — relieving/experience letters use the
+  // separate QuickLetterEditor flow — but TemplateKey is shared, so every
+  // key needs a label for type-safety.
+  relieving: 'Relieving letter format',
+  experience: 'Experience letter format',
 };
 
 export function OfferEditor({
@@ -77,16 +84,18 @@ export function OfferEditor({
     }
   }
 
-  // Auto-pick template when department or employment type changes.
+  // Auto-pick template when department or employment type changes, and
+  // refresh the body to match — unless the HR user has already hand-edited
+  // it, in which case we leave their edits alone (same rule as "Reset body").
   useEffect(() => {
     const auto: TemplateKey =
-      data.employmentType === 'internship'
-        ? 'intern'
-        : data.department
-        ? templateKeyForDepartment(data.department)
-        : data.templateKey;
+      data.employmentType === 'internship' ? 'intern' : templateKeyForDepartment(data.department);
     if (auto !== data.templateKey) {
-      setData((d) => ({ ...d, templateKey: auto }));
+      setData((d) => ({
+        ...d,
+        templateKey: auto,
+        bodyMarkdown: bodyTouched ? d.bodyMarkdown : defaultBodyFor(auto),
+      }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.employmentType, data.department]);
@@ -140,6 +149,7 @@ export function OfferEditor({
           setError(finRes.error);
           return;
         }
+        await maybeSendEmail(finalId);
       }
 
       if (!offerId && finalId) {
@@ -149,6 +159,30 @@ export function OfferEditor({
         router.refresh();
       }
     });
+  }
+
+  async function maybeSendEmail(id: string) {
+    if (!data.candidateEmail) return;
+    const wantsToSend = await confirm({
+      title: 'Send this offer letter by email?',
+      body: `This will email the finalized offer letter as a PDF to ${data.candidateEmail}.`,
+      confirmLabel: 'Send email',
+      cancelLabel: 'Not now',
+    });
+    if (!wantsToSend) return;
+
+    const toastId = toast.loading('Generating PDF and sending email…');
+    const pdfResult = await generateOfferPdfBase64({});
+    if (!pdfResult.ok || !pdfResult.base64) {
+      toast.error(pdfResult.error ?? 'Failed to generate PDF', { id: toastId });
+      return;
+    }
+    const sendResult = await sendOfferEmailAction(id, pdfResult.base64);
+    if (!sendResult.ok) {
+      toast.error(sendResult.error, { id: toastId });
+      return;
+    }
+    toast.success(`Offer letter emailed to ${data.candidateEmail}`, { id: toastId });
   }
 
   async function deleteOffer() {

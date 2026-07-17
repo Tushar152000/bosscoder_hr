@@ -36,62 +36,102 @@ const DEFAULT_IGNORE = [
   '.offer-page-counter',
 ];
 
+interface BuiltPdf {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  doc: any;
+  pages: number;
+}
+
+async function buildOfferPdf(args: {
+  pageSelector?: string;
+  ignoreSelectors?: string[];
+}): Promise<BuiltPdf> {
+  const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
+    import('html2canvas'),
+    import('jspdf'),
+  ]);
+
+  const selector = args.pageSelector ?? '.offer-page';
+  const pages = Array.from(document.querySelectorAll<HTMLElement>(selector));
+  if (pages.length === 0) {
+    throw new Error('No offer page elements found to export.');
+  }
+
+  const ignore = [...DEFAULT_IGNORE, ...(args.ignoreSelectors ?? [])];
+
+  const pdf = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+    compress: true,
+  });
+
+  for (let i = 0; i < pages.length; i++) {
+    const el = pages[i];
+
+    // Wait for any in-flight images on this page to finish loading. Without
+    // this, the bg image can be half-decoded when html2canvas snapshots,
+    // resulting in a PDF page with no letterhead.
+    await waitForImages(el);
+
+    const canvas = await html2canvas(el, {
+      useCORS: true,
+      allowTaint: false,
+      scale: 2, // 2× retina for crisp text
+      backgroundColor: '#ffffff',
+      logging: false,
+      ignoreElements: (node) => {
+        if (!(node instanceof HTMLElement)) return false;
+        return ignore.some((sel) => node.matches?.(sel));
+      },
+    });
+
+    if (i > 0) pdf.addPage();
+    const imgData = canvas.toDataURL('image/jpeg', 0.92);
+    // Place the captured canvas as a single A4-sized image. width/height
+    // in mm (jsPDF unit) — 210 × 297 = the standard A4 portrait.
+    pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+  }
+
+  return { doc: pdf, pages: pages.length };
+}
+
 export async function downloadOfferPdf(args: DownloadArgs): Promise<DownloadResult> {
   if (typeof window === 'undefined') {
     return { ok: false, error: 'PDF export only works in the browser.' };
   }
   try {
-    const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-      import('html2canvas'),
-      import('jspdf'),
-    ]);
+    const { doc, pages } = await buildOfferPdf(args);
+    doc.save(`${args.filename}.pdf`);
+    return { ok: true, pages };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : 'Failed to generate PDF',
+    };
+  }
+}
 
-    const selector = args.pageSelector ?? '.offer-page';
-    const pages = Array.from(
-      document.querySelectorAll<HTMLElement>(selector)
-    );
-    if (pages.length === 0) {
-      return { ok: false, error: 'No offer page elements found to export.' };
-    }
+export interface GeneratePdfResult {
+  ok: boolean;
+  error?: string;
+  base64?: string;
+}
 
-    const ignore = [...DEFAULT_IGNORE, ...(args.ignoreSelectors ?? [])];
-
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4',
-      compress: true,
-    });
-
-    for (let i = 0; i < pages.length; i++) {
-      const el = pages[i];
-
-      // Wait for any in-flight images on this page to finish loading. Without
-      // this, the bg image can be half-decoded when html2canvas snapshots,
-      // resulting in a PDF page with no letterhead.
-      await waitForImages(el);
-
-      const canvas = await html2canvas(el, {
-        useCORS: true,
-        allowTaint: false,
-        scale: 2, // 2× retina for crisp text
-        backgroundColor: '#ffffff',
-        logging: false,
-        ignoreElements: (node) => {
-          if (!(node instanceof HTMLElement)) return false;
-          return ignore.some((sel) => node.matches?.(sel));
-        },
-      });
-
-      if (i > 0) pdf.addPage();
-      const imgData = canvas.toDataURL('image/jpeg', 0.92);
-      // Place the captured canvas as a single A4-sized image. width/height
-      // in mm (jsPDF unit) — 210 × 297 = the standard A4 portrait.
-      pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
-    }
-
-    pdf.save(`${args.filename}.pdf`);
-    return { ok: true, pages: pages.length };
+/** Same rendering path as downloadOfferPdf, but returns raw base64 bytes
+ *  instead of triggering a browser download — used to attach the PDF to an
+ *  outbound email without ever writing it to disk. */
+export async function generateOfferPdfBase64(args: {
+  pageSelector?: string;
+  ignoreSelectors?: string[];
+}): Promise<GeneratePdfResult> {
+  if (typeof window === 'undefined') {
+    return { ok: false, error: 'PDF export only works in the browser.' };
+  }
+  try {
+    const { doc } = await buildOfferPdf(args);
+    const base64 = doc.output('datauristring').split(',')[1];
+    return { ok: true, base64 };
   } catch (e) {
     return {
       ok: false,

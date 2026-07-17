@@ -1,11 +1,12 @@
 import { requirePermission } from '@/lib/auth/guard';
 import { listEmployees } from '@/lib/firestore/employees';
 import { getOfferSettings } from '@/lib/firestore/hr-settings';
+import { defaultBodyFor } from '@/lib/offers/templates';
 import { QuickLetterEditor, type QuickEmployee } from '@/components/offers/quick-letter-editor';
 
-export const metadata = { title: 'Quick letter' };
+export const metadata = { title: 'Experience letter' };
 
-export default async function QuickLetterPage() {
+export default async function NewExperienceLetterPage() {
   await requirePermission('manage_offer_letters');
   const [settings, employees] = await Promise.all([
     getOfferSettings(),
@@ -18,6 +19,7 @@ export default async function QuickLetterPage() {
     department: e.department ?? '',
     designation: e.designation ?? '',
     email: e.email ?? '',
+    joiningDate: e.joiningDate ? e.joiningDate.toISOString().slice(0, 10) : undefined,
   }));
 
   return (
@@ -25,9 +27,14 @@ export default async function QuickLetterPage() {
       <QuickLetterEditor
         employees={people}
         backgroundUrl={settings.backgroundUrl}
-        title="Quick letter"
+        templateKey="experience"
+        starterBody={defaultBodyFor('experience')}
+        filenamePrefix="bosscoder-experience-letter"
+        title="Experience letter"
+        editBasePath="/offers/experience"
         backHref="/offers"
         backLabel="Back to offer letters"
+        dateFields={[{ key: 'lastWorkingDate', label: 'last working date' }]}
       />
     </div>
   );

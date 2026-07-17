@@ -104,6 +104,7 @@ export interface OfferListItem {
   offerId: string;
   candidateName: string;
   employmentType: 'full-time' | 'internship';
+  templateKey: OfferLetterStored['templateKey'];
   department: string;
   designation: string;
   offerDate: string;
@@ -126,6 +127,7 @@ async function _listOfferLetters(): Promise<OfferListItem[]> {
       offerId: s.offerId,
       candidateName: s.candidateName,
       employmentType: s.employmentType,
+      templateKey: s.templateKey,
       department: s.department,
       designation: s.designation,
       offerDate: s.offerDate,

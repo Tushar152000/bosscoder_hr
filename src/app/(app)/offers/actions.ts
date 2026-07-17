@@ -13,6 +13,8 @@ import {
   updateOfferLetter,
 } from '@/lib/firestore/offer-letters';
 import { updateOfferSettings } from '@/lib/firestore/hr-settings';
+import { sendOfferLetterEmail } from '@/lib/email/offer-letter';
+import { safeFilename } from '@/lib/offers/pdf-export';
 import type { OfferData, OfferSettings } from '@/types/offer';
 
 export type ActionResult<T = void> =
@@ -29,7 +31,7 @@ const offerSchema = z.object({
   candidatePhone: z.string().max(40),
   employmentType: z.enum(['full-time', 'internship']),
   department: z.string().max(80),
-  templateKey: z.enum(['sales-ops', 'other-dept', 'intern']),
+  templateKey: z.enum(['sales-ops', 'other-dept', 'intern', 'relieving', 'experience']),
   designation: z.string().min(1, 'Designation required').max(120),
   offerDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD'),
   joiningDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD'),
@@ -111,15 +113,63 @@ export async function finalizeOfferAction(offerId: string): Promise<ActionResult
     await writeAuditLog({
       actorUid: user.uid,
       actorEmail: user.email,
-      action: 'offer.send',
+      action: 'offer.finalize',
       resource: { type: 'offer_letter', id: offerId },
-      metadata: { op: 'finalize', candidate: offer.candidateName },
+      metadata: { candidate: offer.candidateName },
     });
     revalidatePath('/offers');
     revalidatePath(`/offers/${offerId}`);
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Failed to finalize' };
+  }
+}
+
+export async function sendOfferEmailAction(
+  offerId: string,
+  pdfBase64: string
+): Promise<ActionResult> {
+  const user = await requireUser();
+  if (!canManageOffers(user)) return { ok: false, error: 'Forbidden' };
+  const offer = await getOfferLetter(offerId);
+  if (!offer) return { ok: false, error: 'Offer not found' };
+  if (offer.status !== 'finalized') {
+    return { ok: false, error: 'Offer must be finalized before it can be emailed' };
+  }
+  if (!offer.candidateEmail) {
+    return { ok: false, error: 'No candidate email on file for this offer' };
+  }
+  const letterKind =
+    offer.templateKey === 'relieving'
+      ? 'relieving'
+      : offer.templateKey === 'experience'
+      ? 'experience'
+      : 'offer';
+  try {
+    const pdf = Buffer.from(pdfBase64, 'base64');
+    const result = await sendOfferLetterEmail({
+      candidateName: offer.candidateName,
+      candidateEmail: offer.candidateEmail,
+      designation: offer.designation,
+      joiningDate: offer.joiningDate,
+      pocName: offer.pocName,
+      pocDesignation: offer.pocDesignation,
+      pocEmail: offer.pocEmail,
+      pdf,
+      pdfFilename: `bosscoder-${letterKind}-${safeFilename(offer.candidateName)}-${offer.offerDate}`,
+      letterKind,
+    });
+    if (!result.ok) return { ok: false, error: result.error ?? 'Failed to send email' };
+    await writeAuditLog({
+      actorUid: user.uid,
+      actorEmail: user.email,
+      action: 'offer.send',
+      resource: { type: 'offer_letter', id: offerId },
+      metadata: { candidate: offer.candidateName, to: offer.candidateEmail },
+    });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Failed to send email' };
   }
 }
 

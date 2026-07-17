@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Plus, Lock, Unlock, FileText, LogOut } from 'lucide-react';
 import { requirePermission } from '@/lib/auth/guard';
-import { listOfferLetters } from '@/lib/firestore/offer-letters';
+import { listOfferLetters, type OfferListItem } from '@/lib/firestore/offer-letters';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardBody } from '@/components/ui/card';
@@ -25,13 +25,13 @@ export default async function OffersListPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button asChild variant="secondary">
-            <Link href="/offers/quick">
+            <Link href="/offers/experience/new">
               <FileText className="h-4 w-4" />
-              Quick letter
+              Experience letter
             </Link>
           </Button>
           <Button asChild variant="secondary">
-            <Link href="/offers/leaving">
+            <Link href="/offers/relieving/new">
               <LogOut className="h-4 w-4" />
               Relieving letter
             </Link>
@@ -72,16 +72,14 @@ export default async function OffersListPage() {
                 <tr key={o.offerId} className="border-t border-default hover:bg-slate-50">
                   <td className="px-4 py-3">
                     <Link
-                      href={`/offers/${o.offerId}`}
+                      href={`${editHrefBase(o.templateKey)}/${o.offerId}`}
                       className="block font-medium text-slate-900 hover:underline"
                     >
                       {o.candidateName}
                     </Link>
                     <div className="text-xs text-muted">{o.designation}</div>
                   </td>
-                  <td className="px-4 py-3 text-xs capitalize">
-                    {o.employmentType.replace('-', ' ')}
-                  </td>
+                  <td className="px-4 py-3 text-xs capitalize">{typeLabel(o)}</td>
                   <td className="px-4 py-3 text-xs">{o.department || '—'}</td>
                   <td className="px-4 py-3 text-xs">{formatDate(parseDate(o.joiningDate))}</td>
                   <td className="px-4 py-3">
@@ -114,4 +112,16 @@ function parseDate(s: string): Date | null {
   if (!s) return null;
   const d = new Date(s + 'T00:00:00Z');
   return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function editHrefBase(templateKey: OfferListItem['templateKey']): string {
+  if (templateKey === 'relieving') return '/offers/relieving';
+  if (templateKey === 'experience') return '/offers/experience';
+  return '/offers';
+}
+
+function typeLabel(o: OfferListItem): string {
+  if (o.templateKey === 'relieving') return 'Relieving letter';
+  if (o.templateKey === 'experience') return 'Experience letter';
+  return o.employmentType.replace('-', ' ');
 }
