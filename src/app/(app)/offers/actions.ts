@@ -43,8 +43,11 @@ const offerSchema = z.object({
   includeBstIncentives: z.boolean(),
   probationMonths: z.coerce.number().int().min(0).max(24),
   internshipDurationMonths: z.coerce.number().int().min(0).max(24),
-  pocName: z.string().min(1).max(80),
-  pocDesignation: z.string().min(1).max(120),
+  // Optional: offer letters always get a real POC from the picker, but
+  // relieving/experience letters have no POC concept (always signed by
+  // Rajat Garg directly) and legitimately leave these blank.
+  pocName: z.string().max(80),
+  pocDesignation: z.string().max(120),
   pocEmail: z.string().email().or(z.literal('')),
   bodyMarkdown: z.string().min(1, 'Letter body cannot be empty').max(40000),
 });

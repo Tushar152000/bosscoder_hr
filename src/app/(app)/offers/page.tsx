@@ -1,11 +1,9 @@
 import Link from 'next/link';
-import { Plus, Lock, Unlock, FileText, LogOut } from 'lucide-react';
+import { Plus, FileText, LogOut } from 'lucide-react';
 import { requirePermission } from '@/lib/auth/guard';
-import { listOfferLetters, type OfferListItem } from '@/lib/firestore/offer-letters';
+import { listOfferLetters } from '@/lib/firestore/offer-letters';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardBody } from '@/components/ui/card';
-import { formatDate } from '@/lib/format';
+import { OffersTable } from '@/components/offers/offers-table';
 
 export const metadata = { title: 'Offer Letters' };
 
@@ -45,83 +43,7 @@ export default async function OffersListPage() {
         </div>
       </div>
 
-      {offers.length === 0 ? (
-        <Card>
-          <CardBody className="text-sm text-muted">
-            No offer letters yet.{' '}
-            <Link href="/offers/new" className="text-[#0C447C] hover:underline">
-              Create the first one →
-            </Link>
-          </CardBody>
-        </Card>
-      ) : (
-        <div className="overflow-hidden rounded-lg border border-default bg-card">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs uppercase tracking-wide text-muted">
-              <tr>
-                <th className="px-4 py-3">Candidate</th>
-                <th className="px-4 py-3">Type</th>
-                <th className="px-4 py-3">Department</th>
-                <th className="px-4 py-3">Joining</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Updated</th>
-              </tr>
-            </thead>
-            <tbody>
-              {offers.map((o) => (
-                <tr key={o.offerId} className="border-t border-default hover:bg-slate-50">
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`${editHrefBase(o.templateKey)}/${o.offerId}`}
-                      className="block font-medium text-slate-900 hover:underline"
-                    >
-                      {o.candidateName}
-                    </Link>
-                    <div className="text-xs text-muted">{o.designation}</div>
-                  </td>
-                  <td className="px-4 py-3 text-xs capitalize">{typeLabel(o)}</td>
-                  <td className="px-4 py-3 text-xs">{o.department || '—'}</td>
-                  <td className="px-4 py-3 text-xs">{formatDate(parseDate(o.joiningDate))}</td>
-                  <td className="px-4 py-3">
-                    {o.status === 'finalized' ? (
-                      <Badge variant="success" className="gap-1">
-                        <Lock className="h-3 w-3" /> Finalized
-                      </Badge>
-                    ) : o.status === 'archived' ? (
-                      <Badge variant="muted">Archived</Badge>
-                    ) : (
-                      <Badge variant="warning" className="gap-1">
-                        <Unlock className="h-3 w-3" /> Draft
-                      </Badge>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-muted">
-                    {formatDate(o.updatedAt)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <OffersTable offers={offers} />
     </div>
   );
-}
-
-function parseDate(s: string): Date | null {
-  if (!s) return null;
-  const d = new Date(s + 'T00:00:00Z');
-  return Number.isNaN(d.getTime()) ? null : d;
-}
-
-function editHrefBase(templateKey: OfferListItem['templateKey']): string {
-  if (templateKey === 'relieving') return '/offers/relieving';
-  if (templateKey === 'experience') return '/offers/experience';
-  return '/offers';
-}
-
-function typeLabel(o: OfferListItem): string {
-  if (o.templateKey === 'relieving') return 'Relieving letter';
-  if (o.templateKey === 'experience') return 'Experience letter';
-  return o.employmentType.replace('-', ' ');
 }

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
-import { ArrowLeft, Search, Download, FileText, X, Save, Lock, Unlock, Trash2 } from 'lucide-react';
+import { ArrowLeft, Search, Download, FileText, X, Save, Lock, Unlock, Trash2, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -24,7 +24,10 @@ import {
   sendOfferEmailAction,
   updateOfferAction,
 } from '@/app/(app)/offers/actions';
+import { DEFAULT_OFFER_SETTINGS } from '@/types/offer';
 import type { OfferData, OfferStatus, TemplateKey } from '@/types/offer';
+
+const CHARVI = DEFAULT_OFFER_SETTINGS.pocOptions.find((p) => p.name === 'Charvi Madaan');
 
 export interface QuickEmployee {
   employeeId: string;
@@ -111,6 +114,7 @@ export function QuickLetterEditor({
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -134,9 +138,9 @@ export function QuickLetterEditor({
         includeBstIncentives: false,
         probationMonths: 0,
         internshipDurationMonths: 0,
-        pocName: '',
-        pocDesignation: '',
-        pocEmail: '',
+        pocName: CHARVI?.name ?? '',
+        pocDesignation: CHARVI?.designation ?? '',
+        pocEmail: CHARVI?.email ?? '',
         bodyMarkdown: starterBody,
       }
   );
@@ -189,6 +193,25 @@ export function QuickLetterEditor({
     if (!result.ok) setError(result.error ?? 'Failed to generate PDF');
   }
 
+  async function sendEmailNow(id: string, candidateEmail: string) {
+    setSendingEmail(true);
+    const toastId = toast.loading('Generating PDF and sending email…');
+    const pdfResult = await generateOfferPdfBase64({});
+    if (!pdfResult.ok || !pdfResult.base64) {
+      toast.error(pdfResult.error ?? 'Failed to generate PDF', { id: toastId });
+      setSendingEmail(false);
+      return;
+    }
+    const sendResult = await sendOfferEmailAction(id, pdfResult.base64);
+    if (!sendResult.ok) {
+      toast.error(sendResult.error, { id: toastId });
+      setSendingEmail(false);
+      return;
+    }
+    toast.success(`Letter emailed to ${candidateEmail}`, { id: toastId });
+    setSendingEmail(false);
+  }
+
   async function maybeSendEmail(id: string, candidateEmail: string) {
     if (!candidateEmail) return;
     const wantsToSend = await confirm({
@@ -198,19 +221,7 @@ export function QuickLetterEditor({
       cancelLabel: 'Not now',
     });
     if (!wantsToSend) return;
-
-    const toastId = toast.loading('Generating PDF and sending email…');
-    const pdfResult = await generateOfferPdfBase64({});
-    if (!pdfResult.ok || !pdfResult.base64) {
-      toast.error(pdfResult.error ?? 'Failed to generate PDF', { id: toastId });
-      return;
-    }
-    const sendResult = await sendOfferEmailAction(id, pdfResult.base64);
-    if (!sendResult.ok) {
-      toast.error(sendResult.error, { id: toastId });
-      return;
-    }
-    toast.success(`Letter emailed to ${candidateEmail}`, { id: toastId });
+    await sendEmailNow(id, candidateEmail);
   }
 
   function save(thenFinalize = false) {
@@ -317,6 +328,19 @@ export function QuickLetterEditor({
             <Download className="h-4 w-4" />
             {downloading ? 'Generating…' : 'Download PDF'}
           </Button>
+          {isFinalized && data.candidateEmail && offerId && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => sendEmailNow(offerId, data.candidateEmail)}
+              disabled={sendingEmail}
+              className="gap-2 h-9"
+              title={`Email the finalized PDF to ${data.candidateEmail}`}
+            >
+              <Mail className="h-4 w-4" />
+              {sendingEmail ? 'Sending…' : 'Send email'}
+            </Button>
+          )}
           {!readOnly && (
             <Button size="sm" onClick={() => save(false)} disabled={pending} className="gap-2 h-9">
               <Save className="h-4 w-4" />

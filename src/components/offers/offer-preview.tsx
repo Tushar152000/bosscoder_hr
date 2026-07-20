@@ -1,8 +1,9 @@
 'use client';
 
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Children, cloneElement, isValidElement, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 import { buildRenderContext, renderTemplate } from '@/lib/offers/render';
 import type { OfferData } from '@/types/offer';
 
@@ -36,13 +37,41 @@ const MARKDOWN_COMPONENTS = {
   p: (p: React.HTMLAttributes<HTMLParagraphElement>) => (
     <p className="my-2.5 leading-relaxed" {...p} />
   ),
+  // Numbers/bullets are rendered as plain positioned text rather than native
+  // `list-style`/`::marker` — html2canvas (used for PDF export) doesn't
+  // reliably replicate browser-generated list markers, causing the number to
+  // detach from its text in the exported PDF even though it looks fine
+  // on-screen. Real text + flexbox renders identically everywhere.
   ul: (p: React.HTMLAttributes<HTMLUListElement>) => (
-    <ul className="my-2 list-disc pl-6 leading-relaxed" {...p} />
+    <ul className="my-2 space-y-1 leading-relaxed" {...p} />
   ),
-  ol: (p: React.OlHTMLAttributes<HTMLOListElement>) => (
-    <ol className="my-2 list-decimal pl-6 leading-relaxed" {...p} />
+  ol: ({ children, ...rest }: React.OlHTMLAttributes<HTMLOListElement>) => {
+    // react-markdown inserts whitespace text nodes between <li> children —
+    // count only real elements for the ordinal, not their raw array index.
+    let n = 0;
+    const items = Children.toArray(children).map((child) => {
+      if (!isValidElement(child)) return child;
+      n += 1;
+      return cloneElement(child as React.ReactElement<{ 'data-ordinal'?: number }>, {
+        'data-ordinal': n,
+      });
+    });
+    return (
+      <ol className="my-2 space-y-1 leading-relaxed" {...rest}>
+        {items}
+      </ol>
+    );
+  },
+  li: ({
+    children,
+    'data-ordinal': ordinal,
+    ...rest
+  }: React.LiHTMLAttributes<HTMLLIElement> & { 'data-ordinal'?: number }) => (
+    <li className="my-1 flex gap-2" {...rest}>
+      <span className="shrink-0 tabular-nums">{ordinal ? `${ordinal}.` : '•'}</span>
+      <span className="min-w-0 flex-1 [&>p]:my-0">{children}</span>
+    </li>
   ),
-  li: (p: React.LiHTMLAttributes<HTMLLIElement>) => <li className="my-1" {...p} />,
   strong: (p: React.HTMLAttributes<HTMLElement>) => (
     <strong className="font-semibold" {...p} />
   ),
@@ -53,6 +82,10 @@ const MARKDOWN_COMPONENTS = {
     />
   ),
   hr: () => <hr className="my-6 border-gray-300" />,
+  // eslint-disable-next-line @next/next/no-img-element
+  img: (p: React.ImgHTMLAttributes<HTMLImageElement>) => (
+    <img {...p} alt={p.alt ?? ''} className="my-1 block h-11 w-auto" />
+  ),
 };
 
 /**
@@ -124,7 +157,11 @@ export function OfferPreview({ data, backgroundUrl }: Props) {
       {/* Hidden measurement layer — must mirror visible body's width + typography
        *  so children's offsetHeight reflects what they'll be when rendered. */}
       <div className="offer-measure offer-content" ref={measureRef} aria-hidden>
-        <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeRaw]}
+          components={MARKDOWN_COMPONENTS}
+        >
           {rendered}
         </ReactMarkdown>
       </div>

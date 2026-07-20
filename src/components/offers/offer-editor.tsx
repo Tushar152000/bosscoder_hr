@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import {
-  Printer, Save, Lock, Unlock, Trash2, RotateCcw, Download,
+  Printer, Save, Lock, Unlock, Trash2, RotateCcw, Download, Mail,
   Layers, UserRound, CalendarDays, IndianRupee, Contact, FileText,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -69,6 +69,7 @@ export function OfferEditor({
   const isIntern = data.employmentType === 'internship';
   const isSalesOps = data.templateKey === 'sales-ops';
   const [downloading, setDownloading] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   async function downloadPdf() {
     setDownloading(true);
@@ -161,6 +162,25 @@ export function OfferEditor({
     });
   }
 
+  async function sendEmailNow(id: string, candidateEmail: string) {
+    setSendingEmail(true);
+    const toastId = toast.loading('Generating PDF and sending email…');
+    const pdfResult = await generateOfferPdfBase64({});
+    if (!pdfResult.ok || !pdfResult.base64) {
+      toast.error(pdfResult.error ?? 'Failed to generate PDF', { id: toastId });
+      setSendingEmail(false);
+      return;
+    }
+    const sendResult = await sendOfferEmailAction(id, pdfResult.base64);
+    if (!sendResult.ok) {
+      toast.error(sendResult.error, { id: toastId });
+      setSendingEmail(false);
+      return;
+    }
+    toast.success(`Offer letter emailed to ${candidateEmail}`, { id: toastId });
+    setSendingEmail(false);
+  }
+
   async function maybeSendEmail(id: string) {
     if (!data.candidateEmail) return;
     const wantsToSend = await confirm({
@@ -170,19 +190,7 @@ export function OfferEditor({
       cancelLabel: 'Not now',
     });
     if (!wantsToSend) return;
-
-    const toastId = toast.loading('Generating PDF and sending email…');
-    const pdfResult = await generateOfferPdfBase64({});
-    if (!pdfResult.ok || !pdfResult.base64) {
-      toast.error(pdfResult.error ?? 'Failed to generate PDF', { id: toastId });
-      return;
-    }
-    const sendResult = await sendOfferEmailAction(id, pdfResult.base64);
-    if (!sendResult.ok) {
-      toast.error(sendResult.error, { id: toastId });
-      return;
-    }
-    toast.success(`Offer letter emailed to ${data.candidateEmail}`, { id: toastId });
+    await sendEmailNow(id, data.candidateEmail);
   }
 
   async function deleteOffer() {
@@ -258,6 +266,18 @@ export function OfferEditor({
             <Printer className="h-4 w-4" />
             Print
           </Button>
+          {isFinalized && data.candidateEmail && offerId && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => sendEmailNow(offerId, data.candidateEmail)}
+              disabled={sendingEmail}
+              title={`Email the finalized PDF to ${data.candidateEmail}`}
+            >
+              <Mail className="h-4 w-4" />
+              {sendingEmail ? 'Sending…' : 'Send email'}
+            </Button>
+          )}
           {!readOnly && (
             <Button size="sm" onClick={() => save(false)} disabled={pending}>
               <Save className="h-4 w-4" />

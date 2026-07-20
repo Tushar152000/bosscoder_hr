@@ -70,17 +70,19 @@ For any queries, you may reach out to **{{pocName}}** ({{pocDesignation}}) - {{p
 
 We are excited to have you as part of Bosscoder Software Services Pvt. Ltd. and look forward to achieving great milestones together! Welcome aboard!
 
-Sincerely,
-
-**Rajat Kumar Garg**
-
-Authorised Signatory
-
-I Agree,
-
-\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_
-
-Name, Signature & Date{{#if includeBstIncentives}}
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:32px;margin-top:8px;">
+<div style="flex:1;">
+<p>Sincerely,</p>
+<p><strong>Rajat Kumar Garg</strong></p>
+<img src="/rajat-garg.png" alt="Signature" />
+<p>Authorised Signatory</p>
+</div>
+<div style="flex:0 0 auto;">
+<p>I Agree,</p>
+<p>____________________</p>
+<p>Name, Signature &amp; Date</p>
+</div>
+</div>{{#if includeBstIncentives}}
 
 ---
 
@@ -130,17 +132,19 @@ For any queries, you may reach out to **{{pocName}}** ({{pocDesignation}}) - {{p
 
 We are excited to have you as part of Bosscoder Software Services Pvt. Ltd. and look forward to achieving great milestones together! Welcome aboard!
 
-Sincerely,
-
-**Rajat Kumar Garg**
-
-Authorised Signatory
-
-I Agree,
-
-\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_
-
-Name, Signature & Date`,
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:32px;margin-top:8px;">
+<div style="flex:1;">
+<p>Sincerely,</p>
+<p><strong>Rajat Kumar Garg</strong></p>
+<img src="/rajat-garg.png" alt="Signature" />
+<p>Authorised Signatory</p>
+</div>
+<div style="flex:0 0 auto;">
+<p>I Agree,</p>
+<p>____________________</p>
+<p>Name, Signature &amp; Date</p>
+</div>
+</div>`,
 
   // ─── Internship format ─────────────────────────────────────────────────────
   intern: `**{{offerDate}}**
@@ -163,17 +167,19 @@ If you decide to accept this offer, please sign it electronically and return it 
 
 We look forward to you joining Bosscoder Academy and helping us (and you!) continue to grow and prosper in the future.
 
-Sincerely,
-
-**Rajat Kumar Garg**
-
-Authorised Signatory
-
-I Agree,
-
-\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_
-
-Name, Signature & Date`,
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:32px;margin-top:8px;">
+<div style="flex:1;">
+<p>Sincerely,</p>
+<p><strong>Rajat Kumar Garg</strong></p>
+<img src="/rajat-garg.png" alt="Signature" />
+<p>Authorised Signatory</p>
+</div>
+<div style="flex:0 0 auto;">
+<p>I Agree,</p>
+<p>____________________</p>
+<p>Name, Signature &amp; Date</p>
+</div>
+</div>`,
 
   // ─── Relieving letter ───────────────────────────────────────────────────────
   relieving: `**{{offerDate}}**
@@ -194,6 +200,8 @@ For **Bosscoder Academy**
 
 **Rajat Garg**
 
+![Signature](/rajat-garg.png)
+
 Co-Founder`,
 
   // ─── Experience letter ──────────────────────────────────────────────────────
@@ -210,6 +218,8 @@ We extend our heartfelt appreciation for their hard work and commitment during t
 Yours Sincerely
 
 **Rajat Garg**
+
+![Signature](/rajat-garg.png)
 
 (Co-Founder)`,
 };

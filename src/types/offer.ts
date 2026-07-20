@@ -134,7 +134,7 @@ export const DEFAULT_OFFER_SETTINGS: OfferSettings = {
     },
     {
       name: 'Charvi Madaan',
-      designation: 'Human Resources Associate',
+      designation: 'Human Resource Executive',
       email: 'charvi.madaan@bosscoderacademy.com',
     },
   ],

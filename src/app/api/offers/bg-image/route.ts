@@ -1,6 +1,16 @@
 import { NextResponse } from 'next/server';
+import sharp from 'sharp';
 import { getCurrentUser } from '@/lib/auth/session';
 import { getOfferSettings } from '@/lib/firestore/hr-settings';
+
+// The configured letterhead asset (Creative 1.jpg) has ~2.9% of blank canvas
+// baked in above the header artwork. Cropping it here (once, server-side)
+// means every consumer — the live preview AND html2canvas's PDF export —
+// gets identical, already-correct pixels. Doing this via CSS positioning
+// instead is fragile: html2canvas doesn't reliably replicate a browser's
+// negative-offset + overflow:hidden clipping, which is what caused the
+// header to render correctly on-screen but show a white gap in the PDF.
+const CROP_TOP_FRACTION = 0.0291;
 
 /**
  * Same-origin proxy for the offer-letter background image.
@@ -49,11 +59,27 @@ export async function GET(): Promise<Response> {
     });
   }
 
-  const buffer = await upstream.arrayBuffer();
+  const original = Buffer.from(await upstream.arrayBuffer());
   const contentType =
     upstream.headers.get('content-type') ?? 'application/octet-stream';
 
-  return new NextResponse(buffer, {
+  let output: Buffer = original;
+  try {
+    const img = sharp(original);
+    const meta = await img.metadata();
+    if (meta.width && meta.height) {
+      const cropTop = Math.round(meta.height * CROP_TOP_FRACTION);
+      output = await img
+        .extract({ left: 0, top: cropTop, width: meta.width, height: meta.height - cropTop })
+        .toBuffer();
+    }
+  } catch {
+    // If cropping fails for any reason, serve the untouched original rather
+    // than breaking the letterhead entirely.
+    output = original;
+  }
+
+  return new NextResponse(new Uint8Array(output), {
     headers: {
       'Content-Type': contentType,
       // Cache in the user's browser briefly. The image rarely changes; if
