@@ -10,7 +10,7 @@ import type {
   OfferStatus,
 } from '@/types/offer';
 
-const COL = HR.offerLetters;
+const COL = HR.employmentLetters;
 
 function tsToDate(ts: FirebaseFirestore.Timestamp | null | undefined): Date | null {
   return ts && typeof ts.toDate === 'function' ? ts.toDate() : null;
@@ -28,7 +28,7 @@ function toOffer(stored: OfferLetterStored): OfferLetter {
   return {
     offerId: stored.offerId,
     candidateName: stored.candidateName,
-    candidateEmail: decryptOptional(stored.candidateEmail) ?? '',
+    candidateEmail: stored.candidateEmail ?? '',
     candidatePhone: decryptOptional(stored.candidatePhone) ?? '',
     employmentType: stored.employmentType,
     department: stored.department,
@@ -67,7 +67,7 @@ function dataToStored(
   return {
     offerId: meta.offerId,
     candidateName: data.candidateName.trim(),
-    candidateEmail: encryptOptional(data.candidateEmail.trim()),
+    candidateEmail: data.candidateEmail.trim().toLowerCase(),
     candidatePhone: encryptOptional(data.candidatePhone.trim()),
     employmentType: data.employmentType,
     department: data.department,
@@ -103,6 +103,7 @@ function dataToStored(
 export interface OfferListItem {
   offerId: string;
   candidateName: string;
+  candidateEmail: string;
   employmentType: 'full-time' | 'internship';
   templateKey: OfferLetterStored['templateKey'];
   department: string;
@@ -126,6 +127,7 @@ async function _listOfferLetters(): Promise<OfferListItem[]> {
     return {
       offerId: s.offerId,
       candidateName: s.candidateName,
+      candidateEmail: s.candidateEmail ?? '',
       employmentType: s.employmentType,
       templateKey: s.templateKey,
       department: s.department,

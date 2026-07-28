@@ -162,8 +162,8 @@ export default async function HomePage({
                 icon={FileText}
                 iconBg="#FEF3E7"
                 iconColor="#B45309"
-                title="Offer letters"
-                description="Generate offer letters & quick letters on the letterhead"
+                title="Employment letters"
+                description="Generate offer, relieving & experience letters on the letterhead"
               />
             )}
           </div>

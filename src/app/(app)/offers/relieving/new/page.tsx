@@ -23,7 +23,7 @@ export default async function NewRelievingLetterPage() {
   }));
 
   return (
-    <div className="h-[calc(100vh-3.5rem)] print:h-auto">
+    <div className="offers-theme h-[calc(100vh-3.5rem)] print:h-auto">
       <QuickLetterEditor
         employees={people}
         backgroundUrl={settings.backgroundUrl}
@@ -33,7 +33,7 @@ export default async function NewRelievingLetterPage() {
         title="Relieving letter"
         editBasePath="/offers/relieving"
         backHref="/offers"
-        backLabel="Back to offer letters"
+        backLabel="Back to employment letters"
         dateFields={[
           { key: 'resignationDate', label: 'resignation date' },
           { key: 'relievingDate', label: 'relieving date' },

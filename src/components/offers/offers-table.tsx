@@ -73,7 +73,9 @@ export function OffersTable({ offers }: Props) {
       (o) =>
         (!department || o.department === department) &&
         matchesTypeFilter(o, type) &&
-        (!q || o.candidateName.toLowerCase().includes(q))
+        (!q ||
+          o.candidateName.toLowerCase().includes(q) ||
+          o.candidateEmail.toLowerCase().includes(q))
     );
   }, [offers, department, type, search]);
 
@@ -108,7 +110,7 @@ export function OffersTable({ offers }: Props) {
             type="text"
             value={search}
             onChange={(e) => updateFilter(() => setSearch(e.target.value))}
-            placeholder="Search by candidate name…"
+            placeholder="Search by name or email…"
             className="h-9 w-56 rounded-md border border-default bg-card pl-8 pr-3 text-sm text-slate-900 outline-none focus:border-[#0C447C]"
           />
         </div>

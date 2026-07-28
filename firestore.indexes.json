@@ -101,7 +101,7 @@
       ]
     },
     {
-      "collectionGroup": "hr_offer_letters",
+      "collectionGroup": "hr_employment_letters",
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "status", "order": "ASCENDING" },

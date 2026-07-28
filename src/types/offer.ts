@@ -62,7 +62,9 @@ export interface OfferData {
 export interface OfferLetterStored {
   offerId: string;
   candidateName: string;
-  candidateEmail: EncryptedField | null;
+  // Plaintext (not encrypted) — matches how hr_employees.email is stored,
+  // and lets the list page search/filter by email without bulk-decrypting.
+  candidateEmail: string;
   candidatePhone: EncryptedField | null;
 
   employmentType: EmploymentType;

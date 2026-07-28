@@ -44,7 +44,7 @@ export default async function EditOfferPage({ params }: Props) {
           className="inline-flex items-center gap-1 text-sm text-muted hover:text-slate-900"
         >
           <ArrowLeft className="h-4 w-4" />
-          Back to offer letters
+          Back to employment letters
         </Link>
       </div>
       <div className="flex-1 overflow-hidden">
