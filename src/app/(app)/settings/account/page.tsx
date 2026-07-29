@@ -3,7 +3,8 @@ import { type Permission } from '@/lib/auth/roles';
 import { getHrUser } from '@/lib/firestore/users';
 import { getDocumentsForUser } from '@/lib/firestore/documents';
 import { getEmployeeByUserUid } from '@/lib/firestore/employees';
-import { UserCircle2 } from 'lucide-react';
+import Link from 'next/link';
+import { UserCircle2, Home, ChevronRight } from 'lucide-react';
 import { CopyButton } from '@/components/ui/copy-button';
 import { AvatarUploader } from '@/components/settings/avatar-uploader';
 import { DocumentsSection } from '@/components/settings/documents-section';
@@ -55,6 +56,14 @@ export default async function AccountPage() {
   return (
     <div className="space-y-6">
       <div>
+        <div className="flex items-center gap-1.5 text-[13px] text-slate-400 font-medium mb-1.5">
+          <Home size={14} />
+          <Link href="/" className="hover:text-slate-600 md:text-[16px] text-[14px] transition">
+            Home
+          </Link>
+          <ChevronRight size={11} />
+          <span className="text-slate-900 md:text-[16px] text-[14px]">Settings</span>
+        </div>
         <h1 className="text-[18px] font-semibold text-slate-900">Account</h1>
         <p className="text-[13px] text-slate-500 mt-0.5">Your profile and platform access.</p>
       </div>

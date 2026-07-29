@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Clock, Plus, X, ChevronRight } from 'lucide-react';
+import Link from 'next/link';
+import { Clock, Plus, X, ChevronRight, Home } from 'lucide-react';
 import { AttendanceCalendar } from './AttendanceCalendar';
 import { LeaveBalanceCard } from './LeaveBalanceCard';
 import { ApplyLeaveModal } from './ApplyLeaveModal';
@@ -91,6 +92,14 @@ export function EmployeeView({
       >
         {greeting && (
           <div>
+            <div className="flex items-center gap-1.5 text-[13px] text-slate-400 font-medium mb-1.5">
+              <Home size={14} />
+              <Link href="/" className="hover:text-slate-600 md:text-[16px] text-[14px] transition">
+                Home
+              </Link>
+              <ChevronRight size={11} />
+              <span className="text-slate-900 md:text-[16px] text-[14px]">Attendance</span>
+            </div>
             <h1 className="text-[20px] md:text-[28px] font-semibold text-dark-blue">
               {greeting}, {firstName}
             </h1>

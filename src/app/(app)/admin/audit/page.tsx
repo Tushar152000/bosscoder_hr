@@ -1,3 +1,5 @@
+import Link from 'next/link';
+import { Home, ChevronRight } from 'lucide-react';
 import { requirePermission } from '@/lib/auth/guard';
 import { readAuditLog } from '@/lib/audit';
 import { formatDateTime } from '@/lib/format';
@@ -11,6 +13,14 @@ export default async function AuditLogPage() {
   return (
     <div className="space-y-4">
       <div>
+        <div className="flex items-center gap-1.5 text-[13px] text-slate-400 font-medium mb-1.5">
+          <Home size={14} />
+          <Link href="/" className="hover:text-slate-600 md:text-[16px] text-[14px] transition">
+            Home
+          </Link>
+          <ChevronRight size={11} />
+          <span className="text-slate-900 md:text-[16px] text-[14px]">Audit Log</span>
+        </div>
         <h1 className="text-2xl font-semibold">Audit Log</h1>
         <p className="text-sm text-muted">
           Latest 100 events. Every login, sensitive read, and admin change is recorded.

@@ -31,7 +31,7 @@ const NAV: NavItem[] = [
   { href: '/performance', label: 'Performance', icon: ClipboardList, group: 'main' },
   {
     href: '/offers',
-    label: 'Offer Letters',
+    label: 'Employment Letters',
     icon: FileText,
     requiredPermission: 'manage_offer_letters',
     group: 'main',

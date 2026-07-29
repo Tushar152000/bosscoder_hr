@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Calendar } from "lucide-react";
+import Link from "next/link";
+import { Calendar, Home, ChevronRight } from "lucide-react";
 import { EmployeeView } from "./EmployeeView";
 import { TeamView } from "./TeamView";
 import { HRView } from "./HRView";
@@ -79,6 +80,14 @@ export function ManagerTabs({
     <div>
       <div className="flex justify-between items-center py-6">
         <div>
+          <div className="flex items-center gap-1.5 text-[13px] text-slate-400 font-medium mb-1.5">
+            <Home size={14} />
+            <Link href="/" className="hover:text-slate-600 md:text-[16px] text-[14px] transition">
+              Home
+            </Link>
+            <ChevronRight size={11} />
+            <span className="text-slate-900 md:text-[16px] text-[14px]">Attendance</span>
+          </div>
           <h1 className="text-[20px] md:text-[28px] font-semibold text-dark-blue">
             {greeting}, {firstName}
           </h1>

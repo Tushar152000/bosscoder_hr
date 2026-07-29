@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Plus } from 'lucide-react';
+import { Plus, Home, ChevronRight } from 'lucide-react';
 import { requireUser } from '@/lib/auth/guard';
 import { canManageCycles } from '@/lib/auth/review-access';
 import { listCycles } from '@/lib/firestore/review-cycles';
@@ -399,6 +399,14 @@ export default async function PerformancePage({ searchParams }: Props) {
       {/* ── Header ──────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-3.5">
         <div>
+          <div className="flex items-center gap-1.5 text-[13px] text-slate-400 font-medium mb-1.5">
+            <Home size={14} />
+            <Link href="/" className="hover:text-slate-600 md:text-[16px] text-[14px] transition">
+              Home
+            </Link>
+            <ChevronRight size={11} />
+            <span className="text-slate-900 md:text-[16px] text-[14px]">Performance</span>
+          </div>
           <h1 className="text-[20px] font-medium text-slate-900">Performance evaluation</h1>
           <p className="mt-1 text-[12px] text-slate-500">
             Track and submit evaluation forms across cycles.

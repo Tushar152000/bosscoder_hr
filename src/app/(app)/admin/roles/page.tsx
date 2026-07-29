@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ChevronRight, Info } from 'lucide-react';
+import { ChevronRight, Info, Home } from 'lucide-react';
 import { requirePermission } from '@/lib/auth/guard';
 import { listHrUsers } from '@/lib/firestore/users';
 import { RolesList } from '@/components/admin/roles-list';
@@ -25,13 +25,14 @@ export default async function RolesAdminPage() {
   return (
     <div className="mx-auto w-full py-6">
 
-      <nav className="flex items-center gap-1 mb-4 text-[14px] text-slate-400">
-        <Link href="/" className="hover:text-slate-700 transition-colors">Home</Link>
-        <ChevronRight className="h-3 w-3" />
-        <span className="text-slate-400">Admin</span>
-        <ChevronRight className="h-3 w-3" />
-        <span className="text-slate-700 font-medium">Roles</span>
-      </nav>
+      <div className="flex items-center gap-1.5 text-[13px] text-slate-400 font-medium mb-4">
+        <Home size={14} />
+        <Link href="/" className="hover:text-slate-600 md:text-[16px] text-[14px] transition">
+          Home
+        </Link>
+        <ChevronRight size={11} />
+        <span className="text-slate-900 md:text-[16px] text-[14px]">Roles</span>
+      </div>
 
       <div className="flex items-start justify-between gap-3 mb-4">
         <div>

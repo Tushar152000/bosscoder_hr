@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Plus, FileText, LogOut } from 'lucide-react';
+import { Plus, FileText, LogOut, Home, ChevronRight } from 'lucide-react';
 import { requirePermission } from '@/lib/auth/guard';
 import { listOfferLetters } from '@/lib/firestore/offer-letters';
 import { Button } from '@/components/ui/button';
@@ -12,9 +12,17 @@ export default async function OffersListPage() {
   const offers = await listOfferLetters();
 
   return (
-    <div className="offers-theme space-y-6 px-6 md:px-10 py-6">
+    <div className="offers-theme space-y-6 px-6 md:px-10 py-4">
       <div className="flex items-center justify-between">
         <div>
+          <div className="flex items-center gap-1.5 text-[13px] text-slate-400 font-medium mb-1.5">
+            <Home size={14} />
+            <Link href="/" className="hover:text-slate-600 md:text-[16px] text-[14px] transition">
+              Home
+            </Link>
+            <ChevronRight size={11} />
+            <span className="text-slate-900 md:text-[16px] text-[14px]">Letters</span>
+          </div>
           <h1 className="text-2xl font-semibold">Employment Letters</h1>
           <p className="mt-1 text-sm text-muted">
             {offers.length} {offers.length === 1 ? 'letter' : 'letters'}. Drafts are
