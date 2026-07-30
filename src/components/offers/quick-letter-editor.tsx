@@ -14,7 +14,7 @@ import { OfferPreview } from '@/components/offers/offer-preview';
 import {
   downloadOfferPdf,
   generateOfferPdfBase64,
-  safeFilename,
+  safeDisplayName,
 } from '@/lib/offers/pdf-export';
 import { formatDateLong } from '@/lib/offers/render';
 import {
@@ -185,9 +185,9 @@ export function QuickLetterEditor({
   async function downloadPdf() {
     setDownloading(true);
     setError(null);
-    const namePart = safeFilename(data.candidateName || 'letter');
+    const letterType = templateKey === 'relieving' ? 'Relieving Letter' : 'Experience Letter';
     const result = await downloadOfferPdf({
-      filename: `${filenamePrefix}-${namePart}-${data.offerDate || today}`,
+      filename: `${safeDisplayName(data.candidateName || 'Letter')} - ${letterType}`,
     });
     setDownloading(false);
     if (!result.ok) setError(result.error ?? 'Failed to generate PDF');

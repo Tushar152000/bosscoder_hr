@@ -160,12 +160,10 @@ async function waitForImages(root: HTMLElement): Promise<void> {
   );
 }
 
-/** Sanitize a string for use as a filename. */
-export function safeFilename(s: string): string {
-  return (
-    s
-      .replace(/[^a-z0-9]+/gi, '-')
-      .replace(/^-+|-+$/g, '')
-      .toLowerCase() || 'offer'
-  );
+/** Sanitize a string for use as a filename — keeps spaces/case/hyphens
+ *  intact, just strips characters that are illegal in Windows/macOS
+ *  filenames. Used for the human-readable "{Candidate Name} - {Letter Type}"
+ *  download/email names. */
+export function safeDisplayName(s: string): string {
+  return s.trim().replace(/[\\/:*?"<>|]+/g, '').replace(/\s+/g, ' ').trim() || 'Letter';
 }

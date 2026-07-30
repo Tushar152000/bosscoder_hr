@@ -19,7 +19,7 @@ import { OfferPreview } from '@/components/offers/offer-preview';
 import { DEPARTMENTS } from '@/lib/constants/departments';
 import { defaultBodyFor, templateKeyForDepartment } from '@/lib/offers/templates';
 import { formatINR } from '@/lib/offers/render';
-import { downloadOfferPdf, generateOfferPdfBase64, safeFilename } from '@/lib/offers/pdf-export';
+import { downloadOfferPdf, generateOfferPdfBase64, safeDisplayName } from '@/lib/offers/pdf-export';
 import {
   createOfferAction,
   deleteOfferAction,
@@ -74,10 +74,9 @@ export function OfferEditor({
   async function downloadPdf() {
     setDownloading(true);
     setError(null);
-    const namePart = safeFilename(data.candidateName);
-    const datePart = data.offerDate || new Date().toISOString().slice(0, 10);
+    const letterType = isIntern ? 'Internship Letter' : 'Offer Letter';
     const result = await downloadOfferPdf({
-      filename: `bosscoder-offer-${namePart}-${datePart}`,
+      filename: `${safeDisplayName(data.candidateName)} - ${letterType}`,
     });
     setDownloading(false);
     if (!result.ok) {

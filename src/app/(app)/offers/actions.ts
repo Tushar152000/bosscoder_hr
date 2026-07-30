@@ -14,7 +14,7 @@ import {
 } from '@/lib/firestore/offer-letters';
 import { updateOfferSettings } from '@/lib/firestore/hr-settings';
 import { sendOfferLetterEmail } from '@/lib/email/offer-letter';
-import { safeFilename } from '@/lib/offers/pdf-export';
+import { safeDisplayName } from '@/lib/offers/pdf-export';
 import type { OfferData, OfferSettings } from '@/types/offer';
 
 export type ActionResult<T = void> =
@@ -148,6 +148,14 @@ export async function sendOfferEmailAction(
       : offer.templateKey === 'experience'
       ? 'experience'
       : 'offer';
+  const letterTypeLabel =
+    letterKind === 'relieving'
+      ? 'Relieving Letter'
+      : letterKind === 'experience'
+      ? 'Experience Letter'
+      : offer.employmentType === 'internship'
+      ? 'Internship Letter'
+      : 'Offer Letter';
   try {
     const pdf = Buffer.from(pdfBase64, 'base64');
     const result = await sendOfferLetterEmail({
@@ -159,7 +167,7 @@ export async function sendOfferEmailAction(
       pocDesignation: offer.pocDesignation,
       pocEmail: offer.pocEmail,
       pdf,
-      pdfFilename: `bosscoder-${letterKind}-${safeFilename(offer.candidateName)}-${offer.offerDate}`,
+      pdfFilename: `${safeDisplayName(offer.candidateName)} - ${letterTypeLabel}`,
       letterKind,
     });
     if (!result.ok) return { ok: false, error: result.error ?? 'Failed to send email' };
