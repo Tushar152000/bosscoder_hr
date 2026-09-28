@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { toast } from 'sonner';
 import { approveLeave, rejectLeave } from '../actions';
 import {
@@ -218,6 +218,27 @@ export function HRView({ currentUserEmail, initialAttendanceToday, initialLeaveB
     }
   }
 
+  /** Inline reject form — shared by the desktop table row and the mobile card. */
+  function rejectForm(leaveId: string, isBusy: boolean) {
+    return (
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <input type="text" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)}
+          placeholder="Reason for rejection (optional)"
+          className="flex-1 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-base text-zinc-700 outline-none focus:border-red-300 focus:ring-1 focus:ring-red-200 sm:text-[12px]" />
+        <div className="flex gap-2">
+          <button disabled={isBusy} onClick={() => handleReject(leaveId)}
+            className="flex-1 rounded-lg bg-red-600 px-3 py-2 text-[12px] font-medium text-white transition hover:bg-red-700 disabled:opacity-50 sm:flex-none sm:py-1.5">
+            {isBusy ? 'Rejecting…' : 'Confirm'}
+          </button>
+          <button onClick={() => { setRejectingId(null); setRejectReason(''); }}
+            className="flex-1 rounded-lg border border-zinc-200 px-3 py-2 text-[12px] text-zinc-500 transition hover:bg-white sm:flex-none sm:py-1.5">
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // ── Derived ────────────────────────────────────────────────────────────────
   const awayToday  = initialAttendanceToday.filter((e) => e.status === 'leave' || e.status === 'absent');
   const filteredAway = awayToday.filter((e) => !awayDept || e.department === awayDept);
@@ -264,7 +285,7 @@ export function HRView({ currentUserEmail, initialAttendanceToday, initialLeaveB
         >
           <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
 
-          <div className="relative w-full max-w-md rounded-2xl border border-zinc-200 bg-white shadow-xl">
+          <div className="relative flex max-h-[90dvh] w-full max-w-md flex-col rounded-2xl border border-zinc-200 bg-white shadow-xl">
             {/* Header */}
             <div className="flex items-start justify-between border-b border-zinc-100 px-5 py-4">
               <div>
@@ -282,13 +303,13 @@ export function HRView({ currentUserEmail, initialAttendanceToday, initialLeaveB
             </div>
 
             {/* Body */}
-            <div className="px-5 py-4 space-y-4">
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-5 py-4">
               <div>
                 <label className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wide text-zinc-400">Department</label>
                 <select
                   value={bulkDept}
                   onChange={(e) => setBulkDept(e.target.value)}
-                  className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-[13px] text-zinc-700 outline-none focus:border-brand-blue focus:ring-1 focus:ring-blue-200"
+                  className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-base text-zinc-700 outline-none sm:text-[13px] focus:border-brand-blue focus:ring-1 focus:ring-blue-200"
                 >
                   <option value="">— select a department —</option>
                   {allDepts.map((d) => <option key={d} value={d}>{d}</option>)}
@@ -310,7 +331,7 @@ export function HRView({ currentUserEmail, initialAttendanceToday, initialLeaveB
                         type="number" min="0" max="365"
                         value={bulkTotals[key]}
                         onChange={(e) => setBulkTotals((p) => ({ ...p, [key]: e.target.value }))}
-                        className="w-16 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-center text-[13px] font-medium text-zinc-800 outline-none focus:border-brand-blue focus:ring-1 focus:ring-blue-200"
+                        className="w-16 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-center text-base font-medium sm:text-[13px] text-zinc-800 outline-none focus:border-brand-blue focus:ring-1 focus:ring-blue-200"
                       />
                     </div>
                   ))}
@@ -513,7 +534,7 @@ export function HRView({ currentUserEmail, initialAttendanceToday, initialLeaveB
         <div className="rounded-xl border border-zinc-200 bg-white">
           <div className="flex flex-wrap items-center gap-2 border-b border-zinc-100 px-4 py-3">
             <select value={awayDept} onChange={(e) => setAwayDept(e.target.value)}
-              className="rounded-lg border border-zinc-200 px-2.5 py-1.5 text-[12px] text-zinc-600 outline-none focus:border-zinc-300">
+              className="flex-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-base text-zinc-600 outline-none focus:border-zinc-300 sm:flex-none sm:text-[12px]">
               <option value="">All departments</option>
               {allDepts.map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
@@ -560,10 +581,10 @@ export function HRView({ currentUserEmail, initialAttendanceToday, initialLeaveB
                 <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
               </svg>
               <input type="text" placeholder="Search employee…" value={balanceSearch} onChange={(e) => setBalanceSearch(e.target.value)}
-                className="w-full rounded-lg border border-zinc-200 py-1.5 pl-7 pr-3 text-[12px] text-zinc-700 outline-none focus:border-zinc-300 focus:ring-1 focus:ring-zinc-200" />
+                className="w-full rounded-lg border border-zinc-200 py-1.5 pl-7 pr-3 text-base text-zinc-700 outline-none sm:text-[12px] focus:border-zinc-300 focus:ring-1 focus:ring-zinc-200" />
             </div>
             <select value={balanceDept} onChange={(e) => setBalanceDept(e.target.value)}
-              className="rounded-lg border border-zinc-200 px-2.5 py-1.5 text-[12px] text-zinc-600 outline-none focus:border-zinc-300">
+              className="flex-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-base text-zinc-600 outline-none focus:border-zinc-300 sm:flex-none sm:text-[12px]">
               <option value="">All departments</option>
               {allDepts.map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
@@ -676,12 +697,12 @@ export function HRView({ currentUserEmail, initialAttendanceToday, initialLeaveB
                               <input type="number" min="0" max="365"
                                 value={editDraft[key]?.total ?? ''}
                                 onChange={(e) => setEditDraft((p) => ({ ...p, [key]: { ...p[key], total: e.target.value } }))}
-                                className="rounded-md border border-zinc-200 px-1.5 py-1 text-center text-[12px] text-zinc-800 outline-none focus:border-brand-blue focus:ring-1 focus:ring-blue-200"
+                                className="min-w-0 rounded-md border border-zinc-200 px-1.5 py-1 text-center text-base text-zinc-800 outline-none sm:text-[12px] focus:border-brand-blue focus:ring-1 focus:ring-blue-200"
                               />
                               <input type="number" min="0" max="365"
                                 value={editDraft[key]?.used ?? ''}
                                 onChange={(e) => setEditDraft((p) => ({ ...p, [key]: { ...p[key], used: e.target.value } }))}
-                                className="rounded-md border border-zinc-200 px-1.5 py-1 text-center text-[12px] text-zinc-800 outline-none focus:border-brand-blue focus:ring-1 focus:ring-blue-200"
+                                className="min-w-0 rounded-md border border-zinc-200 px-1.5 py-1 text-center text-base text-zinc-800 outline-none sm:text-[12px] focus:border-brand-blue focus:ring-1 focus:ring-blue-200"
                               />
                             </div>
                           ))}
@@ -727,15 +748,15 @@ export function HRView({ currentUserEmail, initialAttendanceToday, initialLeaveB
                 <circle cx="11" cy="11" r="8" /><path d="M21 21l-4.35-4.35" />
               </svg>
               <input type="text" placeholder="Search employee…" value={pendingSearch} onChange={(e) => setPendingSearch(e.target.value)}
-                className="w-full rounded-lg border border-zinc-200 py-1.5 pl-7 pr-3 text-[12px] text-zinc-700 outline-none focus:border-zinc-300 focus:ring-1 focus:ring-zinc-200" />
+                className="w-full rounded-lg border border-zinc-200 py-1.5 pl-7 pr-3 text-base text-zinc-700 outline-none sm:text-[12px] focus:border-zinc-300 focus:ring-1 focus:ring-zinc-200" />
             </div>
             <select value={pendingDept} onChange={(e) => setPendingDept(e.target.value)}
-              className="rounded-lg border border-zinc-200 px-2.5 py-1.5 text-[12px] text-zinc-600 outline-none focus:border-zinc-300">
+              className="flex-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-base text-zinc-600 outline-none focus:border-zinc-300 sm:flex-none sm:text-[12px]">
               <option value="">All departments</option>
               {allDepts.map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
             <select value={pendingType} onChange={(e) => setPendingType(e.target.value)}
-              className="rounded-lg border border-zinc-200 px-2.5 py-1.5 text-[12px] text-zinc-600 outline-none focus:border-zinc-300">
+              className="flex-1 rounded-lg border border-zinc-200 px-2.5 py-1.5 text-base text-zinc-600 outline-none focus:border-zinc-300 sm:flex-none sm:text-[12px]">
               <option value="">All types</option>
               {ALL_LEAVE_TYPES.map((t) => <option key={t} value={t}>{LEAVE_LABELS[t]}</option>)}
             </select>
@@ -746,7 +767,7 @@ export function HRView({ currentUserEmail, initialAttendanceToday, initialLeaveB
               {pendingLeaves.length === 0 ? 'No pending leave requests.' : 'No requests match your filters.'}
             </p>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full min-w-[640px]">
                 <thead>
                   <tr className="border-b border-zinc-100">
@@ -764,8 +785,8 @@ export function HRView({ currentUserEmail, initialAttendanceToday, initialLeaveB
                     const dept     = empDeptMap.get(req.employeeId) ?? '—';
 
                     return (
-                      <>
-                        <tr key={req.id} className="hover:bg-zinc-50/60">
+                      <Fragment key={req.id}>
+                        <tr className="hover:bg-zinc-50/60">
                           <td className="px-4 py-2.5">
                             <div className="flex items-center gap-2">
                               <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-medium" style={{ backgroundColor: color.bg, color: color.text }}>
@@ -809,29 +830,77 @@ export function HRView({ currentUserEmail, initialAttendanceToday, initialLeaveB
                           </td>
                         </tr>
                         {isReject && (
-                          <tr key={`${req.id}-reject`} className="bg-red-50/40">
+                          <tr className="bg-red-50/40">
                             <td colSpan={7} className="px-4 py-2.5">
-                              <div className="flex items-center gap-2">
-                                <input type="text" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)}
-                                  placeholder="Reason for rejection (optional)"
-                                  className="flex-1 rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-[12px] text-zinc-700 outline-none focus:border-red-300 focus:ring-1 focus:ring-red-200" />
-                                <button disabled={isBusy} onClick={() => handleReject(req.id!)}
-                                  className="rounded-lg bg-red-600 px-3 py-1.5 text-[12px] font-medium text-white transition hover:bg-red-700 disabled:opacity-50">
-                                  {isBusy ? 'Rejecting…' : 'Confirm'}
-                                </button>
-                                <button onClick={() => { setRejectingId(null); setRejectReason(''); }}
-                                  className="rounded-lg border border-zinc-200 px-3 py-1.5 text-[12px] text-zinc-500 transition hover:bg-white">
-                                  Cancel
-                                </button>
-                              </div>
+                              {rejectForm(req.id!, isBusy)}
                             </td>
                           </tr>
                         )}
-                      </>
+                      </Fragment>
                     );
                   })}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Mobile: one card per request instead of the wide table */}
+          {filteredPending.length > 0 && (
+            <div className="divide-y divide-zinc-100 md:hidden">
+              {filteredPending.map((req) => {
+                const color    = avatarColor(req.employeeName);
+                const days     = dayCount(req.fromDate, req.toDate);
+                const isBusy   = processing === req.id;
+                const isReject = rejectingId === req.id;
+                const dept     = empDeptMap.get(req.employeeId) ?? '—';
+
+                return (
+                  <div key={req.id} className={['space-y-2.5 px-4 py-3', isReject ? 'bg-red-50/40' : ''].join(' ')}>
+                    <div className="flex items-start gap-2.5">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-medium" style={{ backgroundColor: color.bg, color: color.text }}>
+                        {getInitials(req.employeeName)}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-[13px] font-medium text-zinc-800">{req.employeeName}</p>
+                        <p className="truncate text-[11px] text-zinc-400">{dept}</p>
+                      </div>
+                      <span className="shrink-0 whitespace-nowrap rounded-full border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[11px] text-zinc-600">
+                        {LEAVE_LABELS[req.leaveType]}
+                      </span>
+                    </div>
+
+                    <p className="text-[12px] text-zinc-600">
+                      {formatDate(req.fromDate)}
+                      {req.fromDate !== req.toDate && ` – ${formatDate(req.toDate)}`}
+                      <span className="text-zinc-300"> · </span>
+                      <span className="font-medium text-zinc-800">{days} day{days !== 1 ? 's' : ''}</span>
+                    </p>
+                    {req.reason && <p className="text-[11px] italic text-zinc-500">&ldquo;{req.reason}&rdquo;</p>}
+                    {req.attachmentUrl && (
+                      <a href={req.attachmentUrl} target="_blank" rel="noopener noreferrer"
+                        className="inline-flex max-w-full items-center gap-1 text-[11px] font-medium text-brand-blue hover:underline">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                          <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                        </svg>
+                        <span className="truncate">{req.attachmentName ?? 'View document'}</span>
+                      </a>
+                    )}
+
+                    {isReject ? rejectForm(req.id!, isBusy) : (
+                      <div className="flex gap-2">
+                        <button disabled={isBusy} onClick={() => handleApprove(req.id!)}
+                          className="flex-1 rounded-lg border border-green-200 bg-green-50 py-2 text-[12px] font-medium text-green-700 transition hover:bg-green-100 disabled:opacity-50">
+                          Approve
+                        </button>
+                        <button disabled={isBusy} onClick={() => { setRejectingId(req.id!); setRejectReason(''); }}
+                          className="flex-1 rounded-lg border border-red-200 bg-red-50 py-2 text-[12px] font-medium text-red-600 transition hover:bg-red-100 disabled:opacity-50">
+                          Reject
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>

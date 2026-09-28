@@ -171,14 +171,15 @@ export function ApplyLeaveModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex min-h-[500px] items-center justify-center bg-black/40 px-4">
+    // Bottom sheet on phones, centred dialog from `sm` up; the panel scrolls on short screens.
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 sm:items-center sm:px-4">
       <button
         type="button"
         onClick={() => onOpenChange(false)}
         className="absolute inset-0"
         aria-label="Close"
       />
-      <div className="relative w-full max-w-md rounded-xl border border-zinc-200 bg-white p-5">
+      <div className="relative max-h-[90dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl border border-zinc-200 bg-white p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:rounded-xl sm:pb-5">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-[14px] md:text-[20px] font-medium text-zinc-900">Apply for leave</h2>
           <button
@@ -196,7 +197,7 @@ export function ApplyLeaveModal({
             <select
               value={leaveType}
               onChange={(e) => setLeaveType(e.target.value as LeaveType)}
-              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-[13px] text-zinc-700 outline-none transition focus:border-zinc-400"
+              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-base text-zinc-700 outline-none transition focus:border-zinc-400 sm:text-[13px]"
             >
               {ALL_LEAVE_TYPES.map((t) => (
                 <option key={t} value={t}>
@@ -227,7 +228,7 @@ export function ApplyLeaveModal({
                   setFromDate(e.target.value);
                   if (!isHalfDay && toDate && e.target.value > toDate) setToDate(e.target.value);
                 }}
-                className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-[13px] text-zinc-700 outline-none transition focus:border-zinc-400"
+                className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-base text-zinc-700 outline-none transition focus:border-zinc-400 sm:text-[13px]"
               />
             </div>
             {!isHalfDay && (
@@ -238,7 +239,7 @@ export function ApplyLeaveModal({
                   value={toDate}
                   min={fromDate || todayISO()}
                   onChange={(e) => setToDate(e.target.value)}
-                  className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-[13px] text-zinc-700 outline-none transition focus:border-zinc-400"
+                  className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-base text-zinc-700 outline-none transition focus:border-zinc-400 sm:text-[13px]"
                 />
               </div>
             )}
@@ -252,7 +253,7 @@ export function ApplyLeaveModal({
               onChange={(e) => setReason(e.target.value)}
               rows={3}
               placeholder="Brief reason for the leave…"
-              className="w-full resize-none rounded-lg border border-zinc-200 bg-white px-3 py-2 text-[13px] text-zinc-700 outline-none transition focus:border-zinc-400 placeholder:text-zinc-400"
+              className="w-full resize-none rounded-lg border border-zinc-200 bg-white px-3 py-2 text-base text-zinc-700 outline-none transition focus:border-zinc-400 sm:text-[13px] placeholder:text-zinc-400"
             />
           </div>
 
@@ -296,18 +297,18 @@ export function ApplyLeaveModal({
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-1">
+          <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
             <button
               type="button"
               onClick={() => onOpenChange(false)}
-              className="text-[13px] text-zinc-500 transition hover:text-zinc-800"
+              className="py-2 text-[13px] text-zinc-500 transition hover:text-zinc-800 sm:py-0"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving || !canSubmit}
-              className="rounded-lg bg-zinc-900 px-4 py-2 text-[13px] font-medium text-white transition hover:bg-zinc-700 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="rounded-lg bg-zinc-900 px-4 py-2.5 text-[13px] font-medium text-white sm:py-2 transition hover:bg-zinc-700 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {saving ? 'Submitting…' : 'Submit request'}
             </button>

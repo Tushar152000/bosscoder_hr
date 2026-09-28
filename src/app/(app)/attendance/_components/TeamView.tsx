@@ -241,7 +241,8 @@ export function TeamView({
 
             return (
               <div key={req.id ?? req.createdAt} className="mb-2 overflow-hidden rounded-xl border border-amber-100 bg-white">
-                <div className="flex items-center gap-2.5 px-3.5 py-3">
+                <div className="flex flex-col gap-3 px-3.5 py-3 sm:flex-row sm:items-center sm:gap-2.5">
+                  <div className="flex min-w-0 flex-1 items-center gap-2.5">
                   <div
                     className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full text-[12px] font-medium"
                     style={{ backgroundColor: color.bg, color: color.text }}
@@ -270,18 +271,20 @@ export function TeamView({
                       </a>
                     )}
                   </div>
-                  <div className="flex shrink-0 items-center gap-1.5">
+                  </div>
+                  {/* Under the details on phones (aligned with the text), inline from `sm` up. */}
+                  <div className="flex shrink-0 items-center gap-1.5 pl-[48px] sm:pl-0">
                     <button
                       disabled={isBusy}
                       onClick={() => handleApprove(req.id!)}
-                      className="rounded-lg border border-green-200 bg-green-50 px-2.5 py-1 text-[12px] font-medium text-green-700 transition hover:bg-green-100 disabled:opacity-50"
+                      className="flex-1 rounded-lg border border-green-200 bg-green-50 px-2.5 py-1.5 text-[12px] font-medium text-green-700 transition hover:bg-green-100 disabled:opacity-50 sm:flex-none sm:py-1"
                     >
                       Approve
                     </button>
                     <button
                       disabled={isBusy}
                       onClick={() => { setRejectingId(isThisReject ? null : req.id!); setRejectReason(''); }}
-                      className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1 text-[12px] font-medium text-red-600 transition hover:bg-red-100 disabled:opacity-50"
+                      className="flex-1 rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-[12px] font-medium text-red-600 transition hover:bg-red-100 disabled:opacity-50 sm:flex-none sm:py-1"
                     >
                       Reject
                     </button>
@@ -295,7 +298,7 @@ export function TeamView({
                       value={rejectReason}
                       onChange={(e) => setRejectReason(e.target.value)}
                       placeholder="Reason for rejection (optional)"
-                      className="mb-2 w-full rounded-lg border border-zinc-200 px-3 py-1.5 text-[12px] text-zinc-700 outline-none focus:border-red-300 focus:ring-1 focus:ring-red-200"
+                      className="mb-2 w-full rounded-lg border border-zinc-200 px-3 py-1.5 text-base text-zinc-700 outline-none sm:text-[12px] focus:border-red-300 focus:ring-1 focus:ring-red-200"
                     />
                     <div className="flex gap-2">
                       <button

@@ -78,8 +78,8 @@ export function ManagerTabs({
 
   return (
     <div>
-      <div className="flex justify-between items-center py-6">
-        <div>
+      <div className="flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-between">
+        <div className="min-w-0">
           <div className="flex items-center gap-1.5 text-[13px] text-slate-400 font-medium mb-1.5">
             <Home size={14} />
             <Link href="/" className="hover:text-slate-600 md:text-[16px] text-[14px] transition">
@@ -91,7 +91,7 @@ export function ManagerTabs({
           <h1 className="text-[20px] md:text-[28px] font-semibold text-dark-blue">
             {greeting}, {firstName}
           </h1>
-          <div className="mt-1 flex items-center gap-1.5">
+          <div className="mt-1 flex flex-wrap items-center gap-x-1.5">
             <Calendar className="h-3.5 w-3.5 text-zinc-400" />
             <span className="text-[13px] md:text-[15px] text-zinc-500">{fullDate}</span>
             <span className="mx-0.5 text-zinc-300">·</span>
@@ -99,11 +99,11 @@ export function ManagerTabs({
           </div>
         </div>
 
-        <div className="flex items-center rounded-lg border border-zinc-200 bg-zinc-100 p-0.5">
+        <div className="flex w-full items-center rounded-lg border border-zinc-200 bg-zinc-100 p-0.5 md:w-auto">
           <button
             onClick={() => setTab("my")}
             className={[
-              "rounded-md px-3.5 py-1.5 text-[13px] transition",
+              "flex flex-1 items-center justify-center whitespace-nowrap rounded-md px-2 py-2 text-[13px] transition md:flex-none md:px-3.5 md:py-1.5",
               tab === "my"
                 ? "bg-white font-medium text-zinc-900 shadow-sm"
                 : "text-zinc-500 hover:text-zinc-700",
@@ -116,7 +116,7 @@ export function ManagerTabs({
             <button
               onClick={() => setTab("team")}
               className={[
-                "flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-[13px] transition",
+                "flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-2 py-2 text-[13px] transition md:flex-none md:px-3.5 md:py-1.5",
                 tab === "team"
                   ? "bg-white font-medium text-zinc-900 shadow-sm"
                   : "text-zinc-500 hover:text-zinc-700",
@@ -135,7 +135,7 @@ export function ManagerTabs({
             <button
               onClick={() => setTab("hr")}
               className={[
-                "flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-[13px] transition",
+                "flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-2 py-2 text-[13px] transition md:flex-none md:px-3.5 md:py-1.5",
                 tab === "hr"
                   ? "bg-white font-medium text-zinc-900 shadow-sm"
                   : "text-zinc-500 hover:text-zinc-700",

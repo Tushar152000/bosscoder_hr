@@ -116,7 +116,7 @@ export function AttendanceCalendar({
   const selectedPendingLeave = selectedDate ? pendingLeaveByDate.get(selectedDate) ?? null : null;
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4">
+    <div className="rounded-xl border border-zinc-200 bg-white p-3 sm:p-4">
 
       {/* Nav row */}
       <div className="mb-4 flex items-center justify-between gap-2">
@@ -125,24 +125,26 @@ export function AttendanceCalendar({
         <div className="relative flex items-center gap-0.5">
           <button
             onClick={prevMonth}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-700"
+            className="flex h-8 w-7 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-700 sm:w-8"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
           <button
             onClick={nextMonth}
             disabled={!canGoNext}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-30"
+            className="flex h-8 w-7 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-700 disabled:opacity-30 sm:w-8"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
 
           <button
             onClick={() => { setPickerYear(year); setPickerOpen((v) => !v); }}
-            className="ml-1 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition hover:bg-zinc-100"
+            className="ml-0.5 flex items-center gap-1.5 whitespace-nowrap rounded-lg px-1.5 py-1.5 transition hover:bg-zinc-100 sm:ml-1 sm:px-2.5"
           >
             <span className="text-[14px] font-semibold text-dark-blue">
-              {MONTH_NAMES[month - 1]} {year}
+              {/* Short month on the narrowest phones so the Today button still fits */}
+              <span className="min-[360px]:hidden">{MONTH_SHORT[month - 1]} {year}</span>
+              <span className="hidden min-[360px]:inline">{MONTH_NAMES[month - 1]} {year}</span>
             </span>
             <ChevronDown
               className={cn(
@@ -210,7 +212,7 @@ export function AttendanceCalendar({
         {/* Right: Today button */}
         <button
           onClick={() => { onMonthChange(currentYear, currentMonth); setPickerOpen(false); }}
-          className="rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-[13px] font-medium text-zinc-600 shadow-sm transition hover:bg-zinc-50 hover:text-zinc-900"
+          className="rounded-lg border border-zinc-200 bg-white shrink-0 px-2.5 py-1.5 text-[12px] sm:px-3 sm:text-[13px] font-medium text-zinc-600 shadow-sm transition hover:bg-zinc-50 hover:text-zinc-900"
         >
           Today
         </button>
@@ -219,7 +221,7 @@ export function AttendanceCalendar({
     
       <div className="mb-0.5 grid grid-cols-7">
         {DAY_HEADERS.map((d) => (
-          <div key={d} className="flex h-8 items-center justify-center text-[12px] font-semibold uppercase tracking-wide text-zinc-400">
+          <div key={d} className="flex h-8 items-center justify-center text-[11px] font-semibold uppercase tracking-wide text-zinc-400 sm:text-[12px]">
             {d}
           </div>
         ))}
@@ -279,7 +281,7 @@ export function AttendanceCalendar({
               key={dateStr}
               onClick={() => (isClickable ? handleDayClick(dateStr) : undefined)}
               className={cn(
-                'group relative flex flex-col py-2 items-center justify-center gap-2 rounded-[8px] transition',
+                'group relative flex min-w-0 flex-col items-center justify-center gap-1 rounded-[8px] py-1.5 transition sm:gap-2 sm:py-2',
                 isClickable && 'cursor-pointer',
                 isFuture && !isPendingLeave && 'opacity-30',
                 !isSelected && cellBg,
@@ -287,14 +289,14 @@ export function AttendanceCalendar({
               )}
             >
               {isClickable && (
-                <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1 -translate-x-1/2 whitespace-nowrap rounded-md bg-zinc-900 px-2 py-1 text-[10px] font-medium text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100">
+                <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-zinc-900 px-2 py-1 text-[10px] font-medium text-white opacity-0 shadow-lg transition-opacity duration-150 group-hover:opacity-100 md:block">
                   Click to see the reason
                 </span>
               )}
 
               <span
                 className={cn(
-                  'flex h-[40px] w-[40px] items-center justify-center rounded-full text-[14px] md:text-[16px] transition',
+                  'flex h-8 w-8 items-center justify-center rounded-full text-[13px] transition sm:h-[40px] sm:w-[40px] sm:text-[14px] md:text-[16px]',
                   isToday
                     ? 'bg-gradient-to-br from-[#0C447C] to-[#2E73C4] font-semibold text-white shadow-sm'
                     : `font-semibold ${numColor}`,
@@ -315,8 +317,9 @@ export function AttendanceCalendar({
                   WFH
                 </span>
               ) : status === 'half-day' ? (
-                <span className="text-[8px] md:text-[10px] font-semibold uppercase leading-none tracking-wide text-amber-500">
-                  Half day
+                <span className="whitespace-nowrap text-[8px] md:text-[10px] font-semibold uppercase leading-none tracking-wide text-amber-500">
+                  <span className="sm:hidden">Half</span>
+                  <span className="hidden sm:inline">Half day</span>
                 </span>
               ) : style?.dot ? (
                 <span className={cn('h-[5px] w-[5px] rounded-full', style.dot)} />
