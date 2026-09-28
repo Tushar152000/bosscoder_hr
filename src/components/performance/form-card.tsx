@@ -89,7 +89,7 @@ export function FormCard({ item }: { item: Enriched }) {
         <div className={cn('grid h-10 w-10 shrink-0 place-items-center rounded-lg', s.iconWrap)}>
           <Icon className="h-5 w-5" />
         </div>
-        <StatusPill status={sub.status} selfEvalStatus={selfEvalStatus} />
+        <StatusPill status={sub.status} kind={sub.kind} selfEvalStatus={selfEvalStatus} />
       </div>
       <div className="min-w-0">
         <div className="truncate text-[13px] font-medium text-slate-900">{title}</div>
@@ -106,7 +106,7 @@ function DeadlineLine({ item, daysLeft }: { item: Enriched; daysLeft: number | n
   if (sub.status === 'submitted' && sub.submittedAt) {
     return (
       <div className="flex items-center justify-between text-[12px] text-slate-500">
-        <span>Submitted {formatDate(sub.submittedAt)}</span>
+        <span>{sub.kind === 'manager' ? 'Reviewed' : 'Submitted'} {formatDate(sub.submittedAt)}</span>
         <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
       </div>
     );
@@ -153,14 +153,29 @@ function DeadlineLine({ item, daysLeft }: { item: Enriched; daysLeft: number | n
   );
 }
 
-function StatusPill({ status, selfEvalStatus }: { status: ReviewSubmission['status']; selfEvalStatus?: string | null }) {
+function StatusPill({ status, kind, selfEvalStatus }: { status: ReviewSubmission['status']; kind?: ReviewSubmission['kind']; selfEvalStatus?: string | null }) {
+  const isManager = kind === 'manager';
   const selfDone = selfEvalStatus === 'submitted' || selfEvalStatus === 'locked';
+  const selfInProgress = selfEvalStatus === 'in-progress';
+  // In the manager/team view a completed manager-eval means the report has been "Reviewed".
+  const submittedLabel = isManager ? 'Reviewed' : 'Submitted';
+
+  // On a manager/team card, the pill reflects BOTH the report's self-eval progress
+  // and the manager's own action — so "not started" never ambiguously reads as the
+  // employee not having filled their form.
+  const notStarted =
+    isManager
+      ? selfDone
+        ? { label: 'Ready to evaluate',    cls: 'bg-[#EBF3FE] text-[#0C447C]' }
+        : selfInProgress
+        ? { label: 'Self-eval in progress', cls: 'bg-amber-50 text-amber-700' }
+        : { label: 'Awaiting self-eval',   cls: 'bg-slate-100 text-slate-600' }
+      : { label: 'Not started',            cls: 'bg-slate-100 text-slate-600' };
+
   const map: Record<ReviewSubmission['status'], { label: string; cls: string }> = {
-    submitted:     { label: 'Submitted',          cls: 'bg-[#E1F5EE] text-[#0F6E56]' },
+    submitted:     { label: submittedLabel,       cls: 'bg-[#E1F5EE] text-[#0F6E56]' },
     'in-progress': { label: 'In progress',        cls: 'bg-amber-50 text-amber-700'  },
-    'not-started': selfDone
-      ? { label: 'Ready to evaluate', cls: 'bg-[#EBF3FE] text-[#0C447C]' }
-      : { label: 'Not started',       cls: 'bg-slate-100 text-slate-600' },
+    'not-started': notStarted,
     locked:        { label: 'Locked',             cls: 'bg-slate-100 text-slate-500' },
   };
   const s = map[status];

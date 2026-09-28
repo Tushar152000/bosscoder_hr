@@ -85,14 +85,19 @@ export default async function PerformancePage({ searchParams }: Props) {
   // Detect open cycle early — needed for both tiles and drill views
   const openCycle = cycles.find((c) => c.status === 'open') ?? null;
 
-  // Fetch open cycle submissions for self-eval status lookup (needed by manager eval cards)
-  const openCycleAllSubs = openCycle
-    ? await listSubmissionsForCycle(openCycle.cycleId)
-    : [];
-  // subjectEmployeeId → self-eval status for the open cycle
+  // Self-eval status lookup for manager-eval cards. More than one cycle can be
+  // open at once, so gather self-evals from EVERY open cycle and key them by
+  // `${cycleId}::${subjectEmployeeId}`. Keying by subject alone would let one
+  // cycle's status leak onto another cycle's card — or, if the wrong open cycle
+  // is picked, make every card's self-eval status go missing (cards then read
+  // "Awaiting self-eval" even after the report submitted their self-evaluation).
+  const openCycles = cycles.filter((c) => c.status === 'open');
+  const openCyclesSubs = (
+    await Promise.all(openCycles.map((c) => listSubmissionsForCycle(c.cycleId)))
+  ).flat();
   const selfEvalStatusById: Record<string, string> = {};
-  for (const s of openCycleAllSubs) {
-    if (s.kind === 'self') selfEvalStatusById[s.subjectEmployeeId] = s.status;
+  for (const s of openCyclesSubs) {
+    if (s.kind === 'self') selfEvalStatusById[`${s.cycleId}::${s.subjectEmployeeId}`] = s.status;
   }
 
   // employeeId → displayName lookup for resolving manager names
@@ -120,10 +125,15 @@ export default async function PerformancePage({ searchParams }: Props) {
         history: await listSubmittedManagerEvalsForSubject(e.employeeId),
         openCycleEval: openCycle
           ? {
+              cycleId: openCycle.cycleId,
               cycleName: openCycle.name,
               selfStatus: null, // self-eval status not fetched for teamRows (use drill view for that)
               managerSubId: managerSub?.submissionId ?? null,
               managerStatus: managerSub?.status ?? null,
+              // teamRows are the user's OWN direct reports (managerSub is drawn
+              // from their own submissions), so they may evaluate them.
+              canEvaluate: managerSub != null,
+              canStartEval: false,
             }
           : null,
       };
@@ -314,6 +324,13 @@ export default async function PerformancePage({ searchParams }: Props) {
         const managerSub = drillOpenSubs.find(
           (s) => s.kind === 'manager' && s.subjectEmployeeId === e.employeeId,
         ) ?? null;
+        // Actionable only when the logged-in user is THIS eval's assigned reviewer.
+        // HR/founders browsing get read-only (view once submitted), not "Evaluate".
+        const canEvaluate =
+          !!managerSub &&
+          ((!!managerSub.reviewerUid && managerSub.reviewerUid === user.uid) ||
+            (!!managerSub.reviewerEmail &&
+              managerSub.reviewerEmail.toLowerCase() === user.email.toLowerCase()));
         return {
           employeeId: e.employeeId,
           displayName: e.displayName,
@@ -324,10 +341,15 @@ export default async function PerformancePage({ searchParams }: Props) {
           history: await listSubmittedManagerEvalsForSubject(e.employeeId),
           openCycleEval: openCycle
             ? {
+                cycleId: openCycle.cycleId,
                 cycleName: openCycle.name,
                 selfStatus: selfSub?.status ?? null,
                 managerSubId: managerSub?.submissionId ?? null,
                 managerStatus: managerSub?.status ?? null,
+                canEvaluate,
+                // No manager-eval exists AND the person has no manager assigned →
+                // HR/founder (this drill view is admin-only) may start one.
+                canStartEval: managerSub == null && !e.managerId,
               }
             : null,
         };
@@ -375,7 +397,7 @@ export default async function PerformancePage({ searchParams }: Props) {
   // Regular employees: all their submissions including their own self-eval
   const queueSubs = isFounder
     ? managerSubs.filter((s) => {
-        const selfStatus = selfEvalStatusById[s.subjectEmployeeId];
+        const selfStatus = selfEvalStatusById[`${s.cycleId}::${s.subjectEmployeeId}`];
         return selfStatus === 'submitted' || selfStatus === 'locked';
       })
     : isAdmin

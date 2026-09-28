@@ -87,6 +87,18 @@ export default async function CycleDetailPage({ params }: Props) {
     ? allSelfEvals
     : allSelfEvals.filter((s) => myManagedDepts.includes(s.subjectDepartment));
 
+  // Manager-evals keyed by subject, scoped to what this viewer may see (HR/founder:
+  // everyone; dept leads: their managed departments). Lets the by-department list
+  // surface the rating each person's manager gave — even when that manager does
+  // not report to the viewer.
+  const scopedManagerEvals = isAdmin
+    ? allSubs.filter((s) => s.kind === 'manager')
+    : allSubs.filter(
+        (s) => s.kind === 'manager' && myManagedDepts.includes(s.subjectDepartment),
+      );
+  const managerBySubject: Record<string, ReviewSubmission> = {};
+  for (const s of scopedManagerEvals) managerBySubject[s.subjectEmployeeId] = s;
+
   const selfPct =
     cycle.selfCount > 0
       ? Math.round((cycle.selfSubmittedCount / cycle.selfCount) * 100)
@@ -139,7 +151,9 @@ export default async function CycleDetailPage({ params }: Props) {
             )}
           </div>
         </div>
-        {isAdmin && (
+        {/* Cycle lifecycle actions are HR / cycle-manager only. Founders are
+            observers here (same as the hidden "New cycle" button on /performance). */}
+        {isAdmin && !isFounder && (
           <div className="flex items-center gap-2">
             {cycle.status !== 'closed' && (
               <EditCycleDueDateButton
@@ -284,8 +298,11 @@ export default async function CycleDetailPage({ params }: Props) {
       {showDeptBrowse && (
         <section className="space-y-3">
           <h2 className="text-[15px] font-medium text-slate-900">
-            Self-evaluations by department
+            Evaluations by department
           </h2>
+          <p className="-mt-1 text-[12px] text-slate-500">
+            Each person&apos;s self-eval status and the rating their manager gave.
+          </p>
           {deptScopedSelfEvals.length === 0 ? (
             <div className="rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-5 text-[13px] text-slate-500">
               No self-evaluations have been generated yet.
@@ -293,6 +310,7 @@ export default async function CycleDetailPage({ params }: Props) {
           ) : (
             <DeptEvalBrowser
               subs={deptScopedSelfEvals}
+              managerBySubject={managerBySubject}
               myEmail={myEmail}
               myUid={user.uid}
               myEmployeeId={me?.employeeId ?? null}

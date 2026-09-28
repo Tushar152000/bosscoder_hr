@@ -255,6 +255,67 @@ export async function findSelfEvalForCycleAndSubject(
 }
 
 /**
+ * Create (or reuse) a manager-eval for a subject who has no assigned manager,
+ * with the given user (an HR/founder) as the reviewer. Idempotent: if a
+ * manager-eval already exists for this (cycle, subject) it is returned as-is
+ * rather than duplicated. Keeps the cycle's manager total in sync so dashboard
+ * percentages stay correct.
+ */
+export async function ensureManagerEvalForSubject(args: {
+  cycle: { cycleId: string; cycleName: string };
+  subject: EmployeePublic;
+  reviewer: { uid: string; email: string; displayName: string; employeeId: string | null };
+}): Promise<{ submissionId: string; created: boolean }> {
+  const { cycle, subject, reviewer } = args;
+
+  const existing = await adminDb
+    .collection(COL)
+    .where('cycleId', '==', cycle.cycleId)
+    .where('subjectEmployeeId', '==', subject.employeeId)
+    .where('kind', '==', 'manager')
+    .limit(1)
+    .get();
+  if (!existing.empty) {
+    const s = existing.docs[0].data() as ReviewSubmissionStored;
+    return { submissionId: s.submissionId, created: false };
+  }
+
+  const ref = adminDb.collection(COL).doc();
+  const doc: Partial<ReviewSubmissionStored> = {
+    submissionId: ref.id,
+    cycleId: cycle.cycleId,
+    cycleName: cycle.cycleName,
+    kind: 'manager',
+    subjectEmployeeId: subject.employeeId,
+    subjectName: subject.displayName,
+    subjectEmail: subject.email,
+    subjectDepartment: subject.department,
+    reviewerUid: reviewer.uid,
+    reviewerEmployeeId: reviewer.employeeId,
+    // Store lowercased so the reviewer's own queue (which queries lowercased) finds it.
+    reviewerEmail: reviewer.email.toLowerCase(),
+    reviewerName: reviewer.displayName,
+    status: 'not-started',
+    selfAnswers: null,
+    selfRatings: null,
+    managerRatings: null,
+    managerOverallRating: null,
+    managerNotes: null,
+    submittedAt: null,
+    lockedAt: null,
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+  await ref.set(doc);
+  await adminDb
+    .collection(HR.reviewCycles)
+    .doc(cycle.cycleId)
+    .update({ managerCount: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp() });
+
+  return { submissionId: ref.id, created: true };
+}
+
+/**
  * Submitted manager-evals where this employee is the SUBJECT, ordered oldest →
  * newest. Used by the home / performance dashboards to chart the user's rating
  * trajectory over time.

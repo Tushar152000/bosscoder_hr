@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Building2, CalendarDays, ClipboardList, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -77,7 +77,7 @@ export function AdminPerformanceTabs({
         )}
       </div>
 
-      {panel}
+      <Fragment key={tab}>{panel}</Fragment>
     </div>
   );
 }

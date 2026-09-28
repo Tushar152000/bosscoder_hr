@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import Link from 'next/link';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { startManagerEvalForUnassigned } from '@/app/(app)/performance/actions';
 import { ArrowRight, CheckCircle2, ChevronDown, ClipboardList, Clock, TrendingDown, TrendingUp } from 'lucide-react';
 import { RatingChart, type RatingPoint } from '@/components/performance/rating-chart';
 import { StatCard } from '@/components/performance/stat-card';
@@ -19,9 +20,22 @@ export interface OpenCycleEval {
   cycleName: string;
   /** Self-eval status for this person in the open cycle. null = no form generated yet. */
   selfStatus: ReviewSubmission['status'] | null;
-  /** Submission ID of the manager-eval form where the logged-in user is the reviewer. null = not their manager. */
+  /** Cycle this row's open-cycle info refers to (needed to start an eval on demand). */
+  cycleId: string;
+  /** Submission ID of this person's manager-eval (any reviewer). null = none exists. */
   managerSubId: string | null;
   managerStatus: ReviewSubmission['status'] | null;
+  /**
+   * True only when the logged-in user is the assigned reviewer of this
+   * manager-eval — i.e. they may actually fill/submit it. HR/founders viewing
+   * someone else's report get read-only access, not an "Evaluate" action.
+   */
+  canEvaluate: boolean;
+  /**
+   * True when no manager-eval exists AND the person has no assigned manager, so
+   * an HR/founder may create one on demand (with themselves as reviewer).
+   */
+  canStartEval: boolean;
 }
 
 export interface TeamMemberSummary {
@@ -96,6 +110,7 @@ export function TeamRatingsList({ rows }: { rows: TeamMemberSummary[] }) {
                   {oce?.managerSubId && (() => {
                     const isFinal = oce.managerStatus === 'submitted' || oce.managerStatus === 'locked';
                     const selfDone = oce.selfStatus === 'submitted';
+                    // A completed eval is viewable by anyone who can see this row.
                     if (isFinal) {
                       return (
                         <Link
@@ -104,6 +119,16 @@ export function TeamRatingsList({ rows }: { rows: TeamMemberSummary[] }) {
                         >
                           View <ArrowRight className="h-3 w-3" />
                         </Link>
+                      );
+                    }
+                    // Not yet submitted, and the viewer is NOT the assigned manager
+                    // (e.g. HR/founder browsing): no "Evaluate" — just show it's
+                    // pending with that person's own manager.
+                    if (!oce.canEvaluate) {
+                      return (
+                        <span className="inline-flex items-center gap-1 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-2.5 py-1.5 text-[12px] font-medium text-slate-400">
+                          Awaiting manager
+                        </span>
                       );
                     }
                     if (!selfDone) {
@@ -125,6 +150,14 @@ export function TeamRatingsList({ rows }: { rows: TeamMemberSummary[] }) {
                       </Link>
                     );
                   })()}
+                  {/* Unassigned person (no manager): HR/founder can start an eval. */}
+                  {oce && !oce.managerSubId && oce.canStartEval && (
+                    <StartEvalButton
+                      cycleId={oce.cycleId}
+                      subjectEmployeeId={row.employeeId}
+                      fromUrl={fromUrl}
+                    />
+                  )}
                   <RatingSummary history={row.history} />
                   <button
                     type="button"
@@ -141,6 +174,54 @@ export function TeamRatingsList({ rows }: { rows: TeamMemberSummary[] }) {
           );
         })}
       </ul>
+    </div>
+  );
+}
+
+// ── Start-eval button (unassigned people) ─────────────────────────────────────
+
+function StartEvalButton({
+  cycleId,
+  subjectEmployeeId,
+  fromUrl,
+  size = 'sm',
+}: {
+  cycleId: string;
+  subjectEmployeeId: string;
+  fromUrl: string;
+  size?: 'sm' | 'lg';
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const onClick = () => {
+    setError(null);
+    startTransition(async () => {
+      const res = await startManagerEvalForUnassigned({ cycleId, subjectEmployeeId });
+      if (res.ok) {
+        router.push(`/performance/submissions/${res.data.submissionId}?from=${fromUrl}`);
+      } else {
+        setError(res.error);
+      }
+    });
+  };
+
+  return (
+    <div className="flex flex-col items-start gap-0.5">
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={pending}
+        className={cn(
+          'inline-flex items-center gap-1 rounded-lg font-medium transition bg-[#0C447C] text-white hover:bg-[#0a3a6a] disabled:opacity-60',
+          size === 'lg' ? 'px-3 py-2 text-[12px]' : 'px-2.5 py-1.5 text-[12px]',
+        )}
+      >
+        {pending ? 'Starting…' : 'Evaluate'}
+        {!pending && <ArrowRight className={size === 'lg' ? 'h-3.5 w-3.5' : 'h-3 w-3'} />}
+      </button>
+      {error && <span className="text-[10px] text-red-600">{error}</span>}
     </div>
   );
 }
@@ -296,6 +377,15 @@ function ExpandedPanel({ row }: { row: TeamMemberSummary }) {
                   </Link>
                 );
               }
+              // Viewer is not this person's manager (e.g. HR/founder browsing):
+              // read-only, no fill action.
+              if (!row.openCycleEval.canEvaluate) {
+                return (
+                  <p className="text-[12px] text-slate-400">
+                    Pending with {row.managerName ?? 'their manager'}. You can view it once submitted.
+                  </p>
+                );
+              }
               if (!selfDone) {
                 return (
                   <div className="space-y-1">
@@ -315,9 +405,22 @@ function ExpandedPanel({ row }: { row: TeamMemberSummary }) {
                 </Link>
               );
             })()}
-            {!row.openCycleEval.managerSubId && (
-              <p className="text-[12px] text-slate-400">You are not assigned to evaluate this person.</p>
-            )}
+            {!row.openCycleEval.managerSubId &&
+              (row.openCycleEval.canStartEval ? (
+                <div className="space-y-1">
+                  <StartEvalButton
+                    cycleId={row.openCycleEval.cycleId}
+                    subjectEmployeeId={row.employeeId}
+                    fromUrl={fromUrl}
+                    size="lg"
+                  />
+                  <p className="text-[11px] text-slate-400">
+                    No manager assigned — you can evaluate this person.
+                  </p>
+                </div>
+              ) : (
+                <p className="text-[12px] text-slate-400">You are not assigned to evaluate this person.</p>
+              ))}
           </div>
         </div>
       )}
