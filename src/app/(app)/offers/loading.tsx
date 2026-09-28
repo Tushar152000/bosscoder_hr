@@ -3,7 +3,7 @@ import { Card } from '@/components/ui/card';
 
 export default function OffersLoading() {
   return (
-    <div className="px-6 md:px-10 space-y-6">
+    <div className="offers-theme px-6 md:px-10 py-6 space-y-6">
       <div className="flex items-center justify-between">
         <div className="space-y-2">
           <Skeleton className="h-7 w-44" />

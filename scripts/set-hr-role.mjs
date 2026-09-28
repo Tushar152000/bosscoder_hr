@@ -6,7 +6,7 @@
 
 import admin from 'firebase-admin';
 
-const TARGET_EMAIL = 'divyam.dubey@bosscoderacademy.com';
+const TARGET_EMAIL = 'tushar.chauhan@bosscoderacademy.com';
 
 const HR_ROLES = ['hr'];
 const HR_PERMISSIONS = [

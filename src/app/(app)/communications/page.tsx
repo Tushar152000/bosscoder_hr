@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { requireUser } from '@/lib/auth/guard';
 import { isPrivileged } from '@/lib/auth/roles';
 import { listEmployees } from '@/lib/firestore/employees';
-import { BroadcastForm } from '@/components/communications/broadcast-form';
+import { CommunicationsComposer } from '@/components/communications/communications-composer';
 import { Home, ChevronRight } from 'lucide-react';
 
 export const metadata = { title: 'Communications · Bosscoder HR' };
@@ -47,10 +47,10 @@ export default async function CommunicationsPage() {
         </div>
         <h1 className="text-[24px] font-semibold text-dark-blue">Communications</h1>
         <p className="mt-0.5 text-[15px] text-slate-500">
-          Send broadcast emails to employees by department.
+          Send broadcast emails or announce a feature launch — to employees by department.
         </p>
       </div>
-      <BroadcastForm
+      <CommunicationsComposer
         departments={departments}
         employeesByDept={employeesByDept}
         senderName={user.displayName ?? 'HR Team'}

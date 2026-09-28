@@ -6,8 +6,8 @@ import {
   FileText,
   ClipboardCheck,
   CalendarCheck,
-} from 'lucide-react';
-import { QuickCard } from '@/components/dashboard/quick-card';
+} from "lucide-react";
+import { QuickCard } from "@/components/dashboard/quick-card";
 
 interface Props {
   firstName: string;
@@ -89,7 +89,16 @@ export function DashboardMain({
             title="ESOPs"
             description="Vested grants and statements"
           />
-
+          {hasOfferLetters && (
+            <QuickCard
+              href="/offers"
+              icon={FileText}
+              iconBg="#FEF3E7"
+              iconColor="#B45309"
+              title="Offer letters"
+              description="Generate and manage candidate offer letters"
+            />
+          )}
           <QuickCard
             href="/"
             icon={Mail}
@@ -108,19 +117,8 @@ export function DashboardMain({
               iconColor="#0C447C"
               title="Team evaluation"
               description="Review and rate your team's performance"
-              badge={`${directReportsCount} ${directReportsCount === 1 ? 'report' : 'reports'}`}
+              badge={`${directReportsCount} ${directReportsCount === 1 ? "report" : "reports"}`}
               badgeTone="info"
-            />
-          )}
-
-          {hasOfferLetters && (
-            <QuickCard
-              href="/offers"
-              icon={FileText}
-              iconBg="#FEF3E7"
-              iconColor="#B45309"
-              title="Offer letters"
-              description="Generate and manage candidate offer letters"
             />
           )}
         </div>

@@ -19,9 +19,12 @@ export type AuditAction =
   | 'review.nudge_manager'
   | 'review.read'
   | 'offer.create'
+  | 'offer.finalize'
   | 'offer.send'
   | 'offer.update'
-  | 'offer.read';
+  | 'offer.read'
+  | 'leave_balance.update'
+  | 'leave_balance.bulk_update';
 
 export interface AuditEntry {
   actorUid: string;

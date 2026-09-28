@@ -26,7 +26,8 @@ export function templateKeyForDepartment(department: string): TemplateKey {
  */
 export const TEMPLATE_BODIES: Record<TemplateKey, string> = {
   // ─── Sales / Operations format ─────────────────────────────────────────────
-  'sales-ops': `**{{offerDate}}**
+  
+'sales-ops': `**{{offerDate}}**
 
 Dear **{{candidateName}}**,
 
@@ -69,17 +70,19 @@ For any queries, you may reach out to **{{pocName}}** ({{pocDesignation}}) - {{p
 
 We are excited to have you as part of Bosscoder Software Services Pvt. Ltd. and look forward to achieving great milestones together! Welcome aboard!
 
-Sincerely,
-
-**Rajat Kumar Garg**
-
-Authorised Signatory
-
-I Agree,
-
-\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_
-
-Name, Signature & Date{{#if includeBstIncentives}}
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:32px;margin-top:8px;">
+<div style="flex:1;">
+<p>Sincerely,</p>
+<p><strong>Rajat Kumar Garg</strong></p>
+<img src="/rajat-garg.png" alt="Signature" />
+<p>Authorised Signatory</p>
+</div>
+<div style="flex:0 0 auto;">
+<p>I Agree,</p>
+<p>____________________</p>
+<p>Name, Signature &amp; Date</p>
+</div>
+</div>{{#if includeBstIncentives}}
 
 ---
 
@@ -129,17 +132,19 @@ For any queries, you may reach out to **{{pocName}}** ({{pocDesignation}}) - {{p
 
 We are excited to have you as part of Bosscoder Software Services Pvt. Ltd. and look forward to achieving great milestones together! Welcome aboard!
 
-Sincerely,
-
-**Rajat Kumar Garg**
-
-Authorised Signatory
-
-I Agree,
-
-\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_
-
-Name, Signature & Date`,
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:32px;margin-top:8px;">
+<div style="flex:1;">
+<p>Sincerely,</p>
+<p><strong>Rajat Kumar Garg</strong></p>
+<img src="/rajat-garg.png" alt="Signature" />
+<p>Authorised Signatory</p>
+</div>
+<div style="flex:0 0 auto;">
+<p>I Agree,</p>
+<p>____________________</p>
+<p>Name, Signature &amp; Date</p>
+</div>
+</div>`,
 
   // ─── Internship format ─────────────────────────────────────────────────────
   intern: `**{{offerDate}}**
@@ -162,17 +167,61 @@ If you decide to accept this offer, please sign it electronically and return it 
 
 We look forward to you joining Bosscoder Academy and helping us (and you!) continue to grow and prosper in the future.
 
-Sincerely,
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:32px;margin-top:8px;">
+<div style="flex:1;">
+<p>Sincerely,</p>
+<p><strong>Rajat Kumar Garg</strong></p>
+<img src="/rajat-garg.png" alt="Signature" />
+<p>Authorised Signatory</p>
+</div>
+<div style="flex:0 0 auto;">
+<p>I Agree,</p>
+<p>____________________</p>
+<p>Name, Signature &amp; Date</p>
+</div>
+</div>`,
 
-**Rajat Kumar Garg**
+  // ─── Relieving letter ───────────────────────────────────────────────────────
+  relieving: `**{{offerDate}}**
 
-Authorised Signatory
+## RELIEVING LETTER
 
-I Agree,
+Dear **{{candidateName}}**,
 
-\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_\\_
+With reference to your resignation email dated **{{resignationDate}}**, you are hereby relieved from your duties as on **{{relievingDate}}**. We confirm that you have been working with **Bosscoder Software Services Pvt. Ltd.**, as **{{designation}}** from **{{joiningDate}}** to **{{lastWorkingDate}}**.
 
-Name, Signature & Date`,
+We would like to thank you for your service with Bosscoder Software Services Pvt. Ltd. & wish you the best wishes.
+
+We wish you all the best in your future endeavors.
+
+Yours Sincerely,
+
+For **Bosscoder Academy**
+
+**Rajat Garg**
+
+![Signature](/rajat-garg.png)
+
+Co-Founder`,
+
+  // ─── Experience letter ──────────────────────────────────────────────────────
+  experience: `**{{offerDate}}**
+
+## TO WHOM IT MAY CONCERN
+
+To whomsoever it may concern, this is to certify that **{{candidateName}}** was employed as **{{designation}}** in the **{{department}}** Department from **{{joiningDate}}** to **{{lastWorkingDate}}**.
+
+Throughout their tenure, they have diligently fulfilled their responsibilities as **{{designation}}** and we appreciate the positive impact they have made. They have worked under the guidance of **Rajat Garg**.
+
+We extend our heartfelt appreciation for their hard work and commitment during their time with us. We wish them all the best in their future endeavors and trust that they will excel in their next role.
+
+Yours Sincerely
+
+**Rajat Garg**
+
+![Signature](/rajat-garg.png)
+
+(Co-Founder)`,
 };
 
 export function defaultBodyFor(templateKey: TemplateKey): string {

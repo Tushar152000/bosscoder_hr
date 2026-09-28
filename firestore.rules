@@ -16,10 +16,9 @@ service cloud.firestore {
     match /hr_review_cycles/{doc=**}    { allow read, write: if false; }
     match /hr_review_forms/{doc=**}     { allow read, write: if false; }
     match /hr_review_submissions/{doc=**} { allow read, write: if false; }
-    match /hr_offer_letters/{doc=**}    { allow read, write: if false; }
+    match /hr_employment_letters/{doc=**} { allow read, write: if false; }
     match /hr_settings/{doc=**}         { allow read, write: if false; }
     match /hr_offer_templates/{doc=**}  { allow read, write: if false; }
-    match /hr_offer_letters/{doc=**}    { allow read, write: if false; }
     match /hr_notifications/{doc=**}    { allow read, write: if false; }
     match /hr_audit_logs/{doc=**}       { allow read, write: if false; }
   }

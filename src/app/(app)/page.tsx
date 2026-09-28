@@ -7,6 +7,7 @@ import {
   listEmployeesForBirthdays,
 } from "@/lib/firestore/employees";
 import { getHrUser } from "@/lib/firestore/users";
+import { canAccessAttendance } from "@/lib/attendance/access";
 import { listNotificationsForUser } from "@/lib/firestore/notifications";
 import { getUpcomingBirthdays } from "@/lib/birthday";
 import { initials } from "@/lib/utils";
@@ -14,6 +15,7 @@ import { colorForName } from "@/lib/directory/colors";
 import { QuickCard } from "@/components/dashboard/quick-card";
 import { BirthdayBanner } from "@/components/home/birthday-banner";
 import { DobMissingBanner } from "@/components/home/dob-missing-banner";
+import { AttendanceLiveBanner } from "@/components/home/attendance-live-banner";
 import { HomeHero } from "@/components/home/home-hero";
 import { HomeSidebar } from "@/components/home/home-sidebar";
 
@@ -42,6 +44,10 @@ export default async function HomePage({
 
   const isFounder = user.roles.includes("founder");
   const isHR = isPrivileged(user.roles);
+
+  // Staged rollout — rollout departments + their reporting managers + HR/founder (see canAccessAttendance).
+  const canSeeAttendance = await canAccessAttendance(user.roles, me ?? null);
+  const canManageOffers = user.permissions.includes("manage_offer_letters");
 
   const photoURL = hrUser?.photoURL ?? user.photoURL;
   const displayName = me?.displayName ?? user.displayName ?? user.email;
@@ -77,6 +83,8 @@ export default async function HomePage({
 
         {me && <DobMissingBanner hasDob={!!me.dateOfBirth} />}
 
+        {canSeeAttendance && <AttendanceLiveBanner />}
+
         <BirthdayBanner people={todayBirthdays} />
 
         <section>
@@ -109,6 +117,26 @@ export default async function HomePage({
               title="ESOPs"
               description="Vested grants and statements"
             />
+            {canSeeAttendance ? (
+              <QuickCard
+                href="/attendance"
+                icon={CalendarCheck}
+                iconBg="#EBF3FE"
+                iconColor="#1D4ED8"
+                title="Attendance & Leave"
+                description="Track attendance, apply for leaves and view your balance"
+              />
+            ) : (
+              <QuickCard
+                href="/"
+                icon={CalendarCheck}
+                iconBg="#EBF3FE"
+                iconColor="#1D4ED8"
+                title="Attendance & Leave"
+                description="Track attendance, apply for leaves and view your balance — launching soon"
+                comingSoon
+              />
+            )}
             {isHR && (
               <QuickCard
                 href="/communications"
@@ -139,15 +167,14 @@ export default async function HomePage({
               description="Company updates and stories"
               comingSoon
             />
-            {isHR && (
+            {canManageOffers && (
               <QuickCard
-                href="/"
+                href="/offers"
                 icon={FileText}
                 iconBg="#FEF3E7"
                 iconColor="#B45309"
-                title="Offer letters"
-                description="Generate and manage offer letters"
-                comingSoon
+                title="Employment letters"
+                description="Generate offer, relieving & experience letters on the letterhead"
               />
             )}
           </div>

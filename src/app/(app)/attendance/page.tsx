@@ -1,5 +1,7 @@
+import { redirect } from 'next/navigation';
 import { requireUser } from '@/lib/auth/guard';
 import { getEmployeeByUserUid } from '@/lib/firestore/employees';
+import { canAccessAttendance } from '@/lib/attendance/access';
 import { UserX } from 'lucide-react';
 import {
   getMonthAttendance,
@@ -68,6 +70,12 @@ export default async function AttendancePage() {
   const firstName = me.displayName.split(' ')[0];
 
   const isHR      = user.roles.includes('hr') || user.roles.includes('founder');
+
+  // Staged rollout — rollout departments + their reporting managers + HR/founder (see canAccessAttendance).
+  if (!(await canAccessAttendance(user.roles, me))) {
+    redirect('/');
+  }
+
   const mightManage = user.roles.includes('manager') || isHR;
 
   const teamMembers = mightManage ? await getTeamMembers(me.employeeId) : [];
@@ -97,7 +105,8 @@ export default async function AttendancePage() {
     ]);
 
     return (
-      <div>
+      <div className="relative overflow-hidden px-4 md:px-10">
+
         <ManagerTabs
           employeeId={me.employeeId}
           employeeName={me.displayName}
@@ -112,6 +121,7 @@ export default async function AttendancePage() {
           initialTeamRecords={teamRecords}
           initialPendingLeaves={pendingLeaves}
           isHR={isHR}
+          currentUserEmail={user.email}
           initialHRAttendance={hrAttendance}
           initialHRBalances={hrBalances}
           initialHRPendingLeaves={hrPending}
@@ -131,17 +141,8 @@ export default async function AttendancePage() {
   ]);
 
   return (
-    <div>
-      <div className="mb-6 pb-4 pt-7">
-        <h1 className="text-[20px] font-semibold text-zinc-900">
-          {greeting}, {firstName}
-        </h1>
-        <div className="mt-1 flex items-center gap-1.5 font-medium">
-          <span className="text-[14px] text-zinc-500">{fullDate}</span>
-          <span className="mx-0.5 text-zinc-300">·</span>
-          <span className="text-[14px] text-zinc-500">Week {weekNum}</span>
-        </div>
-      </div>
+    <div className='relative overflow-hidden px-4 md:px-10'>
+      
       <EmployeeView
         employeeId={me.employeeId}
         employeeName={me.displayName}
@@ -151,6 +152,10 @@ export default async function AttendancePage() {
         initialYear={year}
         initialMonth={month}
         today={today}
+        greeting={greeting}
+        firstName={firstName}
+        fullDate={fullDate}
+        weekNum={weekNum}
       />
     </div>
   );

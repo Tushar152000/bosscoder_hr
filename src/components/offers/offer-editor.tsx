@@ -2,7 +2,11 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Printer, Save, Lock, Unlock, Trash2, RotateCcw, Download } from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  Printer, Save, Lock, Unlock, Trash2, RotateCcw, Download, Mail,
+  Layers, UserRound, CalendarDays, IndianRupee, Contact, FileText,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Field } from '@/components/ui/field';
@@ -15,11 +19,12 @@ import { OfferPreview } from '@/components/offers/offer-preview';
 import { DEPARTMENTS } from '@/lib/constants/departments';
 import { defaultBodyFor, templateKeyForDepartment } from '@/lib/offers/templates';
 import { formatINR } from '@/lib/offers/render';
-import { downloadOfferPdf, safeFilename } from '@/lib/offers/pdf-export';
+import { downloadOfferPdf, generateOfferPdfBase64, safeDisplayName } from '@/lib/offers/pdf-export';
 import {
   createOfferAction,
   deleteOfferAction,
   finalizeOfferAction,
+  sendOfferEmailAction,
   updateOfferAction,
 } from '@/app/(app)/offers/actions';
 import type { OfferData, OfferStatus, TemplateKey } from '@/types/offer';
@@ -36,6 +41,11 @@ const TEMPLATE_LABEL: Record<TemplateKey, string> = {
   'sales-ops': 'Sales / Operations format',
   'other-dept': 'Other departments format',
   intern: 'Internship format',
+  // Not selectable from this editor — relieving/experience letters use the
+  // separate QuickLetterEditor flow — but TemplateKey is shared, so every
+  // key needs a label for type-safety.
+  relieving: 'Relieving letter format',
+  experience: 'Experience letter format',
 };
 
 export function OfferEditor({
@@ -59,14 +69,14 @@ export function OfferEditor({
   const isIntern = data.employmentType === 'internship';
   const isSalesOps = data.templateKey === 'sales-ops';
   const [downloading, setDownloading] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   async function downloadPdf() {
     setDownloading(true);
     setError(null);
-    const namePart = safeFilename(data.candidateName);
-    const datePart = data.offerDate || new Date().toISOString().slice(0, 10);
+    const letterType = isIntern ? 'Internship Letter' : 'Offer Letter';
     const result = await downloadOfferPdf({
-      filename: `bosscoder-offer-${namePart}-${datePart}`,
+      filename: `${safeDisplayName(data.candidateName)} - ${letterType}`,
     });
     setDownloading(false);
     if (!result.ok) {
@@ -74,16 +84,18 @@ export function OfferEditor({
     }
   }
 
-  // Auto-pick template when department or employment type changes.
+  // Auto-pick template when department or employment type changes, and
+  // refresh the body to match — unless the HR user has already hand-edited
+  // it, in which case we leave their edits alone (same rule as "Reset body").
   useEffect(() => {
     const auto: TemplateKey =
-      data.employmentType === 'internship'
-        ? 'intern'
-        : data.department
-        ? templateKeyForDepartment(data.department)
-        : data.templateKey;
+      data.employmentType === 'internship' ? 'intern' : templateKeyForDepartment(data.department);
     if (auto !== data.templateKey) {
-      setData((d) => ({ ...d, templateKey: auto }));
+      setData((d) => ({
+        ...d,
+        templateKey: auto,
+        bodyMarkdown: bodyTouched ? d.bodyMarkdown : defaultBodyFor(auto),
+      }));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.employmentType, data.department]);
@@ -137,6 +149,7 @@ export function OfferEditor({
           setError(finRes.error);
           return;
         }
+        await maybeSendEmail(finalId);
       }
 
       if (!offerId && finalId) {
@@ -146,6 +159,37 @@ export function OfferEditor({
         router.refresh();
       }
     });
+  }
+
+  async function sendEmailNow(id: string, candidateEmail: string) {
+    setSendingEmail(true);
+    const toastId = toast.loading('Generating PDF and sending email…');
+    const pdfResult = await generateOfferPdfBase64({});
+    if (!pdfResult.ok || !pdfResult.base64) {
+      toast.error(pdfResult.error ?? 'Failed to generate PDF', { id: toastId });
+      setSendingEmail(false);
+      return;
+    }
+    const sendResult = await sendOfferEmailAction(id, pdfResult.base64);
+    if (!sendResult.ok) {
+      toast.error(sendResult.error, { id: toastId });
+      setSendingEmail(false);
+      return;
+    }
+    toast.success(`Offer letter emailed to ${candidateEmail}`, { id: toastId });
+    setSendingEmail(false);
+  }
+
+  async function maybeSendEmail(id: string) {
+    if (!data.candidateEmail) return;
+    const wantsToSend = await confirm({
+      title: 'Send this offer letter by email?',
+      body: `This will email the finalized offer letter as a PDF to ${data.candidateEmail}.`,
+      confirmLabel: 'Send email',
+      cancelLabel: 'Not now',
+    });
+    if (!wantsToSend) return;
+    await sendEmailNow(id, data.candidateEmail);
   }
 
   async function deleteOffer() {
@@ -174,10 +218,10 @@ export function OfferEditor({
   const totalCtcPreview = data.annualBaseCtc + pfAnnual + data.annualVariableCtc;
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col bg-[#FAFAF7]">
       {dialog}
       {/* Toolbar */}
-      <div className="no-print sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 border-b border-default bg-card/95 px-4 py-2 backdrop-blur">
+      <div className="no-print sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 border-b border-default bg-white/95 px-4 py-2 backdrop-blur">
         <div className="flex items-center gap-3">
           <span className="text-sm font-medium">
             {offerId ? 'Edit offer letter' : 'New offer letter'}
@@ -221,6 +265,18 @@ export function OfferEditor({
             <Printer className="h-4 w-4" />
             Print
           </Button>
+          {isFinalized && data.candidateEmail && offerId && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => sendEmailNow(offerId, data.candidateEmail)}
+              disabled={sendingEmail}
+              title={`Email the finalized PDF to ${data.candidateEmail}`}
+            >
+              <Mail className="h-4 w-4" />
+              {sendingEmail ? 'Sending…' : 'Send email'}
+            </Button>
+          )}
           {!readOnly && (
             <Button size="sm" onClick={() => save(false)} disabled={pending}>
               <Save className="h-4 w-4" />
@@ -270,7 +326,7 @@ export function OfferEditor({
           <div className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Type & template</CardTitle>
+                <CardTitle className="flex items-center gap-2"><Layers className="h-4 w-4 text-[#0C447C]" />Type & template</CardTitle>
               </CardHeader>
               <CardBody className="space-y-3">
                 <Field label="Employment type" required>
@@ -306,21 +362,23 @@ export function OfferEditor({
                   </Field>
                 )}
 
-                <div className="rounded-md bg-gray-100 px-3 py-2 text-xs text-gray-700">
-                  Format: <span className="font-medium">{TEMPLATE_LABEL[data.templateKey]}</span>
+                <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                  <span className="rounded-full bg-[#EBF3FE] px-2 py-0.5 font-medium text-[#0C447C]">Format</span>
+                  <span className="font-medium text-slate-800">{TEMPLATE_LABEL[data.templateKey]}</span>
                 </div>
               </CardBody>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Candidate</CardTitle>
+                <CardTitle className="flex items-center gap-2"><UserRound className="h-4 w-4 text-[#0C447C]" />Candidate</CardTitle>
               </CardHeader>
               <CardBody className="space-y-3">
                 <Field label="Full name" required>
                   <Input
                     value={data.candidateName}
                     onChange={(e) => set('candidateName', e.target.value)}
+                    placeholder="e.g. Aman Srivastava"
                     disabled={readOnly}
                     required
                   />
@@ -339,6 +397,7 @@ export function OfferEditor({
                     type="email"
                     value={data.candidateEmail}
                     onChange={(e) => set('candidateEmail', e.target.value)}
+                    placeholder="name@example.com"
                     disabled={readOnly}
                   />
                 </Field>
@@ -347,6 +406,7 @@ export function OfferEditor({
                     type="tel"
                     value={data.candidatePhone}
                     onChange={(e) => set('candidatePhone', e.target.value)}
+                    placeholder="+91 98765 43210"
                     disabled={readOnly}
                   />
                 </Field>
@@ -355,7 +415,7 @@ export function OfferEditor({
 
             <Card>
               <CardHeader>
-                <CardTitle>Dates & tenure</CardTitle>
+                <CardTitle className="flex items-center gap-2"><CalendarDays className="h-4 w-4 text-[#0C447C]" />Dates & tenure</CardTitle>
               </CardHeader>
               <CardBody className="space-y-3">
                 <Field label="Offer date" required>
@@ -408,7 +468,7 @@ export function OfferEditor({
 
             <Card>
               <CardHeader>
-                <CardTitle>Compensation</CardTitle>
+                <CardTitle className="flex items-center gap-2"><IndianRupee className="h-4 w-4 text-[#0C447C]" />Compensation</CardTitle>
               </CardHeader>
               <CardBody className="space-y-3">
                 {isIntern ? (
@@ -492,7 +552,7 @@ export function OfferEditor({
                           checked={data.includePf}
                           onChange={(e) => set('includePf', e.target.checked)}
                           disabled={readOnly}
-                          className="mt-0.5 h-4 w-4 rounded border-default text-[#0C447C]-600 focus:ring-[#0C447C]-500"
+                          className="mt-0.5 h-4 w-4 rounded border-default accent-[#0C447C]"
                         />
                         <span>
                           Include PF in salary table
@@ -534,7 +594,7 @@ export function OfferEditor({
                             set('includeBstIncentives', e.target.checked)
                           }
                           disabled={readOnly}
-                          className="mt-0.5 h-4 w-4 rounded border-default text-[#0C447C]-600 focus:ring-[#0C447C]-500"
+                          className="mt-0.5 h-4 w-4 rounded border-default accent-[#0C447C]"
                         />
                         <span>
                           BST Sales — performance-based incentives addendum
@@ -545,11 +605,18 @@ export function OfferEditor({
                       </label>
                     )}
 
-                    <div className="rounded-md bg-[#0C447C]-50/50 px-3 py-2 text-xs">
-                      <span className="text-muted">Total CTC preview: </span>
-                      <span className="font-semibold tabular-nums">
-                        ₹{formatINR(totalCtcPreview)}
-                      </span>
+                    <div className="rounded-lg border border-[#B5D4F4] bg-[#EBF3FE] px-3.5 py-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[12px] font-medium text-[#0C447C]">Total CTC preview</span>
+                        <span className="text-[16px] font-bold tabular-nums text-[#0C447C]">
+                          ₹{formatINR(totalCtcPreview)}
+                        </span>
+                      </div>
+                      <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-slate-500">
+                        <span>Base ₹{formatINR(data.annualBaseCtc)}</span>
+                        {data.annualVariableCtc > 0 && <span>· Variable ₹{formatINR(data.annualVariableCtc)}</span>}
+                        {data.includePf && <span>· PF ₹{formatINR(pfAnnual)}</span>}
+                      </div>
                     </div>
                   </>
                 )}
@@ -558,7 +625,7 @@ export function OfferEditor({
 
             <Card>
               <CardHeader>
-                <CardTitle>Point of contact</CardTitle>
+                <CardTitle className="flex items-center gap-2"><Contact className="h-4 w-4 text-[#0C447C]" />Point of contact</CardTitle>
               </CardHeader>
               <CardBody className="space-y-3">
                 <Field label="POC name" required>
@@ -610,7 +677,7 @@ export function OfferEditor({
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle>Letter body</CardTitle>
+                  <CardTitle className="flex items-center gap-2"><FileText className="h-4 w-4 text-[#0C447C]" />Letter body</CardTitle>
                   <span className="text-xs text-muted">Markdown · live preview →</span>
                 </div>
               </CardHeader>
@@ -641,7 +708,7 @@ export function OfferEditor({
         </div>
 
         {/* Right: live A4 preview */}
-        <div className="overflow-y-auto bg-gray-200/60 px-6 py-8 print:overflow-visible print:bg-white print:p-0">
+        <div className="overflow-y-auto bg-slate-100 px-6 py-8 print:overflow-visible print:bg-white print:p-0">
           <OfferPreview data={data} backgroundUrl={backgroundUrl} />
         </div>
       </div>

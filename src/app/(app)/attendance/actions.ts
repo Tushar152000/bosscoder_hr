@@ -1,19 +1,24 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { adminDb, Timestamp, FieldValue } from '@/lib/firebase/admin';
+import { adminDb, adminStorage, Timestamp, FieldValue } from '@/lib/firebase/admin';
 import { HR } from '@/lib/firebase/collections';
 import { requireUser } from '@/lib/auth/guard';
 import { hasAnyRole } from '@/lib/auth/roles';
-import { listEmployees } from '@/lib/firestore/employees';
+import { listEmployees, getEmployeeById } from '@/lib/firestore/employees';
+import { writeNotificationsForReviewers } from '@/lib/firestore/notifications';
+import { listHrUsers } from '@/lib/firestore/users';
+import { isPrivileged } from '@/lib/auth/roles';
+import { sendLeaveRequestEmail } from '@/lib/email/leave-request';
 import type {
   AttendanceRecord,
   AttendanceStatus,
+  BalanceKey,
   LeaveBalance,
   LeaveRequest,
   LeaveType,
 } from '@/types/attendance';
-import { HALF_DAY_LEAVE_TYPES, LEAVE_DEDUCTION, LEAVE_TO_BALANCE } from '@/types/attendance';
+import { HALF_DAY_LEAVE_TYPES, LEAVE_DEDUCTION, LEAVE_LABELS, LEAVE_TO_BALANCE, BALANCE_DEFAULT_TOTALS, BALANCE_CASCADE, financialYearStart, leaveBalanceDocId } from '@/types/attendance';
 
 export type TeamMember = {
   employeeId: string;
@@ -197,10 +202,10 @@ export async function editAttendanceRecord(
 
 export async function getLeaveBalance(employeeId: string): Promise<LeaveBalance> {
   await requireUser();
-  const year = new Date().getFullYear();
+  const year = financialYearStart();
   const snap = await adminDb
     .collection(LEAVE_BALANCES)
-    .doc(`${employeeId}_${year}`)
+    .doc(leaveBalanceDocId(employeeId))
     .get();
 
   const d = snap.exists ? snap.data()! : {};
@@ -212,7 +217,44 @@ export async function getLeaveBalance(employeeId: string): Promise<LeaveBalance>
     marriage:  d.marriage  ?? { total: 5,  used: 0 },
     medical:   d.medical   ?? { total: 10, used: 0 },
     unpaid:    d.unpaid    ?? { total: 0,  used: 0 },
+    wfh:       d.wfh       ?? { total: 0,  used: 0 },
   };
+}
+
+/**
+ * Uploads a supporting document for a leave request to Cloud Storage and
+ * returns its public URL + original filename. Accepts images and PDFs (max 10 MB).
+ */
+export async function uploadLeaveDocument(
+  formData: FormData,
+): Promise<ActionResult<{ url: string; name: string }>> {
+  const user = await requireUser();
+
+  const file = formData.get('file') as File | null;
+  if (!file || file.size === 0) return { ok: false, error: 'No file provided' };
+  if (file.size > 10 * 1024 * 1024) return { ok: false, error: 'File too large — max 10 MB' };
+
+  const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+  if (!allowed.includes(file.type)) {
+    return { ok: false, error: 'Only JPG, PNG, WEBP or PDF files are allowed' };
+  }
+
+  try {
+    const ext = (file.name.split('.').pop() ?? 'pdf').toLowerCase();
+    const storagePath = `hr/leave-documents/${user.uid}/${Date.now()}.${ext}`;
+
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const bucket = adminStorage.bucket();
+    const fileRef = bucket.file(storagePath);
+
+    await fileRef.save(buffer, { metadata: { contentType: file.type } });
+    await fileRef.makePublic();
+
+    const url = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
+    return { ok: true, data: { url, name: file.name } };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Failed to upload document' };
+  }
 }
 
 export async function applyLeave(data: {
@@ -222,22 +264,101 @@ export async function applyLeave(data: {
   toDate: string;
   leaveType: LeaveType;
   reason: string;
+  attachmentUrl?: string;
+  attachmentName?: string;
 }): Promise<ActionResult> {
   await requireUser();
 
   try {
+    const { attachmentUrl, attachmentName, ...rest } = data;
     await adminDb.collection(LEAVE_REQUESTS).add({
-      ...data,
+      ...rest,
+      ...(attachmentUrl  ? { attachmentUrl }  : {}),
+      ...(attachmentName ? { attachmentName } : {}),
       status: 'pending',
       approvedBy: null,
       approvedAt: null,
       createdAt: FieldValue.serverTimestamp(),
     });
+
+    // Notify the reporting manager — best-effort, never blocks the submission.
+    await notifyManagerOfLeave(data).catch((e) => {
+      console.error('[applyLeave] manager notification failed:', e);
+    });
+
     revalidatePath('/attendance');
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Failed to submit leave' };
   }
+}
+
+/**
+ * Notifies the reviewer(s) of a new leave request, via both the in-app
+ * notification bell and email. The reviewer is the applicant's reporting
+ * manager; if no manager is on record, it falls back to all active HR users
+ * so the request is never silently stranded. Best-effort: any failure here is
+ * logged but does not fail the leave submission itself.
+ */
+async function notifyManagerOfLeave(data: {
+  employeeId: string;
+  employeeName: string;
+  fromDate: string;
+  toDate: string;
+  leaveType: LeaveType;
+  reason: string;
+}): Promise<void> {
+  // Resolve recipients: reporting manager, or HR fallback when none exists.
+  const recipients: { uid: string | null; email: string | null; displayName: string }[] = [];
+
+  const applicant = await getEmployeeById(data.employeeId);
+  const manager = applicant?.managerId ? await getEmployeeById(applicant.managerId) : null;
+
+  if (manager) {
+    recipients.push({ uid: manager.userUid, email: manager.email, displayName: manager.displayName });
+  } else {
+    // No reporting manager on record — fall back to active HR.
+    const hrUsers = (await listHrUsers()).filter(
+      (u) => u.active && isPrivileged(u.roles),
+    );
+    for (const u of hrUsers) {
+      recipients.push({ uid: u.uid, email: u.email, displayName: u.displayName ?? u.email });
+    }
+  }
+
+  if (recipients.length === 0) return;
+
+  const leaveTypeLabel = LEAVE_LABELS[data.leaveType];
+  const range = data.fromDate === data.toDate ? data.fromDate : `${data.fromDate}–${data.toDate}`;
+
+  // In-app notifications (keyed by each reviewer's auth uid).
+  await writeNotificationsForReviewers(
+    recipients
+      .filter((r) => r.uid)
+      .map((r) => ({
+        uid: r.uid!,
+        title: `${data.employeeName} requested ${leaveTypeLabel} (${range})`,
+        href: '/attendance',
+        tone: 'info' as const,
+      })),
+  );
+
+  // Email notifications.
+  await Promise.all(
+    recipients
+      .filter((r) => r.email)
+      .map((r) =>
+        sendLeaveRequestEmail({
+          to: r.email!,
+          managerName: r.displayName,
+          employeeName: data.employeeName,
+          leaveTypeLabel,
+          fromDate: data.fromDate,
+          toDate: data.toDate,
+          reason: data.reason,
+        }),
+      ),
+  );
 }
 
 // ─── Leave request history ────────────────────────────────────────────────────
@@ -255,6 +376,8 @@ function docToLeaveRequest(id: string, data: FirebaseFirestore.DocumentData): Le
     approvedBy: data.approvedBy ?? null,
     approvedAt: tsToISO(data.approvedAt),
     rejectionReason: data.rejectionReason ?? undefined,
+    attachmentUrl: data.attachmentUrl ?? undefined,
+    attachmentName: data.attachmentName ?? undefined,
     createdAt: tsToISO(data.createdAt) ?? new Date().toISOString(),
   };
 }
@@ -372,6 +495,13 @@ export async function approveLeave(leaveId: string): Promise<ActionResult> {
   const daysCount = dates.length;
   const batch = adminDb.batch();
 
+  const recordStatus: AttendanceStatus =
+    leaveType === 'wfh'
+      ? 'wfh'
+      : HALF_DAY_LEAVE_TYPES.has(leaveType)
+      ? 'half-day'
+      : 'leave';
+
   batch.update(leaveRef, {
     status: 'approved',
     approvedBy: user.uid,
@@ -387,9 +517,9 @@ export async function approveLeave(leaveId: string): Promise<ActionResult> {
         date,
         checkIn: null,
         checkOut: null,
-        status: (HALF_DAY_LEAVE_TYPES.has(leaveType) ? 'half-day' : 'leave') as AttendanceStatus,
+        status: recordStatus,
         duration: 0,
-        remarks: `Leave: ${leave.reason ?? ''}`,
+        remarks: `${leaveType === 'wfh' ? 'WFH' : 'Leave'}: ${leave.reason ?? ''}`,
         editedBy: user.uid,
         createdAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
@@ -398,24 +528,45 @@ export async function approveLeave(leaveId: string): Promise<ActionResult> {
     );
   }
 
-  const year = new Date(fromDate + 'T00:00:00').getFullYear();
-  const balanceRef = adminDb.collection(LEAVE_BALANCES).doc(`${employeeId}_${year}`);
+  const fromDateObj = new Date(fromDate + 'T00:00:00');
+  const year = financialYearStart(fromDateObj);
+  const balanceRef = adminDb.collection(LEAVE_BALANCES).doc(leaveBalanceDocId(employeeId, fromDateObj));
   const balanceSnap = await balanceRef.get();
   const balanceKey = LEAVE_TO_BALANCE[leaveType];
   const deduction = LEAVE_DEDUCTION[leaveType] * daysCount;
 
-  if (balanceSnap.exists) {
-    batch.update(balanceRef, {
-      [`${balanceKey}.used`]: FieldValue.increment(deduction),
-    });
-  } else {
-    const DEFAULTS: Record<string, number> = { casual: 9, privilege: 9, marriage: 5, medical: 10, unpaid: 0 };
-    const newBalance: Record<string, unknown> = { employeeId, year };
-    for (const [k, v] of Object.entries(DEFAULTS)) {
-      newBalance[k] = { total: v, used: k === balanceKey ? deduction : 0 };
-    }
-    batch.set(balanceRef, newBalance);
+  // Load current pools (existing values, falling back to defaults), then spill
+  // the deduction across the cascade chain (e.g. casual → privilege → unpaid),
+  // so an exhausted pool overflows to the next instead of going negative.
+  const balData = balanceSnap.exists ? balanceSnap.data()! : {};
+  const pools = {} as Record<BalanceKey, { total: number; used: number }>;
+  for (const k of Object.keys(BALANCE_DEFAULT_TOTALS) as BalanceKey[]) {
+    pools[k] = {
+      total: balData[k]?.total ?? BALANCE_DEFAULT_TOTALS[k],
+      used: balData[k]?.used ?? 0,
+    };
   }
+
+  const chain = BALANCE_CASCADE[balanceKey];
+  let remaining = deduction;
+  for (const pool of chain) {
+    if (remaining <= 0) break;
+    const cur = pools[pool];
+    if (cur.total === 0) {
+      // Bottomless pool (unpaid / wfh) — absorb the rest.
+      cur.used += remaining;
+      remaining = 0;
+    } else {
+      const take = Math.min(Math.max(0, cur.total - cur.used), remaining);
+      cur.used += take;
+      remaining -= take;
+    }
+  }
+  if (remaining > 0) pools[chain[chain.length - 1]].used += remaining;
+
+  const balPayload: Record<string, unknown> = { employeeId, year };
+  for (const k of Object.keys(BALANCE_DEFAULT_TOTALS)) balPayload[k] = pools[k as BalanceKey];
+  batch.set(balanceRef, balPayload, { merge: true });
 
   try {
     await batch.commit();

@@ -22,13 +22,14 @@ const STATUS_BADGE: Record<AttendanceStatus, string> = {
   absent:     'bg-red-50 text-red-600 ring-1 ring-red-200',
   'half-day': 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
   leave:      'bg-blue-50 text-blue-700 ring-1 ring-blue-200',
+  wfh:        'bg-violet-50 text-violet-700 ring-1 ring-violet-200',
   holiday:    'bg-slate-100 text-slate-500 ring-1 ring-slate-200',
   weekend:    'bg-slate-100 text-slate-400 ring-1 ring-slate-200',
   pending:    'bg-slate-100 text-slate-500 ring-1 ring-slate-200',
 };
 
 const EDITABLE_STATUSES: AttendanceStatus[] = [
-  'present', 'absent', 'half-day', 'leave', 'holiday',
+  'present', 'absent', 'half-day', 'leave', 'wfh', 'holiday',
 ];
 
 function formatDateDisplay(dateStr: string): string {

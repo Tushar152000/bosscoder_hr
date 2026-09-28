@@ -10,7 +10,7 @@ export const HR = {
   permissions: 'hr_permissions',
   reviewCycles: 'hr_review_cycles',
   reviewSubmissions: 'hr_review_submissions',
-  offerLetters: 'hr_offer_letters',
+  employmentLetters: 'hr_employment_letters',
   settings: 'hr_settings',
   notifications: 'hr_notifications',
   auditLogs: 'hr_audit_logs',

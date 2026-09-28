@@ -26,11 +26,22 @@ function getTransporter(): Transporter | null {
   return cached;
 }
 
+export interface SendAttachment {
+  filename: string;
+  content: Buffer;
+  contentType?: string;
+}
+
 export interface SendArgs {
   to: string;
   subject: string;
   text: string;
   html: string;
+  replyTo?: string;
+  attachments?: SendAttachment[];
+  /** Overrides the "From" display name (address is always the configured
+   *  GMAIL_USER mailbox — this only changes the friendly name shown). */
+  fromName?: string;
 }
 
 export async function sendMail(args: SendArgs): Promise<{ ok: boolean; error?: string }> {
@@ -41,11 +52,13 @@ export async function sendMail(args: SendArgs): Promise<{ ok: boolean; error?: s
   const from = process.env.GMAIL_USER!;
   try {
     await t.sendMail({
-      from: `Bosscoder Workspace <${from}>`,
+      from: `${args.fromName ?? 'Bosscoder Workspace'} <${from}>`,
       to: args.to,
+      replyTo: args.replyTo,
       subject: args.subject,
       text: args.text,
       html: args.html,
+      attachments: args.attachments,
     });
     return { ok: true };
   } catch (e) {

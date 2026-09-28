@@ -2,7 +2,7 @@ import type { EncryptedField } from '@/lib/crypto/encrypt';
 
 export type EmploymentType = 'full-time' | 'internship';
 export type OfferStatus = 'draft' | 'finalized' | 'archived';
-export type TemplateKey = 'sales-ops' | 'other-dept' | 'intern';
+export type TemplateKey = 'sales-ops' | 'other-dept' | 'intern' | 'relieving' | 'experience';
 export type PocName = 'Shreya' | 'Charvi';
 
 /**
@@ -62,7 +62,9 @@ export interface OfferData {
 export interface OfferLetterStored {
   offerId: string;
   candidateName: string;
-  candidateEmail: EncryptedField | null;
+  // Plaintext (not encrypted) — matches how hr_employees.email is stored,
+  // and lets the list page search/filter by email without bulk-decrypting.
+  candidateEmail: string;
   candidatePhone: EncryptedField | null;
 
   employmentType: EmploymentType;
@@ -113,6 +115,7 @@ export interface OfferLetter extends OfferData {
 
 /** Settings doc — single full-page background image (header + watermark + footer
  *  baked in) plus POC defaults. */
+
 export interface OfferSettings {
   backgroundUrl: string;
   pocOptions: { name: string; designation: string; email: string }[];
@@ -133,7 +136,7 @@ export const DEFAULT_OFFER_SETTINGS: OfferSettings = {
     },
     {
       name: 'Charvi Madaan',
-      designation: 'Human Resources Associate',
+      designation: 'Human Resource Executive',
       email: 'charvi.madaan@bosscoderacademy.com',
     },
   ],
