@@ -80,7 +80,7 @@ export function EmployeeView({
   const extraCount = leaveRequests.length - 3;
 
   return (
-    <div className="px-4 pb-8 md:px-0">
+    <div className="pb-8">
       {/* Greeting header — flex row with the primary action on the right.
           The greeting only renders when supplied; manager / single-employee
           views pass none and just get the action button. */}
@@ -103,7 +103,7 @@ export function EmployeeView({
             <h1 className="text-[20px] md:text-[28px] font-semibold text-dark-blue">
               {greeting}, {firstName}
             </h1>
-            <div className="mt-1 flex items-center gap-1.5 font-medium">
+            <div className="mt-1 flex flex-wrap items-center gap-x-1.5 font-medium">
               <span className="text-[14px] text-zinc-500">{fullDate}</span>
               <span className="mx-0.5 text-zinc-300">·</span>
               <span className="text-[14px] text-zinc-500">Week {weekNum}</span>

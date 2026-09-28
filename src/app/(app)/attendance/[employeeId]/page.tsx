@@ -76,15 +76,17 @@ export default async function EmployeeAttendancePage({ params }: Props) {
       </div>
 
       {/* Attendance view — no check-in banner, privileged edits */}
-      <EmployeeView
-        employeeId={employeeId}
-        employeeName={emp.displayName}
-        initialRecords={records}
-        balance={balance}
-        initialYear={year}
-        initialMonth={month}
-        today={today}
-      />
+      <div className="px-4 md:px-6">
+        <EmployeeView
+          employeeId={employeeId}
+          employeeName={emp.displayName}
+          initialRecords={records}
+          balance={balance}
+          initialYear={year}
+          initialMonth={month}
+          today={today}
+        />
+      </div>
 
     </div>
   );
