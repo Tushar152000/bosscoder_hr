@@ -1,6 +1,6 @@
 import { requireUser } from '@/lib/auth/guard';
 import { type Permission } from '@/lib/auth/roles';
-import { getHrUser } from '@/lib/firestore/users';
+import { displayPhotoURL, getHrUser } from '@/lib/firestore/users';
 import { getDocumentsForUser } from '@/lib/firestore/documents';
 import { getEmployeeByUserUid } from '@/lib/firestore/employees';
 import { UserCircle2 } from 'lucide-react';
@@ -38,7 +38,7 @@ export default async function AccountPage() {
     getEmployeeByUserUid(user.uid),
   ]);
 
-  const photoURL = hrUser?.photoURL ?? user.photoURL;
+  const photoURL = displayPhotoURL(hrUser, user.photoURL);
   const displayName = user.displayName ?? user.email;
 
   // True only when the user has uploaded a custom photo via the app.

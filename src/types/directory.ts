@@ -1,33 +1,27 @@
-import type { EmployeeStatus } from '@/types/employee';
+import type { EmploymentType, EmployeeStatus } from '@/types/employee';
 
+/** One row in the employee directory. Everyone appears exactly once. */
 export interface DirectoryPerson {
   id: string;
   name: string;
   email: string;
   designation: string;
+  /** Empty string when not set. */
+  department: string;
   avatarColor: string;
   initials: string;
+  /** Display date, e.g. "12 Mar 2024". */
   joinedAt: string;
+  /** ISO date for sorting. */
+  joinedISO: string;
   status: EmployeeStatus;
+  employmentType: EmploymentType;
   photoURL?: string | null;
-}
-
-export interface DirectoryReport extends DirectoryPerson {
-  type: string;
-}
-
-export interface DirectoryManager {
-  user: DirectoryPerson;
-  reports: DirectoryReport[];
-}
-
-export interface DirectoryDept {
-  id: string;
-  name: string;
-  memberCount: number;
-  managers: DirectoryManager[];
-}
-
-export interface DirectoryView {
-  departments: DirectoryDept[];
+  /** Null when no manager is set (or the manager isn't in this list). */
+  managerId: string | null;
+  managerName: string | null;
+  reportsCount: number;
+  /** Everyone below this person in the reporting line. */
+  teamSize: number;
+  isFounder: boolean;
 }

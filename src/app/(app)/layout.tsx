@@ -4,7 +4,7 @@ import {
   getEmployeeByUserUid,
 } from '@/lib/firestore/employees';
 import { listNotificationsForUser } from '@/lib/firestore/notifications';
-import { getHrUser } from '@/lib/firestore/users';
+import { displayPhotoURL, getHrUser } from '@/lib/firestore/users';
 import { TopNavbar } from '@/components/layout/top-navbar';
 import { canViewFeedback } from '@/lib/feedback/access';
 
@@ -16,7 +16,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     getHrUser(user.uid),
   ]);
   const manager = me?.managerId ? await getEmployeeById(me.managerId) : null;
-  const photoURL = hrUser?.photoURL ?? user.photoURL;
+  const photoURL = displayPhotoURL(hrUser, user.photoURL);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FAFAF7]">

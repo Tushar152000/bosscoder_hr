@@ -1,0 +1,132 @@
+/* Connector lines for the org chart: each <li> draws its half of the
+   horizontal bus plus a drop to its card; each nested <ul> draws the
+   line down from the parent. */
+
+.tree ul {
+  display: flex;
+  justify-content: center;
+  margin: 0;
+  padding: 26px 0 0;
+  list-style: none;
+  position: relative;
+}
+
+.tree li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  padding: 26px 8px 0;
+}
+
+.tight li {
+  padding-left: 5px;
+  padding-right: 5px;
+}
+
+.tree li::before,
+.tree li::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 50%;
+  width: 50%;
+  height: 26px;
+  border-top: 1.5px solid #bfcbd9;
+}
+
+.tree li::after {
+  right: auto;
+  left: 50%;
+  border-left: 1.5px solid #bfcbd9;
+}
+
+.tree li:first-child::before,
+.tree li:last-child::after {
+  border: 0;
+}
+
+.tree li:last-child::before {
+  border-right: 1.5px solid #bfcbd9;
+  border-radius: 0 10px 0 0;
+}
+
+.tree li:first-child::after {
+  border-radius: 10px 0 0 0;
+}
+
+.tree li:only-child::before {
+  display: none;
+}
+
+.tree li:only-child::after {
+  border: 0;
+  border-left: 1.5px solid #bfcbd9;
+  border-radius: 0;
+}
+
+.tree ul ul::before,
+.stackwrap::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: 26px;
+  border-left: 1.5px solid #bfcbd9;
+}
+
+.tree > ul {
+  padding-top: 0;
+}
+
+.tree > ul > li {
+  padding-top: 0;
+}
+
+.tree > ul > li::before,
+.tree > ul > li::after {
+  display: none;
+}
+
+.stackwrap {
+  position: relative;
+  padding-top: 26px;
+}
+
+.dots {
+  background-image: radial-gradient(#dbe3ec 1.1px, transparent 1.3px);
+  background-size: 20px 20px;
+  background-attachment: local;
+}
+
+/* List view: tree guides drawn in the name column, one 24px slot per level. */
+.g {
+  position: relative;
+  width: 24px;
+  flex: none;
+}
+
+.gv::before,
+.gt::before,
+.gl::before {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 0;
+  bottom: 0;
+  border-left: 1.5px solid #d5dee8;
+}
+
+.gl::before {
+  bottom: 50%;
+}
+
+.gt::after,
+.gl::after {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 50%;
+  width: 12px;
+  border-top: 1.5px solid #d5dee8;
+}

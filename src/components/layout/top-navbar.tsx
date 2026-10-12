@@ -238,12 +238,17 @@ function NotificationBell({ notifications }: { notifications: NavNotification[] 
       <Popover.Trigger asChild>
         <button
           type="button"
-          aria-label="Notifications"
+          aria-label={unread > 0 ? `Notifications, ${unread} unread` : 'Notifications'}
           className="relative w-9 h-9 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center transition touch-manipulation"
         >
           <Bell size={17} className="text-slate-600" />
           {unread > 0 && (
-            <span className="absolute top-1.5 right-2 w-2 h-2 rounded-full bg-red-500 ring-2 ring-white" />
+            <span
+              aria-hidden
+              className="absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white tabular-nums ring-2 ring-white"
+            >
+              {unread > 9 ? '9+' : unread}
+            </span>
           )}
         </button>
       </Popover.Trigger>

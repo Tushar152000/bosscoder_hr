@@ -27,7 +27,7 @@ export function DirectoryHeader({
           {' · '}
           {totalManagers} {totalManagers === 1 ? 'manager' : 'managers'}
           {' · '}
-          {totalDepts} {totalDepts === 1 ? 'dept' : 'depts'}
+          {totalDepts} {totalDepts === 1 ? 'department' : 'departments'}
         </p>
       </div>
 

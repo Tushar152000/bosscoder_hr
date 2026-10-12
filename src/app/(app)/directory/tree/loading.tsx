@@ -2,41 +2,48 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function OrgTreeLoading() {
   return (
-    <div className="py-5 space-y-5">
-      {/* Breadcrumb */}
-      <div className="flex items-center gap-1.5">
-        <Skeleton className="h-3 w-3 rounded" />
-        <Skeleton className="h-3 w-8" />
-        <Skeleton className="h-3 w-2" />
-        <Skeleton className="h-3 w-14" />
-        <Skeleton className="h-3 w-2" />
-        <Skeleton className="h-3 w-16" />
-      </div>
+    <div className="min-h-screen bg-[#FAFAF7]">
+      <div className="w-full px-4 md:px-10 py-6 space-y-3">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-1.5">
+          <Skeleton className="h-3.5 w-3.5 rounded" />
+          <Skeleton className="h-3.5 w-10" />
+          <Skeleton className="h-3.5 w-2" />
+          <Skeleton className="h-3.5 w-16" />
+          <Skeleton className="h-3.5 w-2" />
+          <Skeleton className="h-3.5 w-16" />
+        </div>
 
-      {/* Page title */}
-      <div>
-        <Skeleton className="h-6 w-32 mb-1.5" />
-        <Skeleton className="h-3.5 w-56" />
-      </div>
+        {/* Title + toolbar */}
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <Skeleton className="h-6 w-28 mb-1.5" />
+            <Skeleton className="h-3.5 w-60" />
+          </div>
+          <div className="flex gap-1.5">
+            <Skeleton className="hidden md:block h-9 w-60 rounded-lg" />
+            <Skeleton className="h-9 w-24 rounded-lg" />
+            <Skeleton className="h-9 w-9 md:w-28 rounded-lg" />
+          </div>
+        </div>
 
-      {/* Tree card */}
-      <div className="bg-white border border-slate-200/70 rounded-xl p-5">
-        <Skeleton className="h-4 w-44 mb-1" />
-        <Skeleton className="h-3 w-64 mb-5" />
-        <div className="space-y-2.5">
-          {[0, 0, 20, 20, 40, 20, 0, 20].map((indent, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-2.5"
-              style={{ paddingLeft: `${indent}px`, opacity: 1 - i * 0.06 }}
-            >
-              <Skeleton className="w-7 h-7 rounded-full shrink-0" />
-              <div>
-                <Skeleton className="h-3 w-28 mb-1" />
-                <Skeleton className="h-2.5 w-20" />
-              </div>
-            </div>
+        {/* Department chips */}
+        <div className="flex gap-1.5 overflow-hidden">
+          {[120, 92, 104, 84, 96, 88, 76].map((w, i) => (
+            <Skeleton key={i} className="h-8 shrink-0 rounded-full" style={{ width: w }} />
           ))}
+        </div>
+
+        {/* Chart: founder over a row of managers */}
+        <div className="h-[560px] md:h-[620px] lg:h-[700px] rounded-xl border border-[#E2E8F0] bg-white pt-20">
+          <div className="flex flex-col items-center gap-12">
+            <Skeleton className="h-14 w-60 rounded-[10px]" />
+            <div className="flex gap-4 overflow-hidden px-4">
+              {[0, 1, 2, 3, 4].map(i => (
+                <Skeleton key={i} className="h-14 w-48 shrink-0 rounded-[10px]" />
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     </div>

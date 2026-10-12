@@ -30,6 +30,8 @@ export interface HrUserDoc {
   createdAt: FirebaseFirestore.FieldValue | FirebaseFirestore.Timestamp;
   updatedAt: FirebaseFirestore.FieldValue | FirebaseFirestore.Timestamp;
   lastLoginAt: FirebaseFirestore.FieldValue | FirebaseFirestore.Timestamp | null;
+  /** User removed their photo — don't re-copy the Google picture on login. */
+  photoRemoved?: boolean;
 }
 
 export interface HrSessionClaims {
@@ -98,7 +100,7 @@ export async function ensureUserAndSyncClaims(args: {
       ref.update({
         email,
         displayName,
-        photoURL,
+        photoURL: doc.photoRemoved ? null : photoURL,
         lastLoginAt: FieldValue.serverTimestamp(),
         updatedAt: FieldValue.serverTimestamp(),
       }),

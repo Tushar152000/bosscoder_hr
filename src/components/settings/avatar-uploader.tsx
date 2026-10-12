@@ -4,7 +4,7 @@ import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Camera, Loader2 } from 'lucide-react';
 import { initials } from '@/lib/utils';
-import { uploadAvatarAction } from '@/app/(app)/settings/account/actions';
+import { removeAvatarAction, uploadAvatarAction } from '@/app/(app)/settings/account/actions';
 
 interface Props {
   uid: string;
@@ -21,6 +21,8 @@ export function useAvatarUpload() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  // Set after a successful remove so the avatar falls back to initials immediately.
+  const [removed, setRemoved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -40,6 +42,7 @@ export function useAvatarUpload() {
 
     const objectUrl = URL.createObjectURL(file);
     setPreview(objectUrl);
+    setRemoved(false);
 
     const formData = new FormData();
     formData.append('avatar', file);
@@ -62,6 +65,23 @@ export function useAvatarUpload() {
     if (!isPending) inputRef.current?.click();
   };
 
+  function removePhoto() {
+    setError(null);
+    startTransition(async () => {
+      try {
+        await removeAvatarAction();
+        setPreview(null);
+        setRemoved(true);
+        router.refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Could not remove photo');
+      }
+    });
+  }
+
+  /** What to show given the server's photo URL. */
+  const resolvePhoto = (photoURL: string | null | undefined) => (removed ? null : preview ?? photoURL ?? null);
+
   const input = (
     <input
       ref={inputRef}
@@ -73,12 +93,12 @@ export function useAvatarUpload() {
     />
   );
 
-  return { preview, error, isPending, openPicker, input };
+  return { preview, removed, error, isPending, openPicker, removePhoto, resolvePhoto, input };
 }
 
 export function AvatarUploader({ photoURL, displayName, email }: Props) {
-  const { preview, error, isPending, openPicker, input } = useAvatarUpload();
-  const currentPhoto = preview ?? photoURL;
+  const { error, isPending, openPicker, removePhoto, resolvePhoto, input } = useAvatarUpload();
+  const currentPhoto = resolvePhoto(photoURL);
   const userInitials = initials(displayName, email);
 
   return (
@@ -122,8 +142,17 @@ export function AvatarUploader({ photoURL, displayName, email }: Props) {
             disabled={isPending}
             className="text-[12px] font-medium text-[#0C447C] hover:underline disabled:opacity-50 disabled:no-underline"
           >
-            {isPending ? 'Uploading…' : 'Change photo'}
+            {isPending ? 'Saving…' : 'Change photo'}
           </button>
+          {currentPhoto && !isPending && (
+            <button
+              type="button"
+              onClick={removePhoto}
+              className="ml-3 text-[12px] font-medium text-slate-500 hover:text-red-600 hover:underline"
+            >
+              Remove
+            </button>
+          )}
           <p className="text-[11px] text-slate-400 mt-0.5">JPG, PNG or WEBP · max 5 MB</p>
         </div>
       </div>

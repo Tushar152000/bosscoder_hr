@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { AlertCircle, ChevronDown, ClipboardList, Users } from 'lucide-react';
+import * as Popover from '@radix-ui/react-popover';
+import { AlertCircle, ClipboardList, SlidersHorizontal, Users, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { cycleFYFromName } from '@/lib/performance/cycle-period';
 import {
@@ -16,6 +17,12 @@ import type { ReviewCycle, ReviewSubmission } from '@/types/review';
 
 type Tab = 'open' | 'urgent' | 'submitted' | 'closed';
 type Cadence = 'all' | 'monthly' | 'quarterly';
+
+const CADENCE_LABELS: Record<Cadence, string> = {
+  all:       'All cycles',
+  monthly:   'Monthly',
+  quarterly: 'Quarterly',
+};
 
 const TAB_LABELS: Record<Tab, string> = {
   open:      'Open',
@@ -139,6 +146,17 @@ export function MyQueue({
 
   const visible = tab === 'submitted' ? sortedSubmitted : buckets[tab];
 
+  // Applied filters, shown as removable chips under the tabs.
+  const activeChips: { key: string; label: string; clear: () => void }[] = [];
+  if (filterFY) activeChips.push({ key: 'fy', label: filterFY, clear: () => setFilterFY(null) });
+  if (filterCadence !== 'all') {
+    activeChips.push({ key: 'cadence', label: CADENCE_LABELS[filterCadence], clear: () => setFilterCadence('all') });
+  }
+  if (tab === 'submitted' && subSort === 'oldest') {
+    activeChips.push({ key: 'sort', label: 'Oldest first', clear: () => setSubSort('newest') });
+  }
+  const clearAll = () => { setFilterFY(null); setFilterCadence('all'); setSubSort('newest'); };
+
   const isSelf    = kind === 'self';
   const isManager = kind === 'manager';
   const Icon      = isManager ? Users : ClipboardList;
@@ -186,104 +204,136 @@ export function MyQueue({
         )}
       </div>
 
-      {/* ── Global filter bar ── */}
-      {fyOptions.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          {/* FY dropdown */}
-          <div className="relative">
-            <select
-              value={filterFY ?? ''}
-              onChange={(e) => setFilterFY(e.target.value || null)}
-              className="appearance-none bg-white border border-slate-200 rounded-lg pl-3 pr-7 py-1.5 text-[12px] text-slate-700 cursor-pointer hover:border-slate-300 transition focus:outline-none focus:ring-1 focus:ring-brand"
-            >
-              <option value="">All FYs</option>
-              {fyOptions.map((fy) => (
-                <option key={fy} value={fy}>{fy}</option>
-              ))}
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-          </div>
-
-          {/* Cadence pills */}
-          <div className="inline-flex items-center gap-0.5 bg-slate-100 rounded-lg p-0.5">
-            {(['all', 'monthly', 'quarterly'] as Cadence[]).map((c) => (
+      {/* Tabs + filter button */}
+      <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-1 pb-1 pt-2">
+          {(Object.keys(TAB_LABELS) as Tab[]).map((t) => {
+            const tabLabels = isManager ? MANAGER_TAB_LABELS : TAB_LABELS;
+            const isDanger = t === 'urgent';
+            const count = t === 'submitted' ? sortedSubmitted.length : buckets[t].length;
+            const rawCount = buckets[t].length;
+            const isActive = tab === t;
+            return (
               <button
-                key={c}
+                key={t}
                 type="button"
-                onClick={() => setFilterCadence(c)}
+                onClick={() => setTab(t)}
                 className={cn(
-                  'px-3 py-1 rounded-md text-[11px] font-medium transition capitalize',
-                  filterCadence === c
-                    ? 'bg-white text-slate-800 shadow-sm'
-                    : 'text-slate-500 hover:text-slate-700',
+                  'inline-flex shrink-0 items-center gap-2 rounded-full px-3.5 py-1.5 text-[14px] font-medium transition',
+                  isActive
+                    ? isDanger ? 'bg-red-50 text-red-700 ring-1 ring-red-200' : cn(activeBg, 'text-white')
+                    : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700',
                 )}
               >
-                {c === 'all' ? 'All cycles' : c.charAt(0).toUpperCase() + c.slice(1)}
+                {tabLabels[t]}
+                <span className={cn(
+                  'inline-flex min-w-[1.25rem] justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums',
+                  isActive
+                    ? isDanger ? 'bg-red-100 text-red-700' : 'bg-white/20 text-white'
+                    : isDanger && rawCount > 0 ? 'bg-red-50 text-red-600' : 'bg-slate-100 text-slate-500',
+                )}>
+                  {count}
+                </span>
               </button>
-            ))}
-          </div>
-
-          {/* Clear */}
-          {hasActiveFilter && (
-            <button
-              type="button"
-              onClick={() => { setFilterFY(null); setFilterCadence('all'); }}
-              className="text-[11px] text-slate-500 hover:text-slate-700 transition underline underline-offset-2"
-            >
-              Clear
-            </button>
-          )}
+            );
+          })}
         </div>
-      )}
 
-      {/* Tabs */}
-      <div className="flex items-center gap-1 overflow-x-auto px-1 pb-1 pt-2">
-        {(Object.keys(TAB_LABELS) as Tab[]).map((t) => {
-          const tabLabels = isManager ? MANAGER_TAB_LABELS : TAB_LABELS;
-          const isDanger = t === 'urgent';
-          const count = t === 'submitted' ? sortedSubmitted.length : buckets[t].length;
-          const rawCount = buckets[t].length;
-          const isActive = tab === t;
-          return (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              className={cn(
-                'inline-flex shrink-0 items-center gap-2 rounded-full px-3.5 py-1.5 text-[14px] font-medium transition',
-                isActive
-                  ? isDanger ? 'bg-red-50 text-red-700 ring-1 ring-red-200' : cn(activeBg, 'text-white')
-                  : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700',
-              )}
-            >
-              {tabLabels[t]}
-              <span className={cn(
-                'inline-flex min-w-[1.25rem] justify-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums',
-                isActive
-                  ? isDanger ? 'bg-red-100 text-red-700' : 'bg-white/20 text-white'
-                  : isDanger && rawCount > 0 ? 'bg-red-50 text-red-600' : 'bg-slate-100 text-slate-500',
-              )}>
-                {count}
-              </span>
-            </button>
-          );
-        })}
+        {(fyOptions.length > 0 || tab === 'submitted') && (
+          <Popover.Root>
+            <Popover.Trigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  'inline-flex shrink-0 items-center gap-1.5 rounded-lg border bg-white px-3 py-1.5 text-[12px] font-medium transition',
+                  activeChips.length > 0
+                    ? 'border-[#B5D4F4] text-[#0C447C]'
+                    : 'border-slate-200 text-slate-600 hover:border-slate-300',
+                )}
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                Filter
+                {activeChips.length > 0 && (
+                  <span className="inline-flex min-w-[1.1rem] justify-center rounded-full bg-[#0C447C] px-1 text-[10px] font-semibold tabular-nums text-white">
+                    {activeChips.length}
+                  </span>
+                )}
+              </button>
+            </Popover.Trigger>
+            <Popover.Portal>
+              <Popover.Content
+                align="end"
+                sideOffset={8}
+                className="z-50 w-[calc(100vw-32px)] sm:w-72 rounded-xl border border-slate-200 bg-white p-3 shadow-xl outline-none space-y-3"
+              >
+                {fyOptions.length > 0 && (
+                  <FilterGroup label="Financial year">
+                    <OptionChip active={filterFY == null} onClick={() => setFilterFY(null)}>All</OptionChip>
+                    {fyOptions.map((fy) => (
+                      <OptionChip key={fy} active={filterFY === fy} onClick={() => setFilterFY(fy)}>
+                        {fy}
+                      </OptionChip>
+                    ))}
+                  </FilterGroup>
+                )}
+                {fyOptions.length > 0 && (
+                  <FilterGroup label="Cycle type">
+                    {(['all', 'monthly', 'quarterly'] as Cadence[]).map((c) => (
+                      <OptionChip key={c} active={filterCadence === c} onClick={() => setFilterCadence(c)}>
+                        {CADENCE_LABELS[c]}
+                      </OptionChip>
+                    ))}
+                  </FilterGroup>
+                )}
+                {tab === 'submitted' && (
+                  <FilterGroup label="Sort">
+                    <OptionChip active={subSort === 'newest'} onClick={() => setSubSort('newest')}>Newest first</OptionChip>
+                    <OptionChip active={subSort === 'oldest'} onClick={() => setSubSort('oldest')}>Oldest first</OptionChip>
+                  </FilterGroup>
+                )}
+                {activeChips.length > 0 && (
+                  <div className="border-t border-slate-100 pt-2">
+                    <button
+                      type="button"
+                      onClick={clearAll}
+                      className="text-[11px] text-slate-500 hover:text-slate-700 transition underline underline-offset-2"
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                )}
+              </Popover.Content>
+            </Popover.Portal>
+          </Popover.Root>
+        )}
       </div>
 
-      {/* Sort strip — submitted tab only */}
-      {tab === 'submitted' && (
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <select
-              value={subSort}
-              onChange={(e) => setSubSort(e.target.value as 'newest' | 'oldest')}
-              className="appearance-none bg-white border border-slate-200 rounded-lg pl-3 pr-7 py-1.5 text-[12px] text-slate-700 cursor-pointer hover:border-slate-300 transition focus:outline-none focus:ring-1 focus:ring-brand"
+      {/* Active filters as removable chips */}
+      {activeChips.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5 px-1">
+          {activeChips.map((c) => (
+            <span
+              key={c.key}
+              className="inline-flex items-center gap-1 rounded-full border border-[#B5D4F4] bg-[#EBF3FE] py-0.5 pl-2.5 pr-1 text-[11px] font-medium text-[#0C447C]"
             >
-              <option value="newest">Newest first</option>
-              <option value="oldest">Oldest first</option>
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
-          </div>
+              {c.label}
+              <button
+                type="button"
+                onClick={c.clear}
+                aria-label={`Remove ${c.label}`}
+                className="grid h-4 w-4 place-items-center rounded-full hover:bg-[#0C447C]/10"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+          <button
+            type="button"
+            onClick={clearAll}
+            className="ml-1 text-[11px] text-slate-500 hover:text-slate-700 transition underline underline-offset-2"
+          >
+            Clear all
+          </button>
         </div>
       )}
 
@@ -340,6 +390,41 @@ export function MyQueue({
         </>
       )}
     </section>
+  );
+}
+
+function FilterGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-slate-400">{label}</p>
+      <div className="flex flex-wrap gap-1.5">{children}</div>
+    </div>
+  );
+}
+
+function OptionChip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        'rounded-full border px-2.5 py-1 text-[11px] font-medium transition',
+        active
+          ? 'border-[#0C447C] bg-[#0C447C] text-white'
+          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-800',
+      )}
+    >
+      {children}
+    </button>
   );
 }
 

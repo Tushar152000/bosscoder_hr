@@ -6,7 +6,7 @@ import {
   getEmployeeByUserUid,
   listEmployeesForBirthdays,
 } from "@/lib/firestore/employees";
-import { getHrUser } from "@/lib/firestore/users";
+import { displayPhotoURL, getHrUser } from "@/lib/firestore/users";
 import { canAccessAttendance } from "@/lib/attendance/access";
 import { getUpcomingBirthdays } from "@/lib/birthday";
 import { initials } from "@/lib/utils";
@@ -51,7 +51,7 @@ export default async function HomePage({
   const canSeeAttendance = await canAccessAttendance(user.roles, me ?? null);
   const canManageOffers = user.permissions.includes("manage_offer_letters");
 
-  const photoURL = hrUser?.photoURL ?? user.photoURL;
+  const photoURL = displayPhotoURL(hrUser, user.photoURL);
   const displayName = me?.displayName ?? user.displayName ?? user.email;
   const userInitials = initials(user.displayName, user.email);
   const avatarBg = colorForName(displayName);

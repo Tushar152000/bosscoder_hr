@@ -73,6 +73,7 @@ export async function uploadAvatarAction(formData: FormData): Promise<{ url: str
   await Promise.all([
     adminDb.collection(HR.users).doc(user.uid).update({
       photoURL: url,
+      photoRemoved: false,
       updatedAt: FieldValue.serverTimestamp(),
     }),
     adminAuth.updateUser(user.uid, { photoURL: url }),
@@ -80,6 +81,21 @@ export async function uploadAvatarAction(formData: FormData): Promise<{ url: str
 
   revalidatePath('/', 'layout');
   return { url };
+}
+
+/** Remove the profile photo (uploaded file + Auth/Firestore), falling back to initials. */
+export async function removeAvatarAction(): Promise<void> {
+  const user = await requireUser();
+  await adminStorage.bucket().deleteFiles({ prefix: `hr/avatars/${user.uid}/` }).catch(() => {});
+  await Promise.all([
+    adminDb.collection(HR.users).doc(user.uid).update({
+      photoURL: null,
+      photoRemoved: true,
+      updatedAt: FieldValue.serverTimestamp(),
+    }),
+    adminAuth.updateUser(user.uid, { photoURL: null }),
+  ]);
+  revalidatePath('/', 'layout');
 }
 
 export async function uploadDocumentAction(formData: FormData): Promise<{ url: string }> {

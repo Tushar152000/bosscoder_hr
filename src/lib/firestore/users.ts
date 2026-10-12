@@ -11,6 +11,8 @@ export interface HrUser {
   email: string;
   displayName: string | null;
   photoURL: string | null;
+  /** True after the user removed their photo (see displayPhotoURL). */
+  photoRemoved: boolean;
   roles: Role[];
   permissions: Permission[];
   employeeId: string | null;
@@ -18,6 +20,15 @@ export interface HrUser {
   createdAt: Date | null;
   updatedAt: Date | null;
   lastLoginAt: Date | null;
+}
+
+/**
+ * Photo to show for the signed-in user. An explicit removal wins over the session
+ * cookie's Google picture, which lingers until the next login.
+ */
+export function displayPhotoURL(hrUser: HrUser | null, sessionPhotoURL: string | null): string | null {
+  if (hrUser?.photoRemoved) return null;
+  return hrUser?.photoURL ?? sessionPhotoURL;
 }
 
 function tsToDate(ts: FirebaseFirestore.Timestamp | null | undefined): Date | null {
@@ -30,6 +41,7 @@ function toUser(stored: HrUserDoc): HrUser {
     email: stored.email,
     displayName: stored.displayName,
     photoURL: stored.photoURL,
+    photoRemoved: stored.photoRemoved ?? false,
     roles: stored.roles ?? [],
     permissions: stored.permissions ?? [],
     employeeId: stored.employeeId ?? null,
