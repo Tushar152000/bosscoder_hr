@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ChevronRight, AlertCircle, CircleOff } from 'lucide-react';
+import { AlertCircle, CircleOff } from 'lucide-react';
 import { requirePermission } from '@/lib/auth/guard';
 import { getHrUser } from '@/lib/firestore/users';
 import { getEmployeeByUserUid } from '@/lib/firestore/employees';
@@ -8,6 +8,7 @@ import { initials } from '@/lib/utils';
 import { colorForName } from '@/lib/directory/colors';
 import { ROLE_META } from '@/lib/roles/meta';
 import { Button } from '@/components/ui/button';
+import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { RolesForm } from '@/components/admin/roles-form';
 
 interface Props {
@@ -38,15 +39,7 @@ export default async function EditUserRolesPage({ params }: Props) {
   return (
     <div className="mx-auto  py-6">
 
-      <nav className="flex items-center gap-1 mb-4 text-[11px] text-slate-400">
-        <Link href="/" className="hover:text-slate-700 transition-colors">Home</Link>
-        <ChevronRight className="h-3 w-3" />
-        <span>Admin</span>
-        <ChevronRight className="h-3 w-3" />
-        <Link href="/settings/roles" className="hover:text-slate-700 transition-colors">Roles</Link>
-        <ChevronRight className="h-3 w-3" />
-        <span className="text-slate-700 font-medium truncate max-w-[160px]">{displayName}</span>
-      </nav>
+      <Breadcrumbs items={[{ label: 'Admin' }, { label: 'Roles', href: '/settings/roles' }, { label: displayName }]} className="mb-4" />
 
       {/* Self-edit banner */}
       {isSelf && (

@@ -13,15 +13,16 @@ interface Props {
   email: string;
 }
 
-export function AvatarUploader({ photoURL, displayName, email }: Props) {
+/**
+ * Pick-and-upload logic for the profile photo, shared by the Settings uploader and
+ * the home profile panel. Render `input` once and call `openPicker` from any trigger.
+ */
+export function useAvatarUpload() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-
-  const currentPhoto = preview ?? photoURL;
-  const userInitials = initials(displayName, email);
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -57,12 +58,35 @@ export function AvatarUploader({ photoURL, displayName, email }: Props) {
     e.target.value = '';
   }
 
+  const openPicker = () => {
+    if (!isPending) inputRef.current?.click();
+  };
+
+  const input = (
+    <input
+      ref={inputRef}
+      type="file"
+      accept="image/*"
+      className="sr-only"
+      onChange={handleFileChange}
+      aria-hidden
+    />
+  );
+
+  return { preview, error, isPending, openPicker, input };
+}
+
+export function AvatarUploader({ photoURL, displayName, email }: Props) {
+  const { preview, error, isPending, openPicker, input } = useAvatarUpload();
+  const currentPhoto = preview ?? photoURL;
+  const userInitials = initials(displayName, email);
+
   return (
     <div className="flex flex-col items-start gap-3">
       <div className="flex items-center gap-4">
         <button
           type="button"
-          onClick={() => !isPending && inputRef.current?.click()}
+          onClick={openPicker}
           className="relative w-16 h-16 rounded-full overflow-hidden group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0C447C]"
           aria-label="Change profile photo"
           disabled={isPending}
@@ -94,7 +118,7 @@ export function AvatarUploader({ photoURL, displayName, email }: Props) {
         <div>
           <button
             type="button"
-            onClick={() => !isPending && inputRef.current?.click()}
+            onClick={openPicker}
             disabled={isPending}
             className="text-[12px] font-medium text-[#0C447C] hover:underline disabled:opacity-50 disabled:no-underline"
           >
@@ -110,14 +134,7 @@ export function AvatarUploader({ photoURL, displayName, email }: Props) {
         </p>
       )}
 
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        className="sr-only"
-        onChange={handleFileChange}
-        aria-hidden
-      />
+      {input}
     </div>
   );
 }

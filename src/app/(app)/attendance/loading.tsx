@@ -13,7 +13,7 @@ export default function AttendanceLoading() {
         <Skeleton className="h-10 w-full rounded-lg md:w-64" />
       </div>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_300px]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[300px_1fr]">
         {/* Calendar */}
         <div className="min-w-0 space-y-4 rounded-xl border border-zinc-200 bg-white p-3 sm:p-4">
           <div className="flex items-center justify-between gap-2">
@@ -43,8 +43,8 @@ export default function AttendanceLoading() {
           </div>
         </div>
 
-        {/* Leave balance + requests */}
-        <div className="space-y-4">
+        {/* Leave balance + requests — left column on desktop, like the page */}
+        <div className="space-y-4 lg:order-first">
           <div className="space-y-4 rounded-[10px] border border-zinc-200 bg-white p-4">
             <Skeleton className="h-3 w-28" />
             {Array.from({ length: 6 }).map((_, i) => (

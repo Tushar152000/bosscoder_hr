@@ -20,6 +20,7 @@ export const HR = {
   attendanceRecords: 'hr_attendance_records',
   leaveRequests: 'hr_leave_requests',
   leaveBalances: 'hr_leave_balances',
+  feedback: 'hr_feedback',
 } as const;
 
 export type HrCollection = (typeof HR)[keyof typeof HR];

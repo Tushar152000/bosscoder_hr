@@ -9,15 +9,12 @@ import {
   useTransition,
 } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import {
   AlertCircle,
   Check,
-  ChevronRight,
   Clock,
   EyeOff,
   HeartHandshake,
-  Home,
   Loader2,
   Lock,
   Pencil,
@@ -29,6 +26,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { useDialog } from '@/components/ui/modal';
+import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { saveSelfEvalAction } from '@/app/(app)/performance/actions';
 import { formatDate } from '@/lib/format';
 import { cycleNameWithMonths } from '@/lib/performance/cycle-period';
@@ -556,24 +554,7 @@ export function SelfEvalForm({
     <div className="flex flex-col h-[calc(100vh-3.5rem)] md:px-10 px-6">
       {dialog}  
       <div className="flex-shrink-0 pt-5 pb-3">
-        <nav className="flex items-center gap-1.5 text-[14px] text-slate-400 mb-1.5">
-          <Link href="/" className="flex items-center hover:text-slate-600 transition-colors">
-            <Home size={12} />
-          </Link>
-          <ChevronRight size={11} />
-          <Link href="/performance" className="hover:text-slate-600 transition-colors">
-            Performance
-          </Link>
-          <ChevronRight size={11} />
-          <Link
-            href={`/performance/cycles/${cycleId}`}
-            className="hover:text-slate-600 transition-colors"
-          >
-            {cycleName}
-          </Link>
-          <ChevronRight size={11} />
-          <span className="text-slate-500 font-medium">Self-evaluation</span>
-        </nav>
+        <Breadcrumbs items={[{ label: 'Performance', href: '/performance' }, { label: cycleName, href: `/performance/cycles/${cycleId}` }, { label: 'Self-evaluation' }]} className="mb-1.5" />
 
         <header className="flex items-start justify-between gap-3.5">
           <div>

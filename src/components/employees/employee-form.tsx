@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Field, INPUT_CLASS } from '@/components/forms/field';
+import { PhoneField } from '@/components/forms/phone-field';
 import { SectionHeader } from '@/components/forms/section-header';
 import { DEPARTMENTS } from '@/lib/constants/departments';
 import { createEmployeeAction, updateEmployeeAction } from '@/app/(app)/directory/actions';
@@ -131,15 +132,7 @@ export function EmployeeForm({ mode, initial, employeeId, managers, canEditSensi
             </select>
           </Field>
           <Field label="Mobile" required helpText="Used for cycle-opening notifications">
-            <input
-              type="tel"
-              className={INPUT_CLASS}
-              value={form.phone}
-              onChange={(e) => set('phone', e.target.value)}
-              placeholder="+91 98765 43210"
-              required
-              minLength={7}
-            />
+            <PhoneField value={form.phone} onChange={(v) => set('phone', v)} required />
           </Field>
           <Field label="Personal email" optional>
             <input
@@ -437,8 +430,9 @@ export function EmployeeForm({ mode, initial, employeeId, managers, canEditSensi
       )}
 
       {/* Sticky footer */}
-      <div className="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-slate-200/70 px-6 py-3.5">
-        <div className="w-full max-w-[1300px] mx-auto flex items-center justify-between gap-3">
+      {/* Same side padding as the page so the buttons line up with the form's right edge. */}
+      <div className="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-slate-200/70 px-6 md:px-10 py-3.5">
+        <div className="w-full flex items-center justify-between gap-3">
           <p className="text-[12px] text-slate-400 hidden sm:block">
             {mode === 'edit' ? 'Editing employee record' : 'New employee'}
           </p>

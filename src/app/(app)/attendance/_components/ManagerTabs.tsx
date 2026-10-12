@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { Calendar, Home, ChevronRight } from "lucide-react";
+import { Calendar } from "lucide-react";
+import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import { EmployeeView } from "./EmployeeView";
 import { TeamView } from "./TeamView";
 import { HRView } from "./HRView";
@@ -80,14 +80,7 @@ export function ManagerTabs({
     <div>
       <div className="flex flex-col gap-4 py-6 md:flex-row md:items-center md:justify-between">
         <div className="min-w-0">
-          <div className="flex items-center gap-1.5 text-[13px] text-slate-400 font-medium mb-1.5">
-            <Home size={14} />
-            <Link href="/" className="hover:text-slate-600 md:text-[16px] text-[14px] transition">
-              Home
-            </Link>
-            <ChevronRight size={11} />
-            <span className="text-slate-900 md:text-[16px] text-[14px]">Attendance</span>
-          </div>
+          <Breadcrumbs items={[{ label: "Attendance" }]} className="mb-1.5" />
           <h1 className="text-[20px] md:text-[28px] font-semibold text-dark-blue">
             {greeting}, {firstName}
           </h1>

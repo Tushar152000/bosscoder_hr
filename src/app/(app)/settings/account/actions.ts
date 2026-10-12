@@ -67,7 +67,8 @@ export async function uploadAvatarAction(formData: FormData): Promise<{ url: str
   await fileRef.save(buffer, { metadata: { contentType: file.type } });
   await fileRef.makePublic();
 
-  const url = `https://storage.googleapis.com/${bucket.name}/${path}`;
+  // Same object path on every upload — version the URL so browsers drop the cached old photo.
+  const url = `https://storage.googleapis.com/${bucket.name}/${path}?v=${Date.now()}`;
 
   await Promise.all([
     adminDb.collection(HR.users).doc(user.uid).update({

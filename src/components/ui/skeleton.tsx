@@ -2,14 +2,18 @@ import * as React from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * Pulse-animated placeholder. Pair with `loading.tsx` to render route-level
- * skeletons that match the real layout's geometry — keeps the user oriented
- * while server components stream in.
+ * Pulse-animated placeholder (or a moving shimmer with `shimmer`). Pair with
+ * `loading.tsx` to render route-level skeletons that match the real layout's
+ * geometry — keeps the user oriented while server components stream in.
  */
-export function Skeleton({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
+export function Skeleton({
+  className,
+  shimmer = false,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement> & { shimmer?: boolean }) {
   return (
     <div
-      className={cn('animate-pulse rounded-md bg-slate-100', className)}
+      className={cn('rounded-md bg-slate-100', shimmer ? 'skeleton-shimmer' : 'animate-pulse', className)}
       {...props}
     />
   );

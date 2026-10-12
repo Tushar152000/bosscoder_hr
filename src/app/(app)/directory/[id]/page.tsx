@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { Home, ChevronRight, Lock, Pencil } from 'lucide-react';
+import { Lock, Pencil } from 'lucide-react';
 import { requireUser } from '@/lib/auth/guard';
 import { canEditEmployees, canViewEmployee, canViewSensitiveFor } from '@/lib/auth/employee-access';
 import { getEmployeeById, getEmployeeFull, listEmployees } from '@/lib/firestore/employees';
@@ -11,7 +11,9 @@ import { initials } from '@/lib/utils';
 import { formatDate } from '@/lib/format';
 import { colorForName } from '@/lib/directory/colors';
 import { DeactivateEmployeeButton, DeleteEmployeeButton } from '@/components/employees/employee-actions';
+import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import type { EmployeeFull, EmployeeStatus, EmploymentType } from '@/types/employee';
+import { formatPhone } from '@/lib/phone';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -68,14 +70,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
         </div>
       )}
       {/* Breadcrumb */}
-      <div className="flex items-center gap-1.5 text-[12px] text-slate-400">
-        <Home size={12} />
-        <Link href="/" className="hover:text-slate-600 transition">Home</Link>
-        <ChevronRight size={11} />
-        <Link href="/directory" className="hover:text-slate-600 transition">Directory</Link>
-        <ChevronRight size={11} />
-        <span className="text-slate-900">{employee.displayName}</span>
-      </div>
+      <Breadcrumbs items={[{ label: 'Directory', href: '/directory' }, { label: employee.displayName }]} />
 
       {/* Header card */}
       <div className="bg-white border border-slate-200/70 rounded-xl p-5">
@@ -149,7 +144,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
               {employee.personalEmail && (
                 <DataRow label="Personal email" value={employee.personalEmail} />
               )}
-              <DataRow label="Phone" value={employee.phone ?? '—'} />
+              <DataRow label="Phone" value={employee.phone ? formatPhone(employee.phone) : '—'} />
               <DataRow label="Joining date" value={formatDate(employee.joiningDate)} />
               {employee.dateOfBirth && (
                 <DataRow label="Birthday" value={employee.dateOfBirth} />

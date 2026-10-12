@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import Link from 'next/link';
-import { Clock, Plus, X, ChevronRight, Home } from 'lucide-react';
+import { Clock, Plus, X, ChevronRight } from 'lucide-react';
+import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { AttendanceCalendar } from './AttendanceCalendar';
 import { LeaveBalanceCard } from './LeaveBalanceCard';
 import { ApplyLeaveModal } from './ApplyLeaveModal';
@@ -76,51 +76,40 @@ export function EmployeeView({
     });
   }
 
+  const applyButton = (
+    <button
+      onClick={() => setLeaveOpen(true)}
+      className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#0C447C] px-5 py-3 text-[14px] font-semibold text-white shadow-sm transition hover:bg-[#0a3a6b] active:scale-[0.99]"
+    >
+      <Plus className="h-4 w-4" />
+      Apply for leave
+    </button>
+  );
+
   const previewRequests = leaveRequests.slice(0, 3);
   const extraCount = leaveRequests.length - 3;
 
   return (
     <div className="pb-8">
-      {/* Greeting header — flex row with the primary action on the right.
-          The greeting only renders when supplied; manager / single-employee
-          views pass none and just get the action button. */}
-      <div
-        className={[
-          'mb-6 flex flex-col gap-4 sm:flex-row sm:items-center',
-          greeting ? 'pt-7 sm:justify-between' : 'pt-2 sm:justify-end',
-        ].join(' ')}
-      >
-        {greeting && (
-          <div>
-            <div className="flex items-center gap-1.5 text-[13px] text-slate-400 font-medium mb-1.5">
-              <Home size={14} />
-              <Link href="/" className="hover:text-slate-600 md:text-[16px] text-[14px] transition">
-                Home
-              </Link>
-              <ChevronRight size={11} />
-              <span className="text-slate-900 md:text-[16px] text-[14px]">Attendance</span>
-            </div>
-            <h1 className="text-[20px] md:text-[28px] font-semibold text-dark-blue">
-              {greeting}, {firstName}
-            </h1>
-            <div className="mt-1 flex flex-wrap items-center gap-x-1.5 font-medium">
-              <span className="text-[14px] text-zinc-500">{fullDate}</span>
-              <span className="mx-0.5 text-zinc-300">·</span>
-              <span className="text-[14px] text-zinc-500">Week {weekNum}</span>
-            </div>
+      {/* Greeting (only when supplied — manager / single-employee views pass none).
+          "Apply for leave" sits here on phones; on desktop it heads the left column. */}
+      {greeting && (
+        <div className="pt-7 mb-6">
+          <Breadcrumbs items={[{ label: 'Attendance' }]} className="mb-1.5" />
+          <h1 className="text-[20px] md:text-[28px] font-semibold text-dark-blue">
+            {greeting}, {firstName}
+          </h1>
+          <div className="mt-1 flex flex-wrap items-center gap-x-1.5 font-medium">
+            <span className="text-[14px] text-zinc-500">{fullDate}</span>
+            <span className="mx-0.5 text-zinc-300">·</span>
+            <span className="text-[14px] text-zinc-500">Week {weekNum}</span>
           </div>
-        )}
+        </div>
+      )}
 
-        <button
-          onClick={() => setLeaveOpen(true)}
-          className="flex shrink-0 items-center justify-center gap-2 rounded-lg bg-[#0C447C] px-5 py-3 text-[14px] font-semibold text-white shadow-sm transition hover:bg-[#0a3a6b] active:scale-[0.99]"
-        >
-          <Plus className="h-4 w-4" />
-          Apply for leave
-        </button>
-      </div>
+      <div className={greeting ? 'mb-5 lg:hidden' : 'mb-5 pt-2 lg:hidden'}>{applyButton}</div>
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_300px]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[300px_1fr]">
 
         {/* Left — pending status + calendar */}
         <div className="min-w-0 space-y-3">
@@ -152,7 +141,9 @@ export function EmployeeView({
           </div>
         </div>
 
-        <div className="space-y-4">
+        {/* Side column — left on desktop, after the calendar on phones. */}
+        <div className="space-y-4 lg:order-first">
+          <div className="hidden lg:block">{applyButton}</div>
           <LeaveBalanceCard balance={balance} records={records} />
 
       

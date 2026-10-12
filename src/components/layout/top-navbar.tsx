@@ -5,8 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Bell, ChevronDown, ClipboardList, FileText,
-  Home, LogOut, Menu, Megaphone,
-  Settings as SettingsIcon, Users, X,
+  Home, LogOut, Menu, Megaphone, MessageCircle,
+  Settings as SettingsIcon, User as UserIcon, Users, X,
 } from "lucide-react";
 import * as Popover from "@radix-ui/react-popover";
 import { signOut } from "firebase/auth";
@@ -14,6 +14,7 @@ import { auth } from "@/lib/firebase/client";
 import { BosscoderLogo } from "@/assets/images/BosscoderLogo";
 import { initials, cn } from "@/lib/utils";
 import { useDialog } from "@/components/ui/modal";
+import { NotificationsSheet } from "@/components/notifications/notifications-sheet";
 import type { Permission, Role } from "@/lib/auth/roles";
 import {
   markNotificationsReadAction,
@@ -41,6 +42,10 @@ interface Props {
     designation: string | null;
     department: string | null;
     managerName: string | null;
+    /** Links "My profile" to the user's directory page. */
+    employeeId?: string | null;
+    /** Shows the private Feedback inbox link (see lib/feedback/access). */
+    canViewFeedback?: boolean;
   };
   notifications?: NavNotification[];
 }
@@ -205,13 +210,16 @@ export function TopNavbar({ user, notifications = [] }: Props) {
 function NotificationBell({ notifications }: { notifications: NavNotification[] }) {
   const [localAllRead, setLocalAllRead] = useState(false);
   const [localCleared, setLocalCleared] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   useEffect(() => { setLocalAllRead(false); setLocalCleared(false); }, [notifications]);
 
   const unread = localAllRead ? 0 : notifications.filter((n) => !n.read).length;
 
-  function onOpenChange(open: boolean) {
-    if (open && unread > 0) {
+  function onOpenChange(next: boolean) {
+    setOpen(next);
+    if (next && unread > 0) {
       setLocalAllRead(true);
       markNotificationsReadAction().catch(() => {});
     }
@@ -225,7 +233,8 @@ function NotificationBell({ notifications }: { notifications: NavNotification[] 
   const visible = !localCleared && notifications.length > 0;
 
   return (
-    <Popover.Root onOpenChange={onOpenChange}>
+    <>
+    <Popover.Root open={open} onOpenChange={onOpenChange}>
       <Popover.Trigger asChild>
         <button
           type="button"
@@ -293,9 +302,21 @@ function NotificationBell({ notifications }: { notifications: NavNotification[] 
               })}
             </ul>
           )}
+
+          {visible && (
+            <button
+              type="button"
+              onClick={() => { setOpen(false); setSheetOpen(true); }}
+              className="mt-1 w-full rounded-lg border-t border-slate-100 px-2 pt-2 pb-1 text-left text-[12px] font-medium text-[#0C447C] transition hover:bg-[#EEF5FF]"
+            >
+              View all notifications
+            </button>
+          )}
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>
+    <NotificationsSheet open={sheetOpen} onOpenChange={setSheetOpen} notifications={notifications} />
+    </>
   );
 }
 
@@ -348,8 +369,14 @@ function UserMenu({
           </div>
 
           <nav className="space-y-0.5">
-            {/* Profile, roles and the audit log all live under Settings. */}
+            {user.employeeId && (
+              <MenuLink href={`/directory/${user.employeeId}`} icon={UserIcon} label="My profile" />
+            )}
+            {/* Account details, roles and the audit log all live under Settings. */}
             <MenuLink href="/settings" icon={SettingsIcon} label="Settings" />
+            {user.canViewFeedback && (
+              <MenuLink href="/feedback" icon={MessageCircle} label="Feedback inbox" />
+            )}
           </nav>
 
           <div className="border-t border-slate-100 mt-1 pt-1">

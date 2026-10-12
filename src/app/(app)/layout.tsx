@@ -6,6 +6,7 @@ import {
 import { listNotificationsForUser } from '@/lib/firestore/notifications';
 import { getHrUser } from '@/lib/firestore/users';
 import { TopNavbar } from '@/components/layout/top-navbar';
+import { canViewFeedback } from '@/lib/feedback/access';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
@@ -29,6 +30,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           designation: me?.designation ?? null,
           department: me?.department ?? null,
           managerName: manager?.displayName ?? null,
+          employeeId: me?.employeeId ?? null,
+          canViewFeedback: canViewFeedback(user),
         }}
         notifications={notifications}
       />

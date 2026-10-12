@@ -1,18 +1,14 @@
-import Link from 'next/link';
 import {
-  Settings,
-  ChevronRight,
   Briefcase,
   Building2,
   CalendarDays,
   UserCircle2,
 } from 'lucide-react';
 import { BirthdayPanel } from '@/components/home/birthday-panel';
-import { HomeNotifications } from '@/components/dashboard/home-notifications';
+import { ProfileAvatarUpload } from '@/components/home/profile-avatar-upload';
 import { initials } from '@/lib/utils';
 import { colorForName } from '@/lib/directory/colors';
 import { formatDate } from '@/lib/format';
-import type { NavNotification } from '@/components/layout/top-navbar';
 import type { EmployeePublic } from '@/types/employee';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -43,7 +39,6 @@ interface HomeSidebarProps {
   isFounder: boolean;
   reportingManager?: EmployeePublic | null;
   upcomingBirthdays: { id: string; name: string; department?: string; daysUntil: number }[];
-  notifications: NavNotification[];
 }
 
 export function HomeSidebar({
@@ -58,15 +53,14 @@ export function HomeSidebar({
   isFounder,
   reportingManager,
   upcomingBirthdays,
-  notifications,
 }: HomeSidebarProps) {
   const hasProfile = !!designation || !!department || !!joiningDate;
   const roleLabel = ROLE_LABELS[role] ?? role;
   const roleColor = ROLE_COLORS[role] ?? ROLE_COLORS.employee;
-  const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <aside className="bg-white border-l border-slate-200 lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:overflow-hidden lg:self-start flex flex-col">
+    // Profile panel: left column on desktop (order-first), below the main content on mobile.
+    <aside className="bg-white border-r border-slate-200 lg:order-first lg:sticky lg:top-16 lg:h-[calc(100vh-4rem)] lg:overflow-hidden lg:self-start flex flex-col">
 
       {/* ── Profile hero ── */}
       <div className="relative px-5 pt-6 pb-6 bg-gradient-to-b from-[#EEF5FF] via-[#F5F9FF] to-white border-b border-slate-200 overflow-hidden">
@@ -75,26 +69,8 @@ export function HomeSidebar({
         <div className="pointer-events-none absolute bottom-0 left-0 w-16 h-16 rounded-full bg-[#0C447C]/5 blur-2xl" />
 
         <div className="relative flex flex-col items-center text-center gap-3">
-          {/* Avatar */}
-          <div className="relative">
-            {photoURL ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={photoURL}
-                alt=""
-                referrerPolicy="no-referrer"
-                className="w-[68px] h-[68px] rounded-2xl object-cover ring-[3px] ring-white shadow-lg"
-              />
-            ) : (
-              <div
-                className="w-[68px] h-[68px] rounded-2xl flex items-center justify-center text-white text-[24px] font-bold ring-[3px] ring-white shadow-lg"
-                style={{ background: avatarBg }}
-              >
-                {userInitials}
-              </div>
-            )}
-            <span className="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full bg-emerald-400 border-2 border-white shadow-sm" />
-          </div>
+          {/* Avatar — click to upload a new photo */}
+          <ProfileAvatarUpload photoURL={photoURL} userInitials={userInitials} avatarBg={avatarBg} />
 
           {/* Name */}
           <div className="w-full min-w-0 px-1">
@@ -191,40 +167,7 @@ export function HomeSidebar({
           </div>
         </div>
 
-        {/* ── Notifications ── */}
-        <div className="rounded-xl border border-slate-100 bg-white flex flex-col" style={{ height: '188px' }}>
-          <div className="px-4 pt-2.5 pb-1.5 flex items-center justify-between border-b border-slate-100 flex-shrink-0">
-            <p className="text-[10px] font-bold tracking-[1.2px] uppercase text-slate-400">
-              Notifications
-            </p>
-            {unreadCount > 0 && (
-              <span className="text-[9px] font-semibold bg-[#E6F1FB] text-[#0C447C] px-1.5 py-0.5 rounded-full border border-[#C3D9EF]">
-                {unreadCount} new
-              </span>
-            )}
-          </div>
-          <div className="overflow-y-auto flex-1 min-h-0 px-3 pb-2">
-            <HomeNotifications notifications={notifications} />
-          </div>
-        </div>
 
-        {/* ── Settings link ── */}
-        <div className="mt-auto pt-1 pb-2">
-          <Link
-            href="/settings"
-            className="flex items-center justify-between w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-[#F5F9FF] hover:border-[#C3D9EF] transition-all group"
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="w-6 h-6 rounded-md bg-slate-100 flex items-center justify-center group-hover:bg-[#E6F1FB] transition-colors">
-                <Settings className="h-3.5 w-3.5 text-slate-400 group-hover:text-[#0C447C] transition-colors" />
-              </div>
-              <span className="text-[12px] font-medium text-slate-600 group-hover:text-[#0C447C] transition-colors">
-                Account settings
-              </span>
-            </div>
-            <ChevronRight className="h-3.5 w-3.5 text-slate-300 group-hover:text-[#0C447C] group-hover:translate-x-0.5 transition-all" />
-          </Link>
-        </div>
 
       </div>
     </aside>

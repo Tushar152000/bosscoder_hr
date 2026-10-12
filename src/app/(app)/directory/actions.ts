@@ -17,6 +17,7 @@ import { syncCustomClaimsFromFirestore } from '@/lib/auth/claims';
 import { defaultPermissionsForRoles } from '@/lib/auth/roles';
 import { writeAuditLog } from '@/lib/audit';
 import type { EmployeeInput } from '@/types/employee';
+import { isValidMobile } from '@/lib/phone';
 
 /**
  * If an employee has no reporting manager → promote them to `manager` role.
@@ -59,7 +60,7 @@ const employeeInputSchema = z.object({
   displayName: z.string().min(1, 'Name required').max(120),
   email: z.string().email().max(160),
   personalEmail: z.string().email().max(160).nullable(),
-  phone: z.string().min(7, 'Mobile number is required').max(40),
+  phone: z.string().max(40).refine(isValidMobile, 'Enter a valid mobile number'),
   designation: z.string().min(1).max(120),
   department: z.string().min(1).max(80),
   managedDepartments: z.array(z.string().max(80)).default([]),

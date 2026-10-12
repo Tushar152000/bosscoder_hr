@@ -1,5 +1,4 @@
-import { TrendingUp, Home, ChevronRight } from "lucide-react";
-import Link from "next/link";
+import { TrendingUp } from "lucide-react";
 import { requireUser } from "@/lib/auth/guard";
 import { isPrivileged } from "@/lib/auth/roles";
 import {
@@ -18,6 +17,7 @@ import { VestingTimeline } from "@/components/esop/vesting-timeline";
 import { ShareBreakdown } from "@/components/esop/share-breakdown";
 import { EsopClientPanel } from "@/components/esop/esop-client-panel";
 import { EsopCalculatingModal } from "@/components/esop/esop-calculating-modal";
+import { Breadcrumbs } from "@/components/ui/breadcrumbs";
 import type { EsopGrantWithPlan } from "@/types/esop";
 
 export const metadata = { title: "ESOPs — Equity portal" };
@@ -62,14 +62,7 @@ export default async function EsopPage() {
   return (
     <div className="px-6 md:px-10 py-6 md:py-8 space-y-6">
       <EsopCalculatingModal role={role} />
-      <nav className="flex items-center gap-1.5 text-[14px] text-slate-400">
-        <Link href="/" className="flex items-center gap-1 hover:text-slate-600 transition-colors">
-          <Home size={12} />
-          <span>Home</span>
-        </Link>
-        <ChevronRight size={11} />
-        <span className="text-slate-500 font-medium">ESOPs</span>
-      </nav>
+      <Breadcrumbs items={[{ label: "ESOPs" }]} />
       {!isFounder && <div className="rounded-xl border border-[#bcd2ff] bg-[#EBF3FE] px-6 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <p className="text-[10px] font-semibold tracking-[1.4px] uppercase text-[#0C447C]">

@@ -255,3 +255,46 @@ a,
     page-break-inside: avoid;
   }
 }
+
+/* Shimmer placeholder for loading skeletons (`<Skeleton shimmer />`). */
+@keyframes skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.skeleton-shimmer::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent);
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-shimmer::after {
+    animation: none;
+  }
+}
+
+/* Notifications sheet sliding in from the left (home profile panel). */
+@keyframes sheet-in-left {
+  from { transform: translateX(-100%); opacity: 0.6; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@keyframes sheet-out-left {
+  from { transform: translateX(0); opacity: 1; }
+  to { transform: translateX(-100%); opacity: 0.6; }
+}
+.sheet-from-left[data-state='open'] {
+  animation: sheet-in-left 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.sheet-from-left[data-state='closed'] {
+  animation: sheet-out-left 260ms cubic-bezier(0.7, 0, 0.84, 0) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sheet-from-left[data-state] { animation: none; }
+}

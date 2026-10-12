@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { Home, ChevronRight, Network, Plus } from 'lucide-react';
+import { Network, Plus } from 'lucide-react';
+import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 
 interface DirectoryHeaderProps {
   totalEmployees: number;
@@ -17,14 +18,7 @@ export function DirectoryHeader({
   return (
     <div className="px-4 md:px-10 py-4 flex items-start justify-between gap-3 flex-wrap">
       <div>
-        <div className="flex items-center gap-1.5 text-[13px] text-slate-400 font-medium mb-1.5">
-          <Home size={14} />
-          <Link href="/" className="hover:text-slate-600 md:text-[16px] text-[14px] transition">
-            Home
-          </Link>
-          <ChevronRight size={11} />
-          <span className="text-slate-900 md:text-[16px] text-[14px]">Directory</span>
-        </div>
+        <Breadcrumbs items={[{ label: 'Directory' }]} className="mb-1.5" />
         <h1 className="text-[20px] md:text-[22px] font-semibold text-slate-900">
           Employee directory
         </h1>

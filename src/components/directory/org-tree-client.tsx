@@ -18,8 +18,6 @@ import {
 import '@xyflow/react/dist/style.css';
 import dagre from 'dagre';
 import {
-  Home,
-  ChevronRight,
   Search,
   Share2,
   ListTree,
@@ -37,6 +35,7 @@ import {
   ChevronRight as ChevronRightSm,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public types (used by page.tsx)
@@ -803,16 +802,7 @@ export function OrgTreeClient({
   return (
     <div>
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-[14px] text-slate-400 mb-1.5">
-        <Link href="/" className="flex items-center gap-1 hover:text-slate-600 transition">
-          <Home size={11} />
-          Home
-        </Link>
-        <ChevronRight size={10} />
-        <Link href="/directory" className="hover:text-slate-600 transition">Directory</Link>
-        <ChevronRight size={10} />
-        <span className="text-slate-600 font-semibold">Org tree</span>
-      </nav>
+      <Breadcrumbs items={[{ label: 'Directory', href: '/directory' }, { label: 'Org tree' }]} className="mb-1.5" />
 
       {/* Header */}
       <div className="mb-4 flex items-start justify-between gap-3 flex-wrap">

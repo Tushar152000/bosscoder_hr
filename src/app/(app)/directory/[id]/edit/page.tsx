@@ -1,6 +1,5 @@
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
-import { Home, ChevronRight } from 'lucide-react';
 import { requireUser } from '@/lib/auth/guard';
 import { canEditEmployees, canViewSensitiveFor } from '@/lib/auth/employee-access';
 import {
@@ -12,8 +11,10 @@ import {
 } from '@/lib/firestore/employees';
 import { writeAuditLog } from '@/lib/audit';
 import { EmployeeForm } from '@/components/employees/employee-form';
+import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { initials } from '@/lib/utils';
 import { colorForName } from '@/lib/directory/colors';
+import { toE164 } from '@/lib/phone';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -53,7 +54,7 @@ export default async function EditEmployeePage({ params }: Props) {
       displayName: employee.displayName,
       email: employee.email,
       personalEmail: employee.personalEmail,
-      phone: employee.phone ?? '',
+      phone: toE164(employee.phone),
       designation: employee.designation,
       department: employee.department,
       managedDepartments: employee.managedDepartments,
@@ -72,20 +73,9 @@ export default async function EditEmployeePage({ params }: Props) {
   const userInitials = initials(employee.displayName, employee.email);
 
   return (
-    <div className="py-5 space-y-5">
+    <div className="px-6 md:px-10 py-5 space-y-5">
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-[12px] text-slate-400">
-        <Home size={12} />
-        <Link href="/" className="hover:text-slate-600 transition">Home</Link>
-        <ChevronRight size={11} />
-        <Link href="/directory" className="hover:text-slate-600 transition">Directory</Link>
-        <ChevronRight size={11} />
-        <Link href={`/directory/${employee.employeeId}`} className="hover:text-slate-600 transition truncate max-w-[160px]">
-          {employee.displayName}
-        </Link>
-        <ChevronRight size={11} />
-        <span className="text-slate-700 font-medium">Edit</span>
-      </nav>
+      <Breadcrumbs items={[{ label: 'Directory', href: '/directory' }, { label: employee.displayName, href: `/directory/${employee.employeeId}` }, { label: 'Edit' }]} />
 
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">

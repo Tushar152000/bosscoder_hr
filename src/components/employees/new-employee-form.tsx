@@ -12,16 +12,17 @@ import {
   ShieldCheck,
   Lock,
   ArrowLeft,
-  Home,
-  ChevronRight,
   Check,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DEPARTMENTS } from '@/lib/constants/departments';
 import { createEmployeeAction } from '@/app/(app)/directory/actions';
 import { Field, INPUT_CLASS } from '@/components/forms/field';
+import { PhoneField } from '@/components/forms/phone-field';
+import { formatPhone, isValidMobile } from '@/lib/phone';
 import { SectionStepper, type SectionItem } from '@/components/forms/section-stepper';
 import { SectionHeader } from '@/components/forms/section-header';
+import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { FormFooter } from './sections/form-footer';
 import type { EmployeeInput, EmployeeStatus } from '@/types/employee';
 
@@ -55,7 +56,8 @@ function validateSection(id: string, form: EmployeeInput): string | null {
       return 'Work email must be @bosscoderacademy.com';
     if (!form.designation.trim()) return 'Designation is required';
     if (!form.department) return 'Department is required';
-    if (!form.phone.trim() || form.phone.length < 7) return 'Mobile number is required';
+    if (!form.phone) return 'Mobile number is required';
+    if (!isValidMobile(form.phone)) return 'Enter a valid mobile number';
   }
   if (id === 'employment') {
     if (!form.joiningDate) return 'Joining date is required';
@@ -152,14 +154,7 @@ export function NewEmployeeForm({ initial, managers, canEditSensitive }: Props) 
     <div className="py-5 pb-20 md:px-10 px-6 flex flex-col min-h-[calc(100vh-3.5rem)]">
   
       <div className="pb-5">
-        <div className="flex items-center gap-1.5 text-[14px] text-slate-400 mb-3">
-          <Home size={16} />
-          <Link href="/" className="hover:text-slate-600 transition md:text-[16px] text-[14px]">Home</Link>
-          <ChevronRight size={11} />
-          <Link href="/directory" className="hover:text-slate-600 transition">Directory</Link>
-          <ChevronRight size={11} />
-          <span className="text-slate-900 md:text-[16px] text-[14px]">New employee</span>
-        </div>
+        <Breadcrumbs items={[{ label: 'Directory', href: '/directory' }, { label: 'New employee' }]} className="mb-3" />
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-[28px] font-medium text-slate-900">Add a new employee</h1>
@@ -366,13 +361,7 @@ function BasicSection({
           </select>
         </Field>
         <Field label="Mobile" required>
-          <input
-            type="tel"
-            className={INPUT_CLASS}
-            value={form.phone}
-            onChange={(e) => set('phone', e.target.value)}
-            placeholder="+91 98765 43210"
-          />
+          <PhoneField value={form.phone} onChange={(v) => set('phone', v)} required />
         </Field>
         <Field label="Personal email" optional className="md:col-span-2">
           <input
@@ -666,7 +655,7 @@ function ReviewSection({
             ['Designation', form.designation || '—'],
             ['Department', form.department || '—'],
             ['Manager', managerName],
-            ['Mobile', form.phone || '—'],
+            ['Mobile', formatPhone(form.phone) || '—'],
             ...(form.personalEmail ? [['Personal email', form.personalEmail] as [string, string]] : []),
           ]}
         />

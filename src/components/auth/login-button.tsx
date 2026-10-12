@@ -1,35 +1,56 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import Script from 'next/script';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   GoogleAuthProvider,
+  signInWithCredential,
   signInWithPopup,
   setPersistence,
   browserLocalPersistence,
+  type User,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase/client';
+
+/** OAuth Web client ID of the Firebase project — enables Google's in-page One Tap picker. */
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim();
+const HOSTED_DOMAIN = (process.env.NEXT_PUBLIC_AUTH_HD || 'bosscoderacademy.com').trim();
+
+/** Minimal typing for Google Identity Services (loaded from accounts.google.com/gsi/client). */
+interface GoogleIdApi {
+  initialize(config: {
+    client_id: string;
+    callback: (res: { credential: string }) => void;
+    auto_select?: boolean;
+    cancel_on_tap_outside?: boolean;
+    context?: 'signin' | 'signup' | 'use';
+    itp_support?: boolean;
+    use_fedcm_for_prompt?: boolean;
+    hd?: string;
+  }): void;
+  prompt(): void;
+  cancel(): void;
+}
+declare global {
+  interface Window {
+    google?: { accounts: { id: GoogleIdApi } };
+  }
+}
 
 export function LoginButton() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [gsiReady, setGsiReady] = useState(false);
 
   const next = searchParams.get('next') || '/';
 
-  async function signIn() {
-    setError(null);
-    setLoading(true);
-    try {
-      await setPersistence(auth, browserLocalPersistence);
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({
-        prompt: 'select_account',
-        hd: (process.env.NEXT_PUBLIC_AUTH_HD || 'bosscoderacademy.com').trim(),
-      });
-      const cred = await signInWithPopup(auth, provider);
-      const idToken = await cred.user.getIdToken();
+  /** Exchange the signed-in Firebase user for our session cookie, then go in. */
+  const completeSignIn = useCallback(
+    async (firebaseUser: User) => {
+      const idToken = await firebaseUser.getIdToken();
       const res1 = await fetch('/api/auth/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -41,7 +62,7 @@ export function LoginButton() {
       // Only when the server had to update this user's roles: refresh the token so
       // the new claims are embedded, and swap in a cookie minted from it.
       if (j1.needsRefresh) {
-        const refreshed = await cred.user.getIdToken(true);
+        const refreshed = await firebaseUser.getIdToken(true);
         const res2 = await fetch('/api/auth/session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -54,15 +75,67 @@ export function LoginButton() {
       }
       router.replace(next);
       router.refresh();
+    },
+    [next, router],
+  );
+
+  const fail = useCallback((e: unknown) => {
+    setError(e instanceof Error ? e.message : 'Sign-in failed');
+    setLoading(false);
+  }, []);
+
+  // In-page Google account picker (One Tap / FedCM). Falls back to the button
+  // when no client ID is configured or the user dismisses it.
+  useEffect(() => {
+    if (!gsiReady || !GOOGLE_CLIENT_ID || !window.google) return;
+    const gsi = window.google.accounts.id;
+    gsi.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      hd: HOSTED_DOMAIN,
+      context: 'signin',
+      auto_select: false,
+      cancel_on_tap_outside: true,
+      itp_support: true,
+      use_fedcm_for_prompt: true,
+      callback: async ({ credential }) => {
+        setError(null);
+        setLoading(true);
+        try {
+          await setPersistence(auth, browserLocalPersistence);
+          const cred = await signInWithCredential(auth, GoogleAuthProvider.credential(credential));
+          await completeSignIn(cred.user);
+        } catch (e) {
+          fail(e);
+        }
+      },
+    });
+    gsi.prompt();
+    return () => gsi.cancel();
+  }, [gsiReady, completeSignIn, fail]);
+
+  async function signIn() {
+    setError(null);
+    setLoading(true);
+    try {
+      await setPersistence(auth, browserLocalPersistence);
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account', hd: HOSTED_DOMAIN });
+      const cred = await signInWithPopup(auth, provider);
+      await completeSignIn(cred.user);
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Sign-in failed';
-      setError(msg);
-      setLoading(false);
+      fail(e);
     }
   }
 
   return (
     <div className="flex flex-col gap-3">
+      {GOOGLE_CLIENT_ID && (
+        <Script
+          src="https://accounts.google.com/gsi/client"
+          strategy="afterInteractive"
+          onReady={() => setGsiReady(true)}
+        />
+      )}
       <button
         onClick={signIn}
         disabled={loading}

@@ -8,12 +8,12 @@ import {
 } from "@/lib/firestore/employees";
 import { getHrUser } from "@/lib/firestore/users";
 import { canAccessAttendance } from "@/lib/attendance/access";
-import { listNotificationsForUser } from "@/lib/firestore/notifications";
 import { getUpcomingBirthdays } from "@/lib/birthday";
 import { initials } from "@/lib/utils";
 import { colorForName } from "@/lib/directory/colors";
 import { QuickCard } from "@/components/dashboard/quick-card";
 import { QuickAccessGrid, type QuickAccessItem } from "@/components/dashboard/quick-access-grid";
+import { FeedbackWidget } from "@/components/feedback/feedback-widget";
 import { getQuickCardOrder } from "@/lib/firestore/hr-settings";
 import { BirthdayBanner } from "@/components/home/birthday-banner";
 import { DobMissingBanner } from "@/components/home/dob-missing-banner";
@@ -31,10 +31,9 @@ export default async function HomePage({
   const user = await requireUser();
   const { error } = await searchParams;
 
-  const [me, hrUser, notifications, birthdayEmployees, cardOrder] = await Promise.all([
+  const [me, hrUser, birthdayEmployees, cardOrder] = await Promise.all([
     getEmployeeByUserUid(user.uid),
     getHrUser(user.uid),
-    listNotificationsForUser(user.uid),
     listEmployeesForBirthdays(),
     getQuickCardOrder(),
   ]);
@@ -124,7 +123,7 @@ export default async function HomePage({
   });
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] items-start min-h-[calc(100vh-4rem)]">
+    <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] items-start min-h-[calc(100vh-4rem)]">
     
       <div className="py-8 md:pr-10 pr-4  flex flex-col gap-7 min-w-0 md:px-10 px-6">
         {error === "forbidden" && (
@@ -142,6 +141,7 @@ export default async function HomePage({
         <BirthdayBanner people={todayBirthdays} />
 
         <QuickAccessGrid items={quickCards} canEdit={isHR} />
+        <FeedbackWidget firstName={firstName} />
       </div>
 
       <HomeSidebar
@@ -158,7 +158,6 @@ export default async function HomePage({
         isFounder={isFounder}
         reportingManager={reportingManager}
         upcomingBirthdays={upcomingBirthdays}
-        notifications={notifications}
       />
     </div>
   );

@@ -1,11 +1,8 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
-  ChevronRight,
   ClipboardCheck,
   Clock,
   FileText,
-  Home,
   Lock,
   Repeat,
   UserCheck,
@@ -27,6 +24,7 @@ import {
   SendTestCycleEmailButton,
   SyncEmployeesButton,
 } from '@/components/performance/cycle-actions';
+import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { ReviewSubmission } from '@/types/review';
@@ -116,18 +114,7 @@ export default async function CycleDetailPage({ params }: Props) {
   return (
     <div className="px-6 md:px-10 py-6 space-y-6">
 
-      <nav className="flex items-center gap-1.5 text-[14px] text-slate-400">
-        <Link href="/" className="flex items-center gap-1 hover:text-slate-600 transition">
-          <Home className="h-3 w-3" />
-          Home
-        </Link>
-        <ChevronRight className="h-2.5 w-2.5" />
-        <Link href="/performance" className="hover:text-slate-600 transition">
-          Performance
-        </Link>
-        <ChevronRight className="h-2.5 w-2.5" />
-        <span className="text-slate-600">{cycle.name}</span>
-      </nav>
+      <Breadcrumbs items={[{ label: 'Performance', href: '/performance' }, { label: cycle.name }]} />
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
