@@ -72,14 +72,7 @@ export default async function HomePage({
           </div>
         )}
 
-        <HomeHero
-          firstName={firstName}
-          timeOfDay={timeOfDay}
-          dateLabel={dateLabel}
-          photoURL={photoURL}
-          userInitials={userInitials}
-          avatarBg={avatarBg}
-        />
+        <HomeHero firstName={firstName} timeOfDay={timeOfDay} dateLabel={dateLabel} />
 
         {me && <DobMissingBanner hasDob={!!me.dateOfBirth} />}
 
