@@ -36,7 +36,7 @@ export function AttendanceLiveBanner() {
             <span className="inline-flex items-center rounded-full bg-[#0F6E56] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
               Now live
             </span>
-            <p className="text-[14px] sm:text-[15px] font-semibold text-slate-900">Attendance &amp; Leave</p>
+            <p className="text-[14px] sm:text-[15px] font-semibold text-slate-900">Leave</p>
           </div>
           <p className="mt-0.5 text-[12px] sm:text-[13px] text-slate-600">
             Apply for leave, track work-from-home, and check your leave balance — all in one place.
@@ -55,7 +55,7 @@ export function AttendanceLiveBanner() {
         href="/attendance"
         className="mt-3 flex sm:hidden items-center justify-center gap-1.5 rounded-lg bg-[#0C447C] px-3.5 py-2.5 text-[13px] font-semibold text-white transition active:bg-[#0a3a6a]"
       >
-        Open Attendance <ArrowRight className="h-3.5 w-3.5" />
+        Open Leave <ArrowRight className="h-3.5 w-3.5" />
       </Link>
 
       <button

@@ -123,8 +123,8 @@ export default async function HomePage({
                 icon={CalendarCheck}
                 iconBg="#EBF3FE"
                 iconColor="#1D4ED8"
-                title="Attendance & Leave"
-                description="Track attendance, apply for leaves and view your balance"
+                title="Leave"
+                description="Apply for leave, track work-from-home and view your balance"
               />
             ) : (
               <QuickCard
@@ -132,8 +132,8 @@ export default async function HomePage({
                 icon={CalendarCheck}
                 iconBg="#EBF3FE"
                 iconColor="#1D4ED8"
-                title="Attendance & Leave"
-                description="Track attendance, apply for leaves and view your balance — launching soon"
+                title="Leave"
+                description="Apply for leave, track work-from-home and view your balance — launching soon"
                 comingSoon
               />
             )}
@@ -149,15 +149,6 @@ export default async function HomePage({
             )}
 
             {/* ── Coming soon, grouped at the end ── */}
-            <QuickCard
-              href="/"
-              icon={CalendarCheck}
-              iconBg="#EBF3FE"
-              iconColor="#1D4ED8"
-              title="Attendance & Leave"
-              description="Track attendance, apply for leaves and view your balance — launching soon"
-              comingSoon
-            />
             <QuickCard
               href="/"
               icon={Mail}
