@@ -47,10 +47,10 @@ export async function POST(req: NextRequest) {
 
   // Finalize: the refreshed token already carries the claims written by the first
   // call — just mint the cookie. Anything else goes through the full login path.
+  const tokenClaims = { hr: decoded.hr, roles: decoded.roles, perms: decoded.perms };
   const isFinalize =
     body.phase === 'finalize' &&
-    decoded.hr === true &&
-    claimsMatch(decoded, (decoded.roles as string[]) ?? [], (decoded.perms as string[]) ?? []);
+    claimsMatch(tokenClaims, (decoded.roles as string[]) ?? [], (decoded.perms as string[]) ?? []);
 
   let needsRefresh = false;
   let sessionCookie: string;
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
       email: decoded.email,
       displayName: (decoded.name as string | null) ?? null,
       photoURL: (decoded.picture as string | null) ?? null,
-      tokenClaims: decoded,
+      tokenClaims,
     });
     needsRefresh = claimsChanged;
 
