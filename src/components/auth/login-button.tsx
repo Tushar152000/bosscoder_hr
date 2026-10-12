@@ -35,17 +35,23 @@ export function LoginButton() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ idToken }),
       });
-      if (!res1.ok) {
-        const j = await res1.json().catch(() => ({}));
-        throw new Error(j.error || 'Sign-in rejected');
-      }
+      const j1 = await res1.json().catch(() => ({}));
+      if (!res1.ok) throw new Error(j1.error || 'Sign-in rejected');
 
-      const refreshed = await cred.user.getIdToken(true);
-      await fetch('/api/auth/session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken: refreshed }),
-      });
+      // Only when the server had to update this user's roles: refresh the token so
+      // the new claims are embedded, and swap in a cookie minted from it.
+      if (j1.needsRefresh) {
+        const refreshed = await cred.user.getIdToken(true);
+        const res2 = await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken: refreshed, phase: 'finalize' }),
+        });
+        if (!res2.ok) {
+          const j2 = await res2.json().catch(() => ({}));
+          throw new Error(j2.error || 'Sign-in rejected');
+        }
+      }
       router.replace(next);
       router.refresh();
     } catch (e) {

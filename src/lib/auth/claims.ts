@@ -51,7 +51,9 @@ export async function ensureUserAndSyncClaims(args: {
   email: string;
   displayName: string | null;
   photoURL: string | null;
-}): Promise<HrUserDoc> {
+  /** Claims on the ID token being exchanged — lets us skip a no-op claims write. */
+  tokenClaims?: { hr?: unknown; roles?: unknown; perms?: unknown };
+}): Promise<{ doc: HrUserDoc; claimsChanged: boolean }> {
   const { uid, email, displayName, photoURL } = args;
   const lowerEmail = email.toLowerCase();
   const ref = adminDb.collection(HR.users).doc(uid);
@@ -79,29 +81,55 @@ export async function ensureUserAndSyncClaims(args: {
     await ref.set(doc);
   } else {
     doc = snap.data() as HrUserDoc;
-    await ref.update({
-      email,
-      displayName,
-      photoURL,
-      lastLoginAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-    });
   }
 
   // Always reconcile employee-link + submission backfill. Idempotent — bails
-  // out fast when nothing needs fixing.
-  const linkedEmployeeId = await linkEmployeeAndBackfillSubmissions({
+  // out fast when nothing needs fixing. For an existing user it runs alongside
+  // the last-login stamp (a new user's doc must exist first — `set` above).
+  const link = linkEmployeeAndBackfillSubmissions({
     uid,
     email: lowerEmail,
     displayName: args.displayName,
     currentEmployeeId: doc.employeeId,
   });
+  const [linkedEmployeeId] = await Promise.all([
+    link,
+    snap.exists &&
+      ref.update({
+        email,
+        displayName,
+        photoURL,
+        lastLoginAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
+      }),
+  ]);
   if (linkedEmployeeId && linkedEmployeeId !== doc.employeeId) {
     doc = { ...doc, employeeId: linkedEmployeeId };
   }
 
-  await writeCustomClaims(uid, doc.roles, doc.permissions);
-  return doc;
+  // Skip the (slow) Auth write when the token already carries these exact claims.
+  const claimsChanged = !claimsMatch(args.tokenClaims, doc.roles, doc.permissions);
+  if (claimsChanged) await writeCustomClaims(uid, doc.roles, doc.permissions);
+  return { doc, claimsChanged };
+}
+
+function sameSet(a: unknown, b: readonly string[]): boolean {
+  if (!Array.isArray(a) || a.length !== b.length) return false;
+  const set = new Set(b);
+  return a.every((x) => set.has(x));
+}
+
+/** True when the token's custom claims already equal what we'd write. */
+export function claimsMatch(
+  tokenClaims: { hr?: unknown; roles?: unknown; perms?: unknown } | undefined,
+  roles: readonly string[],
+  permissions: readonly string[],
+): boolean {
+  return (
+    tokenClaims?.hr === true &&
+    sameSet(tokenClaims.roles, roles) &&
+    sameSet(tokenClaims.perms, permissions)
+  );
 }
 
 /**
@@ -183,21 +211,20 @@ async function linkEmployeeAndBackfillSubmissions(args: {
   const empDoc = empSnap.docs[0];
   const emp = empDoc.data() as { employeeId: string; userUid: string | null };
 
-  // 1. Ensure employee.userUid is set.
-  if (emp.userUid !== uid) {
-    await empDoc.ref.update({
-      userUid: uid,
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-  }
-
-  // 2. Ensure hr_users.employeeId is set.
-  if (currentEmployeeId !== emp.employeeId) {
-    await adminDb.collection(HR.users).doc(uid).update({
-      employeeId: emp.employeeId,
-      updatedAt: FieldValue.serverTimestamp(),
-    });
-  }
+  // 1. Ensure employee.userUid is set, and 2. hr_users.employeeId is set —
+  //    independent writes, run alongside the submission lookups below.
+  const linkWrites = Promise.all([
+    emp.userUid !== uid &&
+      empDoc.ref.update({
+        userUid: uid,
+        updatedAt: FieldValue.serverTimestamp(),
+      }),
+    currentEmployeeId !== emp.employeeId &&
+      adminDb.collection(HR.users).doc(uid).update({
+        employeeId: emp.employeeId,
+        updatedAt: FieldValue.serverTimestamp(),
+      }),
+  ]);
 
   // 3. Backfill submissions in two passes:
   //      a. by reviewerEmail — handles new submissions where uid was unknown.
@@ -214,10 +241,10 @@ async function linkEmployeeAndBackfillSubmissions(args: {
     }
   };
 
-  const byEmail = await adminDb
-    .collection(HR.reviewSubmissions)
-    .where('reviewerEmail', '==', email)
-    .get();
+  const [byEmail, byEmployee] = await Promise.all([
+    adminDb.collection(HR.reviewSubmissions).where('reviewerEmail', '==', email).get(),
+    adminDb.collection(HR.reviewSubmissions).where('reviewerEmployeeId', '==', emp.employeeId).get(),
+  ]);
   for (const d of byEmail.docs) {
     const data = d.data() as { reviewerUid: string | null };
     if (data.reviewerUid === uid) continue;
@@ -229,10 +256,6 @@ async function linkEmployeeAndBackfillSubmissions(args: {
     if (ops >= 450) await flush();
   }
 
-  const byEmployee = await adminDb
-    .collection(HR.reviewSubmissions)
-    .where('reviewerEmployeeId', '==', emp.employeeId)
-    .get();
   for (const d of byEmployee.docs) {
     const data = d.data() as { reviewerUid: string | null; reviewerEmail?: string };
     const needsEmail = !data.reviewerEmail || data.reviewerEmail !== email;
@@ -247,7 +270,7 @@ async function linkEmployeeAndBackfillSubmissions(args: {
     if (ops >= 450) await flush();
   }
 
-  await flush();
+  await Promise.all([flush(), linkWrites]);
   return emp.employeeId;
 }
 
