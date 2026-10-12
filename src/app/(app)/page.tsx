@@ -54,12 +54,15 @@ export default async function HomePage({
   const userInitials = initials(user.displayName, user.email);
   const avatarBg = colorForName(displayName);
   const firstName = (user.displayName ?? user.email).split(/[\s@]/)[0];
-  const timeOfDay = greetingFor(new Date());
-  const dateLabel = new Date().toLocaleDateString("en-US", {
+  // Server runs in UTC (Cloud Run) — greet and date in India time.
+  const now = new Date();
+  const timeOfDay = greetingFor(now);
+  const dateLabel = now.toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",
     year: "numeric",
+    timeZone: "Asia/Kolkata",
   });
 
   return (
@@ -186,7 +189,9 @@ export default async function HomePage({
 }
 
 function greetingFor(date: Date): string {
-  const h = date.getHours();
+  const h = Number(
+    new Intl.DateTimeFormat("en-US", { hour: "numeric", hourCycle: "h23", timeZone: "Asia/Kolkata" }).format(date),
+  );
   if (h < 12) return "morning";
   if (h < 17) return "afternoon";
   return "evening";
