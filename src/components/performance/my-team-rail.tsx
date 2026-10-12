@@ -17,6 +17,7 @@ import { colorForName } from '@/lib/directory/colors';
 import { formatDate } from '@/lib/format';
 import type { ReviewSubmission } from '@/types/review';
 import type { TeamMemberSummary } from './team-ratings-list';
+import { fyQuarterStart } from '@/lib/performance/cycle-period';
 
 export interface ReportWithHistory extends TeamMemberSummary {
   /** Open/in-progress manager-evals where current user is reviewer + this person is subject. */
@@ -40,7 +41,10 @@ function cyclePeriodMs(cycleName: string): number {
     if (!isNaN(yr)) return new Date(yr, m, 1).getTime();
   }
   const q = /^Q(\d)\s+(\d{4})$/.exec(cycleName);
-  if (q) return new Date(parseInt(q[2], 10), (parseInt(q[1], 10) - 1) * 3, 1).getTime();
+  if (q) {
+    const start = fyQuarterStart(parseInt(q[1], 10), parseInt(q[2], 10));
+    return new Date(start.year, start.month - 1, 1).getTime();
+  }
   return 0;
 }
 

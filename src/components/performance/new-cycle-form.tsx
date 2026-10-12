@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { buildCycleName } from '@/types/review';
 import { createCycleAction, createTestCycleAction } from '@/app/(app)/performance/actions';
+import { cycleNameWithMonths } from '@/lib/performance/cycle-period';
 
 const CURRENT_YEAR = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 7 }, (_, i) => CURRENT_YEAR - 1 + i);
@@ -185,7 +186,9 @@ export function NewCycleForm({ defaultYear, defaultQuarter, employees }: Props) 
                   className="h-10 w-full appearance-none rounded-md border border-[#E2E8F0] bg-white px-3 text-[13px] text-slate-900 focus:border-[#0C447C] focus:outline-none focus:ring-2 focus:ring-[#0C447C]/20"
                 >
                   {[1, 2, 3, 4].map((q) => (
-                    <option key={q} value={q}>Q{q}</option>
+                    <option key={q} value={q}>
+                      {cycleNameWithMonths(`Q${q} ${year}`).replace(` ${year}`, '')}
+                    </option>
                   ))}
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />

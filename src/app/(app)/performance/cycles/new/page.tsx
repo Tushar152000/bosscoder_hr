@@ -5,6 +5,7 @@ import { requireUser } from '@/lib/auth/guard';
 import { canManageCycles } from '@/lib/auth/review-access';
 import { listEmployees } from '@/lib/firestore/employees';
 import { NewCycleForm } from '@/components/performance/new-cycle-form';
+import { fyQuarterFor } from '@/lib/performance/cycle-period';
 
 export const metadata = { title: 'New cycle' };
 
@@ -39,8 +40,8 @@ export default async function NewCyclePage() {
       </div>
 
       <NewCycleForm
-        defaultYear={now.getUTCFullYear()}
-        defaultQuarter={Math.ceil((now.getUTCMonth() + 1) / 3)}
+        defaultYear={fyQuarterFor(now).fyYear}
+        defaultQuarter={fyQuarterFor(now).quarter}
         employees={employees.map((e) => ({
           employeeId: e.employeeId,
           displayName: e.displayName,

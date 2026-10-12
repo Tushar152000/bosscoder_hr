@@ -10,10 +10,27 @@ export const MONTH_OPTIONS = MONTHS_LONG.map((label, i) => ({
   label,
 }));
 
+/**
+ * Review quarters follow the Indian financial year (Apr–Mar), and the year in a
+ * cycle name is the FY's *start* year: "Q1 2026" = Apr–Jun 2026, "Q3 2026" =
+ * Oct–Dec 2026, "Q4 2026" = Jan–Mar 2027 (all FY 2026-27).
+ * Returns the calendar year + month (1-12) the quarter starts in.
+ */
+export function fyQuarterStart(quarter: number, fyYear: number): { year: number; month: number } {
+  return quarter === 4 ? { year: fyYear + 1, month: 1 } : { year: fyYear, month: quarter * 3 + 1 };
+}
+
+/** FY quarter (1-4) + FY start year containing a calendar date. */
+export function fyQuarterFor(date: Date): { quarter: number; fyYear: number } {
+  const m = date.getUTCMonth() + 1;
+  const y = date.getUTCFullYear();
+  return m >= 4 ? { quarter: Math.ceil((m - 3) / 3), fyYear: y } : { quarter: 4, fyYear: y - 1 };
+}
+
 export interface CyclePeriod {
-  /** Year in the cycle name, or null if unparseable. */
+  /** Calendar year the covered months fall in (for "Q4 2026" that's 2027), or null if unparseable. */
   year: number | null;
-  /** 1-12. Monthly cycles → [n]. Quarterly cycles → 3 consecutive months. Unparseable → []. */
+  /** 1-12. Monthly cycles → [n]. Quarterly cycles → their 3 FY-quarter months. Unparseable → []. */
   months: number[];
 }
 
@@ -29,10 +46,8 @@ export function cyclePeriod(c: ReviewCycle): CyclePeriod {
   }
   const qm = /^Q([1-4])\s+(\d{4})$/.exec(name);
   if (qm) {
-    const q = parseInt(qm[1], 10);
-    const yr = parseInt(qm[2], 10);
-    const start = (q - 1) * 3 + 1;
-    return { year: yr, months: [start, start + 1, start + 2] };
+    const start = fyQuarterStart(parseInt(qm[1], 10), parseInt(qm[2], 10));
+    return { year: start.year, months: [start.month, start.month + 1, start.month + 2] };
   }
   return { year: null, months: [] };
 }
@@ -65,12 +80,12 @@ export function availableYears(cycles: ReviewCycle[]): number[] {
 
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-/** `"Q1 2026"` → `"Q1 2026 (Jan – Mar)"`; monthly / unparseable names are returned unchanged. */
+/** `"Q1 2026"` → `"Q1 2026 (Apr – Jun)"` (FY quarters); monthly / unparseable names are returned unchanged. */
 export function cycleNameWithMonths(cycleName: string): string {
   const qm = /^Q([1-4])\s+(\d{4})$/.exec(cycleName.trim());
   if (!qm) return cycleName;
-  const start = (parseInt(qm[1], 10) - 1) * 3;
-  return `${cycleName} (${MONTHS_SHORT[start]} – ${MONTHS_SHORT[start + 2]})`;
+  const { month } = fyQuarterStart(parseInt(qm[1], 10), parseInt(qm[2], 10));
+  return `${cycleName} (${MONTHS_SHORT[month - 1]} – ${MONTHS_SHORT[month + 1]})`;
 }
 
 /**
@@ -90,10 +105,8 @@ export function cycleFYFromName(cycleName: string): string | null {
   }
   const qm = /^Q([1-4])\s+(\d{4})$/.exec(name);
   if (qm) {
-    const q = parseInt(qm[1], 10);
-    const yr = parseInt(qm[2], 10);
-    const startMonth = (q - 1) * 3 + 1;
-    const fyYear = startMonth >= 4 ? yr : yr - 1;
+    // Quarter names already carry the FY start year.
+    const fyYear = parseInt(qm[2], 10);
     return `FY ${fyYear}-${String(fyYear + 1).slice(-2)}`;
   }
   return null;
@@ -117,14 +130,14 @@ export function parseMonthParam(v: string | undefined): number | null {
 
 /**
  * Derive Indian fiscal year string for a cycle.
- * Months 1–3 (Jan–Mar) belong to the previous FY.
- * e.g. "April 2025" → "FY 2025-26", "January 2026" → "FY 2025-26".
+ * Monthly: Jan–Mar belong to the previous FY ("April 2025" / "January 2026" → "FY 2025-26").
+ * Quarterly: the year is the FY start year ("Q4 2025" → "FY 2025-26").
  */
 export function cycleFY(c: ReviewCycle): string | null {
-  const { year, month, quarter } = c;
+  const { year, month } = c;
   if (!year) return null;
-  const startMonth = month ?? (quarter != null ? (quarter - 1) * 3 + 1 : null);
-  const fyYear = startMonth == null || startMonth >= 4 ? year : year - 1;
+  // Quarterly cycles' year is already the FY start year; monthly ones roll Jan–Mar back.
+  const fyYear = month != null && month < 4 ? year - 1 : year;
   return `FY ${fyYear}-${String(fyYear + 1).slice(-2)}`;
 }
 
@@ -147,7 +160,7 @@ export function parseFYParam(v: string | undefined): string | null {
 /**
  * Compute the effective deadline for a cycle.
  * Closed cycles → closedAt. Open monthly cycles → last day of that month.
- * Open quarterly cycles → last day of the last month in the quarter.
+ * Open quarterly cycles → last day of the last month in the (FY) quarter.
  * Fallback → openedAt + 30/90 days.
  */
 export function computeCycleDeadline(c: ReviewCycle): Date | null {

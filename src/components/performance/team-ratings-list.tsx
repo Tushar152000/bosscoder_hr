@@ -15,6 +15,7 @@ import {
   MANAGER_RATING_LABELS,
   type ReviewSubmission,
 } from '@/types/review';
+import { fyQuarterStart } from '@/lib/performance/cycle-period';
 
 export interface OpenCycleEval {
   cycleName: string;
@@ -613,6 +614,9 @@ function cyclePeriodMs(cycleName: string): number {
     if (!isNaN(yr)) return new Date(yr, m, 1).getTime();
   }
   const q = /^Q(\d)\s+(\d{4})$/.exec(cycleName);
-  if (q) return new Date(parseInt(q[2], 10), (parseInt(q[1], 10) - 1) * 3, 1).getTime();
+  if (q) {
+    const start = fyQuarterStart(parseInt(q[1], 10), parseInt(q[2], 10));
+    return new Date(start.year, start.month - 1, 1).getTime();
+  }
   return 0;
 }

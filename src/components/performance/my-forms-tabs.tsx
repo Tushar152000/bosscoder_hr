@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDate } from '@/lib/format';
+import { fyQuarterStart } from '@/lib/performance/cycle-period';
 import type { ReviewCycle, ReviewSubmission } from '@/types/review';
 
 type Tab = 'open' | 'urgent' | 'submitted' | 'closed';
@@ -53,13 +54,11 @@ function cycleDeadline(c: ReviewCycle): Date | null {
     }
   }
 
-  // "Qn YYYY" — end of last month in quarter
+  // "Qn YYYY" (FY quarter) — end of the quarter's last month
   const qm = /^Q([1-4])\s+(\d{4})$/.exec(c.name);
   if (qm) {
-    const q = parseInt(qm[1], 10);
-    const yr = parseInt(qm[2], 10);
-    const lastMonthIdx = q * 3 - 1;
-    return new Date(yr, lastMonthIdx + 1, 0, 23, 59, 59);
+    const start = fyQuarterStart(parseInt(qm[1], 10), parseInt(qm[2], 10));
+    return new Date(start.year, start.month + 2, 0, 23, 59, 59);
   }
 
   // Fallback: openedAt + cadence window
