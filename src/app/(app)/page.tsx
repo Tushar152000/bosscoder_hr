@@ -13,6 +13,8 @@ import { getUpcomingBirthdays } from "@/lib/birthday";
 import { initials } from "@/lib/utils";
 import { colorForName } from "@/lib/directory/colors";
 import { QuickCard } from "@/components/dashboard/quick-card";
+import { QuickAccessGrid, type QuickAccessItem } from "@/components/dashboard/quick-access-grid";
+import { getQuickCardOrder } from "@/lib/firestore/hr-settings";
 import { BirthdayBanner } from "@/components/home/birthday-banner";
 import { DobMissingBanner } from "@/components/home/dob-missing-banner";
 import { AttendanceLiveBanner } from "@/components/home/attendance-live-banner";
@@ -29,11 +31,12 @@ export default async function HomePage({
   const user = await requireUser();
   const { error } = await searchParams;
 
-  const [me, hrUser, notifications, birthdayEmployees] = await Promise.all([
+  const [me, hrUser, notifications, birthdayEmployees, cardOrder] = await Promise.all([
     getEmployeeByUserUid(user.uid),
     getHrUser(user.uid),
     listNotificationsForUser(user.uid),
     listEmployeesForBirthdays(),
+    getQuickCardOrder(),
   ]);
 
   const reportingManager = me?.managerId
@@ -65,6 +68,61 @@ export default async function HomePage({
     timeZone: "Asia/Kolkata",
   });
 
+  const defaultCards: QuickAccessItem[] = [
+    {
+      key: "directory",
+      node: <QuickCard href="/directory" icon={Users} iconBg="#E6F1FB" iconColor="#0C447C"
+        title="Employee directory" description="Browse teams and reporting lines" />,
+    },
+    {
+      key: "performance",
+      node: <QuickCard href="/performance" icon={TrendingUp} iconBg="#E1F5EE" iconColor="#0F6E56"
+        title="Performance evaluation" description="Ratings, goals and self-evaluation" />,
+    },
+    {
+      key: "esop",
+      node: <QuickCard href="/esop" icon={PieChart} iconBg="#EEEDFE" iconColor="#534AB7"
+        title="ESOPs" description="Vested grants and statements" />,
+    },
+    {
+      key: "leave",
+      node: canSeeAttendance ? (
+        <QuickCard href="/attendance" icon={CalendarCheck} iconBg="#EBF3FE" iconColor="#1D4ED8"
+          title="Leave" description="Apply for leave, track work-from-home and view your balance" />
+      ) : (
+        <QuickCard href="/" icon={CalendarCheck} iconBg="#EBF3FE" iconColor="#1D4ED8"
+          title="Leave" description="Apply for leave, track work-from-home and view your balance — launching soon"
+          comingSoon />
+      ),
+    },
+    ...(isHR
+      ? [{
+          key: "communications",
+          node: <QuickCard href="/communications" icon={Megaphone} iconBg="#FEF3E7" iconColor="#B45309"
+            title="Communications" description="Send broadcast emails by department" />,
+        }]
+      : []),
+    {
+      key: "newsletter",
+      node: <QuickCard href="/" icon={Mail} iconBg="#F1EFE8" iconColor="#5F5E5A"
+        title="Bosscoder newsletter" description="Company updates and stories" comingSoon />,
+    },
+    ...(canManageOffers
+      ? [{
+          key: "letters",
+          node: <QuickCard href="/offers" icon={FileText} iconBg="#FEF3E7" iconColor="#B45309"
+            title="Employment letters" description="Generate offer, relieving & experience letters on the letterhead" />,
+        }]
+      : []),
+  ];
+  // Saved keys first in HR's order; anything not in it (new cards) keeps its default spot at the end.
+  const rank = new Map(cardOrder.map((k, i) => [k, i]));
+  const quickCards = [...defaultCards].sort((a, b) => {
+    const ra = rank.get(a.key) ?? Number.MAX_SAFE_INTEGER;
+    const rb = rank.get(b.key) ?? Number.MAX_SAFE_INTEGER;
+    return ra - rb; // stable sort keeps unsaved cards in default order
+  });
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] items-start min-h-[calc(100vh-4rem)]">
     
@@ -83,89 +141,7 @@ export default async function HomePage({
 
         <BirthdayBanner people={todayBirthdays} />
 
-        <section>
-          <p className="text-[11px] font-bold tracking-[1.4px] uppercase text-slate-400 mb-4">
-            Quick access
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-            {/* ── Active first ── */}
-            <QuickCard
-              href="/directory"
-              icon={Users}
-              iconBg="#E6F1FB"
-              iconColor="#0C447C"
-              title="Employee directory"
-              description="Browse teams and reporting lines"
-            />
-            <QuickCard
-              href="/performance"
-              icon={TrendingUp}
-              iconBg="#E1F5EE"
-              iconColor="#0F6E56"
-              title="Performance evaluation"
-              description="Ratings, goals and self-evaluation"
-            />
-            <QuickCard
-              href="/esop"
-              icon={PieChart}
-              iconBg="#EEEDFE"
-              iconColor="#534AB7"
-              title="ESOPs"
-              description="Vested grants and statements"
-            />
-            {canSeeAttendance ? (
-              <QuickCard
-                href="/attendance"
-                icon={CalendarCheck}
-                iconBg="#EBF3FE"
-                iconColor="#1D4ED8"
-                title="Leave"
-                description="Apply for leave, track work-from-home and view your balance"
-              />
-            ) : (
-              <QuickCard
-                href="/"
-                icon={CalendarCheck}
-                iconBg="#EBF3FE"
-                iconColor="#1D4ED8"
-                title="Leave"
-                description="Apply for leave, track work-from-home and view your balance — launching soon"
-                comingSoon
-              />
-            )}
-            {isHR && (
-              <QuickCard
-                href="/communications"
-                icon={Megaphone}
-                iconBg="#FEF3E7"
-                iconColor="#B45309"
-                title="Communications"
-                description="Send broadcast emails by department"
-              />
-            )}
-
-            {/* ── Coming soon, grouped at the end ── */}
-            <QuickCard
-              href="/"
-              icon={Mail}
-              iconBg="#F1EFE8"
-              iconColor="#5F5E5A"
-              title="Bosscoder newsletter"
-              description="Company updates and stories"
-              comingSoon
-            />
-            {canManageOffers && (
-              <QuickCard
-                href="/offers"
-                icon={FileText}
-                iconBg="#FEF3E7"
-                iconColor="#B45309"
-                title="Employment letters"
-                description="Generate offer, relieving & experience letters on the letterhead"
-              />
-            )}
-          </div>
-        </section>
+        <QuickAccessGrid items={quickCards} canEdit={isHR} />
       </div>
 
       <HomeSidebar

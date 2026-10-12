@@ -162,7 +162,7 @@ export function RolesForm({
     start(async () => {
       const res = await deleteUserAccountAction(uid);
       if (!res.ok) { setError(res.error); return; }
-      router.push('/admin/roles');
+      router.push('/settings/roles');
       router.refresh();
     });
   }

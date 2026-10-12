@@ -5,14 +5,15 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Bell, ChevronDown, ClipboardList, FileText,
-  Home, LogOut, Menu, Megaphone, ScrollText,
-  Settings as SettingsIcon, Shield, User, Users, X,
+  Home, LogOut, Menu, Megaphone,
+  Settings as SettingsIcon, Users, X,
 } from "lucide-react";
 import * as Popover from "@radix-ui/react-popover";
 import { signOut } from "firebase/auth";
 import { auth } from "@/lib/firebase/client";
 import { BosscoderLogo } from "@/assets/images/BosscoderLogo";
 import { initials, cn } from "@/lib/utils";
+import { useDialog } from "@/components/ui/modal";
 import type { Permission, Role } from "@/lib/auth/roles";
 import {
   markNotificationsReadAction,
@@ -76,7 +77,17 @@ export function TopNavbar({ user, notifications = [] }: Props) {
     ...(canManageEmployees    ? [{ href: "/communications", label: "Communications",  icon: Megaphone }] : []),
   ];
 
+  const { confirm, dialog } = useDialog();
+
   async function handleSignOut() {
+    const ok = await confirm({
+      title: 'Sign out?',
+      body: "You'll need to sign in with Google again to get back in.",
+      confirmLabel: 'Sign out',
+      cancelLabel: 'Stay signed in',
+      intent: 'danger',
+    });
+    if (!ok) return;
     await Promise.allSettled([
       signOut(auth),
       fetch("/api/auth/logout", { method: "POST" }),
@@ -87,6 +98,7 @@ export function TopNavbar({ user, notifications = [] }: Props) {
 
   return (
     <>
+      {dialog}
       <header className="sticky top-0 z-30 h-14 md:h-[70px] w-full bg-white border-b border-slate-100 shadow-sm">
         <div className="h-full  mx-auto px-4 md:px-10 flex items-center justify-between gap-4">
 
@@ -295,11 +307,8 @@ function UserMenu({
   onSignOut: () => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const canSeeRoles = user.permissions.includes("manage_roles");
-  const canSeeAudit = user.permissions.includes("view_audit_log");
   const name        = user.displayName ?? user.email;
   const first       = name.split(/[\s@]/)[0];
   const userInitials = initials(user.displayName, user.email);
@@ -313,8 +322,9 @@ function UserMenu({
   }, []);
 
   function handleSignOut() {
-    setBusy(true);
-    onSignOut().finally(() => setBusy(false));
+    // Close the menu so only the confirm dialog shows; onSignOut asks first.
+    setOpen(false);
+    void onSignOut();
   }
 
   return (
@@ -338,20 +348,17 @@ function UserMenu({
           </div>
 
           <nav className="space-y-0.5">
-            <MenuLink href="/settings"    icon={User}         label="View profile" />
-            <MenuLink href="/settings"    icon={SettingsIcon} label="Settings" />
-            {canSeeRoles && <MenuLink href="/admin/roles" icon={Shield}     label="Roles & permissions" />}
-            {canSeeAudit && <MenuLink href="/admin/audit" icon={ScrollText} label="Audit log" />}
+            {/* Profile, roles and the audit log all live under Settings. */}
+            <MenuLink href="/settings" icon={SettingsIcon} label="Settings" />
           </nav>
 
           <div className="border-t border-slate-100 mt-1 pt-1">
             <button
               onClick={handleSignOut}
-              disabled={busy}
               className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-red-600 hover:bg-red-50 transition"
             >
               <LogOut size={14} />
-              {busy ? "Signing out…" : "Sign out"}
+              Sign out
             </button>
           </div>
         </div>

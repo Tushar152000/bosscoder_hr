@@ -57,3 +57,22 @@ export async function updateOfferSettings(
   );
   return merged;
 }
+
+// ── Home page ────────────────────────────────────────────────────────────────
+
+const HOME_DOC = 'home';
+
+/** HR-chosen order of the home Quick access cards (card keys); [] = default order. */
+async function _getQuickCardOrder(): Promise<string[]> {
+  const snap = await adminDb.collection(HR.settings).doc(HOME_DOC).get();
+  const order = snap.data()?.quickCardOrder;
+  return Array.isArray(order) ? order.filter((k): k is string => typeof k === 'string') : [];
+}
+export const getQuickCardOrder = cache(_getQuickCardOrder);
+
+export async function setQuickCardOrder(order: string[], updatedBy: string): Promise<void> {
+  await adminDb.collection(HR.settings).doc(HOME_DOC).set(
+    { quickCardOrder: order, updatedBy, updatedAt: FieldValue.serverTimestamp() },
+    { merge: true },
+  );
+}

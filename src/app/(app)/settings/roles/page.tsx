@@ -1,35 +1,43 @@
-import { redirect } from 'next/navigation';
-import { requireUser } from '@/lib/auth/guard';
-import { isPrivileged } from '@/lib/auth/roles';
-import { ShieldCheck } from 'lucide-react';
+import { Info } from 'lucide-react';
+import { requirePermission } from '@/lib/auth/guard';
+import { listHrUsers } from '@/lib/firestore/users';
+import { RolesList } from '@/components/admin/roles-list';
 
 export const metadata = { title: 'Roles & access · Settings' };
 
 export default async function RolesSettingsPage() {
-  const user = await requireUser();
-  if (!isPrivileged(user.roles)) redirect('/?error=forbidden');
+  const me = await requirePermission('manage_roles');
+  const users = await listHrUsers();
+
+  const serialized = users.map((u) => ({
+    uid: u.uid,
+    email: u.email,
+    displayName: u.displayName,
+    photoURL: u.photoURL,
+    roles: u.roles,
+    permissions: u.permissions,
+    active: u.active,
+    createdAt: u.createdAt?.toISOString() ?? null,
+    lastLoginAt: u.lastLoginAt?.toISOString() ?? null,
+  }));
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-[18px] font-semibold text-slate-900">Roles & access</h1>
-        <p className="text-[13px] text-slate-500 mt-0.5">
-          Assign roles and permissions to platform users.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h1 className="text-[18px] font-semibold text-slate-900">Roles & access</h1>
+          <p className="text-[13px] text-slate-500 mt-0.5">
+            Assign roles and per-user permissions. Click any user to edit.
+          </p>
+        </div>
+        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#FAEEDA] border border-[#FAC775] rounded-md text-[13px] text-[#854F0B] shrink-0">
+          <Info className="h-3 w-3 shrink-0" />
+          Changes propagate on next sign-in ·{' '}
+          <strong className="font-medium">up to 1 hour</strong>
+        </div>
       </div>
-      <Placeholder icon={ShieldCheck} label="Role management" />
-    </div>
-  );
-}
 
-function Placeholder({ icon: Icon, label }: { icon: React.ElementType; label: string }) {
-  return (
-    <div className="bg-white border border-slate-200 rounded-xl px-5 py-10 flex flex-col items-center gap-3 text-center">
-      <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
-        <Icon className="h-5 w-5 text-slate-400" />
-      </div>
-      <p className="text-[13px] font-medium text-slate-600">{label}</p>
-      <p className="text-[12px] text-slate-400 max-w-xs">This section is coming soon.</p>
+      <RolesList users={serialized} currentUid={me.uid} />
     </div>
   );
 }

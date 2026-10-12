@@ -2,12 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertTriangle, Info } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
-type Intent = 'default' | 'danger';
+type Intent = 'default' | 'danger' | 'success';
 
 interface ConfirmOpts {
   title: string;
@@ -136,6 +136,7 @@ function DialogShell({
   const intent: Intent =
     state.kind === 'alert' ? state.intent ?? 'default' : (state as { intent?: Intent }).intent ?? 'default';
   const isDanger = intent === 'danger';
+  const isSuccess = intent === 'success';
 
   const promptDisabled =
     state.kind === 'prompt' && state.expected !== undefined && state.value !== state.expected;
@@ -173,10 +174,18 @@ function DialogShell({
                 'grid h-9 w-9 shrink-0 place-items-center rounded-full',
                 isDanger
                   ? 'bg-red-50 text-red-600 ring-1 ring-red-200'
+                  : isSuccess
+                  ? 'bg-[#E1F5EE] text-[#0F6E56] ring-1 ring-[#9FE1CB]'
                   : 'bg-[#EBF3FE] text-[#0C447C] ring-1 ring-[#B5D4F4]',
               )}
             >
-              {isDanger ? <AlertTriangle className="h-4 w-4" /> : <Info className="h-4 w-4" />}
+              {isDanger ? (
+                <AlertTriangle className="h-4 w-4" />
+              ) : isSuccess ? (
+                <CheckCircle2 className="h-4 w-4" />
+              ) : (
+                <Info className="h-4 w-4" />
+              )}
             </div>
             <div className="min-w-0 flex-1">
               <h2 id="dialog-title" className="text-[15px] font-semibold text-slate-900">

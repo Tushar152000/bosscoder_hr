@@ -45,7 +45,7 @@ export function ManagerEvalForm({
   const [pending, startTransition] = useTransition();
   const [form, setForm] = useState<ManagerEvalInput>(initial);
   const [error, setError] = useState<string | null>(null);
-  const { confirm, dialog } = useDialog();
+  const { confirm, alert, dialog } = useDialog();
 
   const isFinal = status === 'submitted' || status === 'locked';
   const blockedBySelfEval = !selfEvalSubmitted && !isFinal;
@@ -66,6 +66,12 @@ export function ManagerEvalForm({
         return;
       }
       if (submit) {
+        await alert({
+          title: 'Rating submitted',
+          body: `Your evaluation of ${subjectName} is saved and final.`,
+          okLabel: 'Back to Performance',
+          intent: 'success',
+        });
         router.push('/performance');
       } else {
         router.refresh();

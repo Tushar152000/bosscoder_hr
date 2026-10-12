@@ -373,7 +373,7 @@ export function SelfEvalForm({
 }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
-  const { confirm, dialog } = useDialog();
+  const { confirm, alert, dialog } = useDialog();
 
   const [answers, setAnswers] = useState<SelfEvalAnswers>(initial.answers);
   const [activeIdx, setActiveIdx] = useState<number>(() => {
@@ -527,6 +527,12 @@ export function SelfEvalForm({
         submit: true,
       });
       if (res.ok) {
+        await alert({
+          title: 'Self-evaluation submitted',
+          body: "Thanks for taking the time to reflect. Your manager can now see your answers and will add their rating.",
+          okLabel: 'Back to Performance',
+          intent: 'success',
+        });
         router.push('/performance');
         router.refresh();
       } else {

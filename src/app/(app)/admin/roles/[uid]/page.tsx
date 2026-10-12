@@ -43,7 +43,7 @@ export default async function EditUserRolesPage({ params }: Props) {
         <ChevronRight className="h-3 w-3" />
         <span>Admin</span>
         <ChevronRight className="h-3 w-3" />
-        <Link href="/admin/roles" className="hover:text-slate-700 transition-colors">Roles</Link>
+        <Link href="/settings/roles" className="hover:text-slate-700 transition-colors">Roles</Link>
         <ChevronRight className="h-3 w-3" />
         <span className="text-slate-700 font-medium truncate max-w-[160px]">{displayName}</span>
       </nav>
@@ -113,7 +113,7 @@ export default async function EditUserRolesPage({ params }: Props) {
           </div>
         </div>
         <Button variant="secondary" size="sm" asChild>
-          <Link href="/admin/roles">← Back to roles</Link>
+          <Link href="/settings/roles">← Back to roles</Link>
         </Button>
       </div>
 

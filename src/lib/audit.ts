@@ -24,7 +24,8 @@ export type AuditAction =
   | 'offer.update'
   | 'offer.read'
   | 'leave_balance.update'
-  | 'leave_balance.bulk_update';
+  | 'leave_balance.bulk_update'
+  | 'settings.update';
 
 export interface AuditEntry {
   actorUid: string;

@@ -66,7 +66,7 @@ export async function updateUserRolesAction(input: {
         to: { roles: parsed.data.roles, permissions: parsed.data.permissions },
       },
     });
-    revalidatePath('/admin/roles');
+    revalidatePath('/settings/roles');
     revalidatePath(`/admin/roles/${parsed.data.uid}`);
     return { ok: true };
   } catch (e) {
@@ -95,7 +95,7 @@ export async function setUserActiveAction(uid: string, active: boolean): Promise
       resource: { type: 'hr_user', id: uid },
       metadata: { active },
     });
-    revalidatePath('/admin/roles');
+    revalidatePath('/settings/roles');
     revalidatePath(`/admin/roles/${uid}`);
     return { ok: true };
   } catch (e) {
@@ -144,7 +144,7 @@ export async function deleteUserAccountAction(uid: string): Promise<ActionResult
       resource: { type: 'hr_user', id: uid },
       metadata: { op: 'delete', email: target.email, displayName: target.displayName },
     });
-    revalidatePath('/admin/roles');
+    revalidatePath('/settings/roles');
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Delete failed' };
