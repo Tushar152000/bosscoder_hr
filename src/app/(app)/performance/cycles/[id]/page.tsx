@@ -13,7 +13,7 @@ import {
 import { requireUser } from '@/lib/auth/guard';
 import { canManageCycles } from '@/lib/auth/review-access';
 import { getEmployeeByUserUid } from '@/lib/firestore/employees';
-import { getCycle } from '@/lib/firestore/review-cycles';
+import { getCycle, listCycles } from '@/lib/firestore/review-cycles';
 import { listSubmissionsForCycle } from '@/lib/firestore/review-submissions';
 import { TeamMemberCard, type TeamPair } from '@/components/performance/team-member-card';
 import { YourSelfEvalCard } from '@/components/performance/your-self-eval-card';
@@ -98,6 +98,11 @@ export default async function CycleDetailPage({ params }: Props) {
       );
   const managerBySubject: Record<string, ReviewSubmission> = {};
   for (const s of scopedManagerEvals) managerBySubject[s.subjectEmployeeId] = s;
+
+  // Cycles offered in the by-department CSV picker (other cycles load on demand).
+  const exportCycles = showDeptBrowse
+    ? (await listCycles()).map((c) => ({ cycleId: c.cycleId, name: c.name }))
+    : [];
 
   const selfPct =
     cycle.selfCount > 0
@@ -309,6 +314,8 @@ export default async function CycleDetailPage({ params }: Props) {
             </div>
           ) : (
             <DeptEvalBrowser
+              cycleId={cycle.cycleId}
+              cycles={exportCycles}
               subs={deptScopedSelfEvals}
               managerBySubject={managerBySubject}
               myEmail={myEmail}

@@ -7,6 +7,7 @@ import { useDialog } from '@/components/ui/modal';
 import { RatingInput } from '@/components/performance/rating-input';
 import { saveManagerEvalAction } from '@/app/(app)/performance/actions';
 import { formatDate } from '@/lib/format';
+import { cycleNameWithMonths } from '@/lib/performance/cycle-period';
 import { cn } from '@/lib/utils';
 import {
   computeManagerOverall,
@@ -87,7 +88,7 @@ export function ManagerEvalForm({
         <div className="px-5 py-4 border-b border-[#E2E8F0] flex items-center justify-between gap-3">
           <div>
             <p className="text-[13px] font-semibold text-slate-700">
-              Manager evaluation · {cycleName}
+              Manager evaluation · {cycleNameWithMonths(cycleName)}
             </p>
             <p className="text-[12px] text-slate-400 mt-0.5">
               Reviewing <span className="font-medium text-slate-700">{subjectName}</span>

@@ -6,6 +6,7 @@ import { Bell, CheckCheck, ChevronRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { markNotificationsReadAction, clearAllNotificationsAction } from '@/app/(app)/notifications/actions';
 import type { NavNotification } from '@/components/layout/top-navbar';
+import { NotificationsSheet } from '@/components/notifications/notifications-sheet';
 import { cn } from '@/lib/utils';
 
 const TONE_STYLES: Record<NavNotification['tone'], { dot: string; bg: string }> = {
@@ -32,6 +33,7 @@ export function HomeNotifications({ notifications }: Props) {
   const router = useRouter();
   const [allRead, setAllRead] = useState(false);
   const [cleared, setCleared] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const unreadCount = allRead ? 0 : notifications.filter((n) => !n.read).length;
@@ -155,9 +157,10 @@ export function HomeNotifications({ notifications }: Props) {
         })}
       </ul>
 
-      {/* View all footer */}
-      <Link
-        href="/notifications"
+      {/* View all — opens the full list in a slide-over instead of a separate page */}
+      <button
+        type="button"
+        onClick={() => setSheetOpen(true)}
         className="mt-2 flex items-center justify-between w-full px-2 py-2 rounded-lg text-[11px] font-medium text-[#0C447C] hover:bg-[#EEF5FF] transition-colors group"
       >
         <span>
@@ -166,7 +169,8 @@ export function HomeNotifications({ notifications }: Props) {
             : 'View all notifications'}
         </span>
         <ChevronRight className="w-3.5 h-3.5 text-[#0C447C]/60 group-hover:translate-x-0.5 transition-transform" />
-      </Link>
+      </button>
+      <NotificationsSheet open={sheetOpen} onOpenChange={setSheetOpen} notifications={notifications} />
     </div>
   );
 }

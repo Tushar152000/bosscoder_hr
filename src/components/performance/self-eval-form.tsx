@@ -31,6 +31,7 @@ import { Button } from '@/components/ui/button';
 import { useDialog } from '@/components/ui/modal';
 import { saveSelfEvalAction } from '@/app/(app)/performance/actions';
 import { formatDate } from '@/lib/format';
+import { cycleNameWithMonths } from '@/lib/performance/cycle-period';
 import type { SelfEvalAnswers, SelfEvalInput, SubmissionStatus } from '@/types/review';
 
 // ─── Question definitions ─────────────────────────────────────────────────────
@@ -572,7 +573,7 @@ export function SelfEvalForm({
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-[28px] font-medium text-slate-900">
-                Self-evaluation · {cycleName}
+                Self-evaluation · {cycleNameWithMonths(cycleName)}
               </h1>
               <StatusChip status={status} />
             </div>

@@ -92,6 +92,26 @@ const config: Config = {
         card: '0 1px 3px 0 rgba(0,0,0,0.06), 0 1px 2px -1px rgba(0,0,0,0.04)',
         'card-hover': '0 4px 16px 0 rgba(0,0,0,0.08), 0 1px 4px 0 rgba(0,0,0,0.04)',
       },
+      // Slide-over panels (e.g. the notifications sheet).
+      keyframes: {
+        'sheet-in': {
+          from: { transform: 'translateX(100%)', opacity: '0.6' },
+          to: { transform: 'translateX(0)', opacity: '1' },
+        },
+        'sheet-out': {
+          from: { transform: 'translateX(0)', opacity: '1' },
+          to: { transform: 'translateX(100%)', opacity: '0.6' },
+        },
+        'fade-in': { from: { opacity: '0' }, to: { opacity: '1' } },
+        'fade-out': { from: { opacity: '1' }, to: { opacity: '0' } },
+      },
+      animation: {
+        // Long, soft ease-out on enter; quicker ease-in on exit so closing feels responsive.
+        'sheet-in': 'sheet-in 380ms cubic-bezier(0.16, 1, 0.3, 1) both',
+        'sheet-out': 'sheet-out 260ms cubic-bezier(0.7, 0, 0.84, 0) both',
+        'fade-in': 'fade-in 300ms ease-out both',
+        'fade-out': 'fade-out 240ms ease-in both',
+      },
     },
   },
   plugins: [],

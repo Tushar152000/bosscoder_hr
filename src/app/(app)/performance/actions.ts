@@ -36,7 +36,12 @@ import {
 } from '@/lib/email/cycle-open';
 import { writeNotificationsForReviewers } from '@/lib/firestore/notifications';
 import { listSubmissionsForCycle } from '@/lib/firestore/review-submissions';
-import type { Cadence, ManagerEvalInput, SelfEvalInput } from '@/types/review';
+import {
+  groupSelfEvalsByDept,
+  toEvalExportRows,
+  type EvalExportRow,
+} from '@/lib/performance/eval-export';
+import type { Cadence, ManagerEvalInput, ReviewSubmission, SelfEvalInput } from '@/types/review';
 
 export type ActionResult<T = void> =
   | ({ ok: true } & (T extends void ? object : { data: T }))
@@ -683,4 +688,33 @@ export async function nudgePendingEmployees(
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Nudge failed' };
   }
+}
+
+/**
+ * Rows for the "Evaluations by department" CSV of any cycle, with the same visibility
+ * as the cycle page: HR/founders see everyone, department leads their managed
+ * departments. Only statuses and the overall rating leave the server — no answers/notes.
+ */
+export async function getEvalExportRowsAction(
+  cycleId: string,
+): Promise<ActionResult<EvalExportRow[]>> {
+  const user = await requireUser();
+  const isAdmin = canManageCycles(user);
+  const me = await getEmployeeByUserUid(user.uid);
+  const managedDepts = me?.managedDepartments ?? [];
+  if (!isAdmin && managedDepts.length === 0) {
+    return { ok: false, error: "You don't have access to evaluation exports" };
+  }
+  if (!(await getCycle(cycleId))) return { ok: false, error: 'Cycle not found' };
+
+  const subs = (await listSubmissionsForCycle(cycleId)).filter(
+    (s) => isAdmin || managedDepts.includes(s.subjectDepartment),
+  );
+  const managerBySubject: Record<string, ReviewSubmission> = {};
+  for (const s of subs) if (s.kind === 'manager') managerBySubject[s.subjectEmployeeId] = s;
+  const groups = groupSelfEvalsByDept(
+    subs.filter((s) => s.kind === 'self'),
+    { email: user.email.toLowerCase(), uid: user.uid, employeeId: me?.employeeId ?? null },
+  );
+  return { ok: true, data: toEvalExportRows(groups, managerBySubject) };
 }

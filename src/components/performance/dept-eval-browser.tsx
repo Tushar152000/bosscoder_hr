@@ -1,15 +1,29 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
-import { ArrowRight, ChevronDown } from 'lucide-react';
-import { DEPARTMENTS } from '@/lib/constants/departments';
+import { toast } from 'sonner';
+import { ArrowRight, ChevronDown, Download, Loader2 } from 'lucide-react';
+import { getEvalExportRowsAction } from '@/app/(app)/performance/actions';
+import { cycleNameWithMonths } from '@/lib/performance/cycle-period';
+import {
+  downloadEvalCsv,
+  groupSelfEvalsByDept,
+  isDone,
+  STATUS_LABEL,
+  toEvalExportRows,
+  type EvalExportRow,
+} from '@/lib/performance/eval-export';
 import { cn, initials } from '@/lib/utils';
 import type { ReviewSubmission, SubmissionStatus } from '@/types/review';
 
 const ALL_DEPTS = '__all__';
 
 interface Props {
+  /** The cycle being viewed — `subs` / `managerBySubject` belong to it. */
+  cycleId: string;
+  /** Cycles offered in the download picker (other cycles are fetched on demand). */
+  cycles?: { cycleId: string; name: string }[];
   /** Self-eval submissions, one per subject. Rows are built from these. */
   subs: ReviewSubmission[];
   /** subjectEmployeeId → that person's manager-eval (any status), for the rating column. */
@@ -23,9 +37,11 @@ interface Props {
 
 /**
  * Lists evaluations grouped by department, with a dropdown to filter to a
- * single department (or show all).
+ * single department (or show all), and a CSV download for any cycle.
  */
 export function DeptEvalBrowser({
+  cycleId,
+  cycles = [],
   subs,
   managerBySubject = {},
   myEmail,
@@ -33,40 +49,16 @@ export function DeptEvalBrowser({
   myEmployeeId,
   hideOwn = true,
 }: Props) {
-  const grouped = useMemo(() => {
-    const g = new Map<string, ReviewSubmission[]>();
-    for (const s of subs) {
-      if (hideOwn) {
-        const isMe =
-          (s.reviewerUid && s.reviewerUid === myUid) ||
-          s.reviewerEmail.toLowerCase() === myEmail ||
-          (myEmployeeId && s.subjectEmployeeId === myEmployeeId);
-        if (isMe) continue;
-      }
-      const k = s.subjectDepartment || '— Unassigned —';
-      if (!g.has(k)) g.set(k, []);
-      g.get(k)!.push(s);
-    }
-    return g;
-  }, [subs, myEmail, myUid, myEmployeeId, hideOwn]);
-
-  // Order departments: known DEPARTMENTS first (in their canonical order), then the rest.
-  const orderedDepts = useMemo(() => {
-    const out: string[] = [];
-    const seen = new Set<string>();
-    for (const d of DEPARTMENTS) {
-      if (grouped.has(d)) {
-        out.push(d);
-        seen.add(d);
-      }
-    }
-    for (const d of grouped.keys()) {
-      if (!seen.has(d)) out.push(d);
-    }
-    return out;
-  }, [grouped]);
+  const groups = useMemo(
+    () => groupSelfEvalsByDept(subs, { email: myEmail, uid: myUid, employeeId: myEmployeeId }, hideOwn),
+    [subs, myEmail, myUid, myEmployeeId, hideOwn],
+  );
+  const grouped = useMemo(() => new Map(groups), [groups]);
+  const orderedDepts = useMemo(() => groups.map(([d]) => d), [groups]);
 
   const [dept, setDept] = useState<string>(ALL_DEPTS);
+  const [exportCycleId, setExportCycleId] = useState(cycleId);
+  const [exporting, startExport] = useTransition();
 
   if (orderedDepts.length === 0) {
     return (
@@ -79,31 +71,95 @@ export function DeptEvalBrowser({
   const visibleDepts =
     dept === ALL_DEPTS ? orderedDepts : orderedDepts.filter((d) => d === dept);
 
+  /** Download the picked cycle as a CSV, one row per person, respecting the department filter. */
+  function handleDownload() {
+    const cycleName =
+      cycles.find((c) => c.cycleId === exportCycleId)?.name ?? subs[0]?.cycleName ?? 'Evaluations';
+    const label = cycleNameWithMonths(cycleName);
+    const fileName = `${label}${dept === ALL_DEPTS ? '' : ` – ${dept}`} – evaluations.csv`;
+    const inDept = (rows: EvalExportRow[]) =>
+      dept === ALL_DEPTS ? rows : rows.filter((r) => r.department === dept);
+
+    if (exportCycleId === cycleId) {
+      downloadEvalCsv(inDept(toEvalExportRows(groups, managerBySubject)), fileName);
+      return;
+    }
+    startExport(async () => {
+      const res = await getEvalExportRowsAction(exportCycleId);
+      if (!res.ok) {
+        toast.error(res.error);
+        return;
+      }
+      const rows = inDept(res.data);
+      if (rows.length === 0) {
+        toast.error(`No evaluations${dept === ALL_DEPTS ? '' : ` in ${dept}`} for ${label}`);
+        return;
+      }
+      downloadEvalCsv(rows, fileName);
+    });
+  }
+
+  const selectCls =
+    'h-9 appearance-none rounded-lg border border-slate-200 bg-white pl-3 pr-8 text-[13px] font-medium text-slate-700 transition focus:border-[#0C447C] focus:outline-none focus:ring-2 focus:ring-[#0C447C]/20 disabled:opacity-60';
+
   return (
     <div className="space-y-4">
-      {/* Department filter */}
-      <div className="relative inline-block">
-        <select
-          value={dept}
-          onChange={(e) => setDept(e.target.value)}
-          className="h-9 appearance-none rounded-lg border border-slate-200 bg-white pl-3 pr-8 text-[13px] font-medium text-slate-700 transition focus:border-[#0C447C] focus:outline-none focus:ring-2 focus:ring-[#0C447C]/20"
-          aria-label="Filter by department"
+      {/* Department filter + cycle picker + download */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative inline-block">
+          <select
+            value={dept}
+            onChange={(e) => setDept(e.target.value)}
+            disabled={exporting}
+            className={selectCls}
+            aria-label="Filter by department"
+          >
+            <option value={ALL_DEPTS}>All departments</option>
+            {orderedDepts.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+        </div>
+        {cycles.length > 1 && (
+          <div className="relative inline-block">
+            <select
+              value={exportCycleId}
+              onChange={(e) => setExportCycleId(e.target.value)}
+              disabled={exporting}
+              className={selectCls}
+              aria-label="Cycle to download"
+            >
+              {cycles.map((c) => (
+                <option key={c.cycleId} value={c.cycleId}>
+                  {cycleNameWithMonths(c.name)}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={handleDownload}
+          disabled={exporting}
+          aria-busy={exporting}
+          className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-[13px] font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-wait disabled:opacity-60"
         >
-          <option value={ALL_DEPTS}>All departments</option>
-          {orderedDepts.map((d) => (
-            <option key={d} value={d}>
-              {d}
-            </option>
-          ))}
-        </select>
-        <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+          {exporting ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Download className="h-3.5 w-3.5" />
+          )}
+          {exporting ? 'Preparing…' : 'Download CSV'}
+        </button>
       </div>
 
       {visibleDepts.map((d) => {
         const rows = grouped.get(d)!;
-        const submitted = rows.filter(
-          (r) => r.status === 'submitted' || r.status === 'locked',
-        ).length;
+        const submitted = rows.filter(isDone).length;
         return (
           <div key={d}>
             <div className="mb-2 flex items-center gap-2.5">
@@ -168,7 +224,7 @@ function ManagerRatingCell({ mgr }: { mgr: ReviewSubmission | null }) {
   if (!mgr) {
     return <span className="text-[11px] text-slate-400">No manager</span>;
   }
-  const done = mgr.status === 'submitted' || mgr.status === 'locked';
+  const done = isDone(mgr);
   const rating = mgr.managerOverallRating;
   return (
     <div className="flex min-w-0 items-center gap-2">
@@ -195,19 +251,16 @@ function ManagerRatingCell({ mgr }: { mgr: ReviewSubmission | null }) {
 }
 
 function SubStatusPill({ status }: { status: SubmissionStatus }) {
-  const map: Record<SubmissionStatus, { label: string; cls: string }> = {
-    submitted: { label: 'Submitted', cls: 'bg-[#E1F5EE] text-[#0F6E56]' },
-    'in-progress': { label: 'In progress', cls: 'bg-[#FAEEDA] text-[#854F0B]' },
-    'not-started': {
-      label: 'Not started',
-      cls: 'bg-[#F8FAFC] text-slate-500 border border-[#E2E8F0]',
-    },
-    locked: { label: 'Locked', cls: 'bg-[#F8FAFC] text-slate-500 border border-[#E2E8F0]' },
+  const cls: Record<SubmissionStatus, string> = {
+    submitted: 'bg-[#E1F5EE] text-[#0F6E56]',
+    'in-progress': 'bg-[#FAEEDA] text-[#854F0B]',
+    'not-started': 'bg-[#F8FAFC] text-slate-500 border border-[#E2E8F0]',
+    locked: 'bg-[#F8FAFC] text-slate-500 border border-[#E2E8F0]',
   };
-  const { label, cls } = map[status];
+  const label = STATUS_LABEL[status];
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${cls}`}
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium ${cls[status]}`}
     >
       {label}
     </span>

@@ -63,6 +63,16 @@ export function availableYears(cycles: ReviewCycle[]): number[] {
   return [...set].sort((a, b) => b - a);
 }
 
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/** `"Q1 2026"` → `"Q1 2026 (Jan – Mar)"`; monthly / unparseable names are returned unchanged. */
+export function cycleNameWithMonths(cycleName: string): string {
+  const qm = /^Q([1-4])\s+(\d{4})$/.exec(cycleName.trim());
+  if (!qm) return cycleName;
+  const start = (parseInt(qm[1], 10) - 1) * 3;
+  return `${cycleName} (${MONTHS_SHORT[start]} – ${MONTHS_SHORT[start + 2]})`;
+}
+
 /**
  * Derive Indian FY string directly from a cycle name string.
  * Works for monthly ("April 2025") and quarterly ("Q1 2025") names.
