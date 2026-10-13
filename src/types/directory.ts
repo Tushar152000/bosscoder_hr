@@ -24,4 +24,11 @@ export interface DirectoryPerson {
   /** Everyone below this person in the reporting line. */
   teamSize: number;
   isFounder: boolean;
+  /**
+   * Open review cycle progress — only sent to people who manage cycles.
+   * 'none' = no form for this person in the cycle.
+   */
+  evals?: { self: EvalState; manager: EvalState };
 }
+
+export type EvalState = 'pending' | 'submitted' | 'none';

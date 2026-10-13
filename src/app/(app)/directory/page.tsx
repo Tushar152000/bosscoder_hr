@@ -7,7 +7,11 @@ import { initials } from '@/lib/utils';
 import { formatDate } from '@/lib/format';
 import { colorForName } from '@/lib/directory/colors';
 import { DirectoryClient } from '@/components/directory/directory-client';
-import type { DirectoryPerson } from '@/types/directory';
+import type { DirectoryPerson, EvalState } from '@/types/directory';
+import { canManageCycles } from '@/lib/auth/review-access';
+import { listCycles } from '@/lib/firestore/review-cycles';
+import { listSubmissionsForCycle } from '@/lib/firestore/review-submissions';
+import type { ReviewSubmission } from '@/types/review';
 import type { EmployeePublic } from '@/types/employee';
 
 export const metadata = { title: 'Directory' };
@@ -30,6 +34,21 @@ export default async function DirectoryPage() {
 
   const people = buildPeople(employees, photoByUid);
 
+  // Review progress for the open cycle — HR/founders/cycle managers only.
+  let evalCycleName: string | null = null;
+  if (canManageCycles(user)) {
+    const open = (await listCycles()).find((c) => c.status === 'open');
+    if (open) {
+      evalCycleName = open.name;
+      const subs = await listSubmissionsForCycle(open.cycleId);
+      const state = (s: ReviewSubmission | undefined): EvalState =>
+        !s ? 'none' : s.status === 'submitted' || s.status === 'locked' ? 'submitted' : 'pending';
+      const self = new Map(subs.filter((s) => s.kind === 'self').map((s) => [s.subjectEmployeeId, s]));
+      const mgr = new Map(subs.filter((s) => s.kind === 'manager').map((s) => [s.subjectEmployeeId, s]));
+      for (const p of people) p.evals = { self: state(self.get(p.id)), manager: state(mgr.get(p.id)) };
+    }
+  }
+
   return (
     <DirectoryClient
       people={people}
@@ -37,6 +56,7 @@ export default async function DirectoryPage() {
       totalManagers={people.filter((p) => p.reportsCount > 0).length}
       canCreate={canEditEmployees(user)}
       canFilterStatus={priv}
+      evalCycleName={evalCycleName}
     />
   );
 }

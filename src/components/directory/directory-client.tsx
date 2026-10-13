@@ -9,10 +9,12 @@ import {
   ArrowUp,
   ChevronDown,
   ChevronRight,
+  ClipboardList,
   LayoutGrid,
   List,
   Search,
   SlidersHorizontal,
+  UserCheck,
   X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -29,6 +31,12 @@ type SortKey = 'name' | 'dept' | 'joined';
 const NO_DEPT = 'No department';
 const TOP = '__top';
 const NO_MANAGER = '__none';
+
+type EvalKind = 'self' | 'manager';
+const EVAL_LABEL: Record<EvalKind, string> = {
+  self: 'Self-eval pending',
+  manager: 'Manager review pending',
+};
 
 const STATUS_LABEL: Record<EmployeeStatus, string> = {
   active: 'Active',
@@ -61,6 +69,8 @@ interface Props {
   canCreate: boolean;
   /** HR and founders can see people on notice or who have left. */
   canFilterStatus: boolean;
+  /** Open review cycle name when review progress is available (HR/cycle managers). */
+  evalCycleName?: string | null;
 }
 
 interface Group {
@@ -190,7 +200,7 @@ function Segmented<T extends string>({
 // Main
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function DirectoryClient({ people, totalEmployees, totalManagers, canCreate, canFilterStatus }: Props) {
+export function DirectoryClient({ people, totalEmployees, totalManagers, canCreate, canFilterStatus, evalCycleName }: Props) {
   const [search, setSearch] = useState('');
   const [depts, setDepts] = useState<Set<string>>(new Set());
   const [statuses, setStatuses] = useState<Set<EmployeeStatus>>(new Set(['active']));
@@ -199,6 +209,8 @@ export function DirectoryClient({ people, totalEmployees, totalManagers, canCrea
   const [layout, setLayout] = useState<Layout>('list');
   const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: 'name', dir: 1 });
   const [closed, setClosed] = useState<Set<string>>(new Set());
+  // Review-progress filters: people whose self-eval / manager review is still pending.
+  const [pending, setPending] = useState<Set<EvalKind>>(new Set());
 
   // Remember grouping and layout per browser.
   useEffect(() => {
@@ -234,16 +246,26 @@ export function DirectoryClient({ people, totalEmployees, totalManagers, canCrea
 
   const statusIsDefault = statuses.size === 1 && statuses.has('active');
 
+  // Pending counts among people still with the company.
+  const pendingCount = useMemo(() => {
+    const live = people.filter((p) => p.status !== 'left');
+    return {
+      self: live.filter((p) => p.evals?.self === 'pending').length,
+      manager: live.filter((p) => p.evals?.manager === 'pending').length,
+    };
+  }, [people]);
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     return people.filter((p) => {
       if (depts.size && !depts.has(deptKey(p))) return false;
       if (canFilterStatus && statuses.size && !statuses.has(p.status)) return false;
       if (types.size && !types.has(p.employmentType)) return false;
+      if (pending.size && ![...pending].some((k) => p.evals?.[k] === 'pending')) return false;
       if (!q) return true;
       return [p.name, p.email, p.designation, deptKey(p), p.managerName ?? ''].some((v) => v.toLowerCase().includes(q));
     });
-  }, [people, search, depts, statuses, types, canFilterStatus]);
+  }, [people, search, depts, statuses, types, canFilterStatus, pending]);
 
   const groups = useMemo<Group[]>(() => {
     const cmp = (a: DirectoryPerson, b: DirectoryPerson) => {
@@ -279,15 +301,22 @@ export function DirectoryClient({ people, totalEmployees, totalManagers, canCrea
       clear: () => setStatuses(new Set(['active'])),
     });
   }
+  for (const k of pending) {
+    chips.push({ key: `e:${k}`, label: EVAL_LABEL[k], clear: () => setPending((s) => { const n = new Set(s); n.delete(k); return n; }) });
+  }
   if (types.size) {
     chips.push({ key: 'type', label: `Type: ${[...types].map((t) => TYPE_LABEL[t]).join(', ')}`, clear: () => setTypes(new Set()) });
   }
+
+  // Filters chosen inside the Filter menu (the review-progress toggles live in the toolbar).
+  const menuFilterCount = chips.filter((c) => !c.key.startsWith('e:')).length;
 
   function clearAll() {
     setSearch('');
     setDepts(new Set());
     setStatuses(new Set(['active']));
     setTypes(new Set());
+    setPending(new Set());
   }
 
   function toggleIn<T>(set: Set<T>, v: T): Set<T> {
@@ -398,16 +427,16 @@ export function DirectoryClient({ people, totalEmployees, totalManagers, canCrea
                   type="button"
                   className={cn(
                     'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border bg-white px-3 text-[12.5px] font-medium transition',
-                    chips.length
+                    menuFilterCount
                       ? 'border-[#B5D4F4] bg-[#EBF3FE] text-[#0C447C]'
                       : 'border-slate-200/70 text-slate-600 hover:border-slate-300',
                   )}
                 >
                   <SlidersHorizontal size={14} />
                   Filter
-                  {chips.length > 0 && (
+                  {menuFilterCount > 0 && (
                     <span className="inline-flex min-w-[18px] justify-center rounded-full bg-[#0C447C] px-1 text-[11px] font-semibold tabular-nums text-white">
-                      {chips.length}
+                      {menuFilterCount}
                     </span>
                   )}
                 </button>
@@ -465,6 +494,40 @@ export function DirectoryClient({ people, totalEmployees, totalManagers, canCrea
                 </Popover.Content>
               </Popover.Portal>
             </Popover.Root>
+
+            {evalCycleName && (
+              <div role="group" aria-label={`${evalCycleName} review progress`} className="flex items-center gap-1.5">
+                {(['self', 'manager'] as EvalKind[]).map((k) => {
+                  const on = pending.has(k);
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setPending((s) => toggleIn(s, k))}
+                      aria-pressed={on}
+                      title={`${evalCycleName}: people whose ${k === 'self' ? 'self-evaluation' : "manager's review"} isn't submitted yet`}
+                      className={cn(
+                        'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-[12.5px] font-medium transition',
+                        on
+                          ? 'border-[#FAC775] bg-[#FAEEDA] text-[#854F0B]'
+                          : 'border-slate-200/70 bg-white text-slate-600 hover:border-slate-300',
+                      )}
+                    >
+                      {k === 'self' ? <ClipboardList size={14} /> : <UserCheck size={14} />}
+                      {EVAL_LABEL[k]}
+                      <span
+                        className={cn(
+                          'inline-flex min-w-[20px] justify-center rounded-full px-1.5 text-[11px] font-semibold tabular-nums',
+                          on ? 'bg-[#854F0B] text-white' : 'bg-slate-100 text-slate-600',
+                        )}
+                      >
+                        {pendingCount[k]}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
 
             <Segmented<GroupBy>
               label="Group by"
@@ -532,7 +595,10 @@ export function DirectoryClient({ people, totalEmployees, totalManagers, canCrea
       </div>
 
       {/* ── Results ──────────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto px-4 py-5 md:px-10">
+      {/* No top padding on the scroll container itself: sticky headers stick to its padding
+          edge, so rows scrolling up would show through a padded strip above them. */}
+      <div className="flex-1 overflow-y-auto px-4 pb-5 md:px-10">
+        <div className="pt-5">
         {filtered.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-200 bg-white p-10 text-center">
             <p className="text-[13px] text-slate-500">
@@ -587,6 +653,7 @@ export function DirectoryClient({ people, totalEmployees, totalManagers, canCrea
                         showDept={showDept}
                         showManager={showManager}
                         showStatus={canFilterStatus}
+                        showEvals={pending.size > 0}
                       />
                     ))}
                   </div>
@@ -615,6 +682,7 @@ export function DirectoryClient({ people, totalEmployees, totalManagers, canCrea
             ))}
           </div>
         )}
+        </div>
       </div>
     </div>
   );
@@ -659,12 +727,15 @@ function PersonRow({
   showDept,
   showManager,
   showStatus,
+  showEvals = false,
 }: {
   person: DirectoryPerson;
   q: string;
   showDept: boolean;
   showManager: boolean;
   showStatus: boolean;
+  /** Tag pending review forms (while a review-progress filter is on). */
+  showEvals?: boolean;
 }) {
   return (
     <div className="group relative flex min-h-[58px] items-center border-b border-slate-100 transition hover:bg-[#FBFCFE] md:grid md:[grid-template-columns:var(--cols)]">
@@ -688,6 +759,16 @@ function PersonRow({
             <Highlight text={p.designation} q={q} />
             <span className="md:hidden"> · {deptKey(p)}</span>
           </p>
+          {showEvals && (p.evals?.self === 'pending' || p.evals?.manager === 'pending') && (
+            <div className="mt-1 flex flex-wrap gap-1">
+              {p.evals?.self === 'pending' && (
+                <span className="rounded-full bg-[#FAEEDA] px-1.5 py-px text-[10.5px] font-semibold text-[#854F0B]">Self-eval pending</span>
+              )}
+              {p.evals?.manager === 'pending' && (
+                <span className="rounded-full bg-[#FAEEDA] px-1.5 py-px text-[10.5px] font-semibold text-[#854F0B]">Review pending</span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
