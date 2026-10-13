@@ -3,6 +3,7 @@
 import { z } from 'zod';
 import { requireUser } from '@/lib/auth/guard';
 import { addFeedback } from '@/lib/firestore/feedback';
+import { postFeedbackToSlack } from '@/lib/slack';
 
 const schema = z.object({
   message: z.string().trim().min(3, 'Please write a little more').max(2000, 'Keep it under 2000 characters'),
@@ -18,12 +19,15 @@ export async function submitFeedbackAction(input: {
   const parsed = schema.safeParse(input);
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalid feedback' };
 
-  await addFeedback({
+  const entry = {
     uid: user.uid,
     email: user.email,
     name: user.displayName ?? user.email,
     message: parsed.data.message,
     page: parsed.data.page,
-  });
+  };
+  await addFeedback(entry);
+  // Best effort: Slack problems are logged, never surfaced — the feedback is already saved.
+  await postFeedbackToSlack(entry);
   return { ok: true };
 }
