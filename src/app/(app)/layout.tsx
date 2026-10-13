@@ -7,13 +7,18 @@ import { listNotificationsForUser } from '@/lib/firestore/notifications';
 import { displayPhotoURL, getHrUser } from '@/lib/firestore/users';
 import { TopNavbar } from '@/components/layout/top-navbar';
 import { canViewFeedback } from '@/lib/feedback/access';
+import { canManageHrFeedback } from '@/lib/hr-feedback/access';
+import { countNewHrFeedback } from '@/lib/firestore/hr-feedback';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
-  const [me, notifications, hrUser] = await Promise.all([
+  const isHr = canManageHrFeedback(user);
+  const [me, notifications, hrUser, hrInboxNew] = await Promise.all([
     getEmployeeByUserUid(user.uid),
     listNotificationsForUser(user.uid),
     getHrUser(user.uid),
+    // A count query is cheap; a failure just hides the badge.
+    isHr ? countNewHrFeedback().catch(() => 0) : Promise.resolve(undefined),
   ]);
   const manager = me?.managerId ? await getEmployeeById(me.managerId) : null;
   const photoURL = displayPhotoURL(hrUser, user.photoURL);
@@ -32,6 +37,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           managerName: manager?.displayName ?? null,
           employeeId: me?.employeeId ?? null,
           canViewFeedback: canViewFeedback(user),
+          hrInboxNew,
         }}
         notifications={notifications}
       />

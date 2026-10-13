@@ -21,6 +21,8 @@ export const HR = {
   leaveRequests: 'hr_leave_requests',
   leaveBalances: 'hr_leave_balances',
   feedback: 'hr_feedback',
+  /** Employee feedback addressed to the HR team (separate from portal feedback). */
+  hrFeedback: 'hr_feedback_to_hr',
 } as const;
 
 export type HrCollection = (typeof HR)[keyof typeof HR];

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Bell, ChevronDown, ClipboardList, FileText,
-  Home, LogOut, Menu, Megaphone, MessageCircle,
+  Home, Inbox, LogOut, Menu, Megaphone, MessageCircle, MessageSquareText,
   Settings as SettingsIcon, User as UserIcon, Users, X,
 } from "lucide-react";
 import * as Popover from "@radix-ui/react-popover";
@@ -46,6 +46,8 @@ interface Props {
     employeeId?: string | null;
     /** Shows the private Feedback inbox link (see lib/feedback/access). */
     canViewFeedback?: boolean;
+    /** HR and founders: number of new messages in the HR inbox. Undefined for everyone else. */
+    hrInboxNew?: number;
   };
   notifications?: NavNotification[];
 }
@@ -379,6 +381,15 @@ function UserMenu({
             )}
             {/* Account details, roles and the audit log all live under Settings. */}
             <MenuLink href="/settings" icon={SettingsIcon} label="Settings" />
+            <MenuLink href="/hr-feedback" icon={MessageSquareText} label="Feedback to HR" />
+            {user.hrInboxNew !== undefined && (
+              <MenuLink
+                href="/hr-feedback/inbox"
+                icon={Inbox}
+                label="HR inbox"
+                badge={user.hrInboxNew > 0 ? `${user.hrInboxNew} new` : undefined}
+              />
+            )}
             {user.canViewFeedback && (
               <MenuLink href="/feedback" icon={MessageCircle} label="Feedback inbox" />
             )}
@@ -428,10 +439,12 @@ function MenuLink({
   href,
   icon: Icon,
   label,
+  badge,
 }: {
   href: string;
   icon: React.ComponentType<{ size?: number; className?: string }>;
   label: string;
+  badge?: string;
 }) {
   return (
     <Link
@@ -440,6 +453,11 @@ function MenuLink({
     >
       <Icon size={14} className="text-slate-400" />
       {label}
+      {badge && (
+        <span className="ml-auto rounded-full bg-[#0C447C] px-1.5 py-px text-[10.5px] font-semibold tabular-nums text-white">
+          {badge}
+        </span>
+      )}
     </Link>
   );
 }
