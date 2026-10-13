@@ -128,42 +128,16 @@ export function HrFeedbackInbox({ items }: { items: HrFeedbackItem[] }) {
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-4 px-4 py-6 md:px-10">
-      <div className="space-y-1.5">
-        <Breadcrumbs items={[{ label: 'Feedback to HR', href: '/hr-feedback' }, { label: 'HR inbox' }]} />
-        <h1 className="text-[22px] font-semibold text-slate-900">HR inbox</h1>
-        <p className="text-[13px] tabular-nums text-slate-500">
-          {counts.new} new · {counts['in-review']} in review · {counts.resolved} resolved
-          <span className="text-slate-400"> · visible to HR and founders only</span>
-        </p>
-      </div>
-
-      {/* Status tabs + search */}
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="-mx-1 flex min-w-0 items-center gap-1 overflow-x-auto px-1">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => { setTab(t.key); setCategory(null); }}
-              aria-pressed={tab === t.key}
-              className={cn(
-                'inline-flex shrink-0 items-center gap-2 rounded-full px-3.5 py-1.5 text-[13.5px] font-medium transition',
-                tab === t.key ? 'bg-[#0C447C] text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700',
-              )}
-            >
-              {t.label}
-              <span
-                className={cn(
-                  'inline-flex min-w-[1.25rem] justify-center rounded-full px-1.5 py-0.5 text-[10.5px] font-semibold tabular-nums',
-                  tab === t.key ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500',
-                )}
-              >
-                {counts[t.key]}
-              </span>
-            </button>
-          ))}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="min-w-0 space-y-1.5">
+          <Breadcrumbs items={[{ label: 'Feedback to HR', href: '/hr-feedback' }, { label: 'HR inbox' }]} />
+          <h1 className="text-[22px] font-semibold text-slate-900">HR inbox</h1>
+          <p className="text-[13px] tabular-nums text-slate-500">
+            {counts.new} new · {counts['in-review']} in review · {counts.resolved} resolved
+            <span className="text-slate-400"> · visible to HR and founders only</span>
+          </p>
         </div>
-        <div className="relative ml-auto w-full sm:w-[280px]">
+        <div className="relative w-full sm:w-[280px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
@@ -186,35 +160,46 @@ export function HrFeedbackInbox({ items }: { items: HrFeedbackItem[] }) {
         </div>
       </div>
 
-      {/* Topic chips */}
-      <div className="-mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:px-0" role="group" aria-label="Filter by topic">
-        <button
-          type="button"
-          onClick={() => setCategory(null)}
-          aria-pressed={category === null}
-          className={cn(
-            'inline-flex h-8 shrink-0 items-center rounded-full border px-3 text-[12.5px] font-medium transition',
-            category === null ? 'border-[#0C447C] bg-[#0C447C] text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300',
-          )}
-        >
-          All topics
-        </button>
-        {HR_FEEDBACK_CATEGORIES.filter((c) => categoryCounts.has(c) || category === c).map((c) => (
-          <button
-            key={c}
-            type="button"
-            onClick={() => setCategory(category === c ? null : c)}
-            aria-pressed={category === c}
-            className={cn(
-              'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-medium transition',
-              category === c ? 'border-[#B5D4F4] bg-[#EBF3FE] text-[#0C447C]' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300',
-            )}
-          >
-            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: CATEGORY_COLOR[c] }} />
-            {CATEGORY_LABEL[c]}
-            <span className="tabular-nums text-slate-400">{categoryCounts.get(c) ?? 0}</span>
-          </button>
-        ))}
+      {/* Status and topic filters in one row */}
+      <div className="-mx-4 flex items-center gap-1.5 overflow-x-auto px-4 pb-1 md:mx-0 md:flex-wrap md:px-0">
+        <div role="group" aria-label="Filter by status" className="contents">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => { setTab(t.key); setCategory(null); }}
+              aria-pressed={tab === t.key}
+              className={cn(
+                'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-medium transition',
+                tab === t.key
+                  ? 'border-[#0C447C] bg-[#0C447C] text-white'
+                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300',
+              )}
+            >
+              {t.label}
+              <span className={cn('tabular-nums', tab === t.key ? 'text-[#B5D4F4]' : 'text-slate-400')}>{counts[t.key]}</span>
+            </button>
+          ))}
+        </div>
+        <span className="mx-1 h-5 w-px shrink-0 bg-slate-200" aria-hidden />
+        <div role="group" aria-label="Filter by topic" className="contents">
+          {HR_FEEDBACK_CATEGORIES.filter((c) => categoryCounts.has(c) || category === c).map((c) => (
+            <button
+              key={c}
+              type="button"
+              onClick={() => setCategory(category === c ? null : c)}
+              aria-pressed={category === c}
+              className={cn(
+                'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-medium transition',
+                category === c ? 'border-[#B5D4F4] bg-[#EBF3FE] text-[#0C447C]' : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300',
+              )}
+            >
+              <span className="h-2 w-2 rounded-full" style={{ backgroundColor: CATEGORY_COLOR[c] }} />
+              {CATEGORY_LABEL[c]}
+              <span className="tabular-nums text-slate-400">{categoryCounts.get(c) ?? 0}</span>
+            </button>
+          ))}
+        </div>
       </div>
 
       {items.length === 0 ? (
@@ -268,7 +253,10 @@ export function HrFeedbackInbox({ items }: { items: HrFeedbackItem[] }) {
                         <SenderAvatar item={i} />
                         <span className="min-w-0 flex-1">
                           <span className="flex items-center gap-2">
-                            <span className={cn('truncate text-[13.5px] text-slate-900', i.status === 'new' ? 'font-semibold' : 'font-medium')}>
+                            {i.status === 'new' && (
+                              <span className="h-2 w-2 shrink-0 rounded-full bg-[#0C447C]" aria-label="New" />
+                            )}
+                            <span className={cn('truncate text-[13.5px] text-slate-900', i.status === 'new' ? 'font-bold' : 'font-medium')}>
                               {i.anonymous ? 'Anonymous' : i.name}
                             </span>
                             <span className="ml-auto shrink-0 text-[11.5px] text-slate-400" suppressHydrationWarning>

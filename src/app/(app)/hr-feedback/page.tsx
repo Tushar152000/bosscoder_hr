@@ -1,29 +1,69 @@
 import Link from 'next/link';
-import { ArrowRight, Bell, EyeOff, Inbox, MessageSquareText } from 'lucide-react';
+import { ArrowRight, Bell, Check, EyeOff, Inbox, MessageSquareText } from 'lucide-react';
 import { requireUser } from '@/lib/auth/guard';
 import { countNewHrFeedback, listMyHrFeedback } from '@/lib/firestore/hr-feedback';
 import { canManageHrFeedback } from '@/lib/hr-feedback/access';
-import { CATEGORY_COLOR, CATEGORY_LABEL, SENDER_STATUS_LABEL, type HrFeedbackStatus } from '@/lib/hr-feedback/types';
+import { CATEGORY_COLOR, CATEGORY_LABEL, type HrFeedbackStatus } from '@/lib/hr-feedback/types';
 import { formatDate } from '@/lib/format';
-import { cn } from '@/lib/utils';
+import { cn, initials } from '@/lib/utils';
+import { colorForName } from '@/lib/directory/colors';
+import { displayPhotoURL, getHrUser } from '@/lib/firestore/users';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { HrFeedbackSendForm } from '@/components/hr-feedback/send-form';
 
 export const metadata = { title: 'Feedback to HR' };
 
-const STATUS_STYLE: Record<HrFeedbackStatus, string> = {
-  new: 'bg-slate-100 text-slate-600',
-  'in-review': 'bg-[#FAEEDA] text-[#854F0B]',
-  resolved: 'bg-[#E1F5EE] text-[#0F6E56]',
-};
+const STEPS: { status: HrFeedbackStatus; label: string }[] = [
+  { status: 'new', label: 'Received' },
+  { status: 'in-review', label: 'In review' },
+  { status: 'resolved', label: 'Resolved' },
+];
+
+/** Received → In review → Resolved, with the current step highlighted. */
+function StatusSteps({ status }: { status: HrFeedbackStatus }) {
+  const at = STEPS.findIndex((s) => s.status === status);
+  return (
+    <ol className="mt-3 flex items-center" aria-label={`Status: ${STEPS[at].label}`}>
+      {STEPS.map((s, i) => {
+        const done = i < at || status === 'resolved';
+        const current = i === at && !done;
+        return (
+          <li key={s.status} className={cn('flex items-center', i > 0 && 'flex-1')}>
+            {i > 0 && <span className={cn('mx-2 h-0.5 min-w-4 flex-1 rounded', i <= at ? 'bg-[#1D9E75]' : 'bg-slate-200')} />}
+            <span
+              className={cn(
+                'flex items-center gap-1.5 whitespace-nowrap text-[11.5px] font-semibold',
+                done ? 'text-slate-900' : current ? 'text-[#0C447C]' : 'text-slate-400',
+              )}
+              aria-current={current ? 'step' : undefined}
+            >
+              <span
+                className={cn(
+                  'grid h-4 w-4 place-items-center rounded-full border-2',
+                  done ? 'border-[#1D9E75] bg-[#1D9E75] text-white' : current ? 'border-[#0C447C] bg-white' : 'border-slate-300 bg-white',
+                )}
+              >
+                {done && <Check className="h-2.5 w-2.5" strokeWidth={3.5} />}
+                {current && <span className="h-1.5 w-1.5 rounded-full bg-[#0C447C]" />}
+              </span>
+              {s.label}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
 
 export default async function HrFeedbackPage() {
   const user = await requireUser();
   const isHr = canManageHrFeedback(user);
-  const [mine, newCount] = await Promise.all([
+  const [mine, newCount, hrUser] = await Promise.all([
     listMyHrFeedback(user.uid),
     isHr ? countNewHrFeedback() : Promise.resolve(0),
+    getHrUser(user.uid),
   ]);
+  const myName = user.displayName ?? user.email;
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-6 md:px-10">
@@ -57,7 +97,14 @@ export default async function HrFeedbackPage() {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-6">
-          <HrFeedbackSendForm />
+          <HrFeedbackSendForm
+            sender={{
+              name: myName,
+              initials: initials(myName, user.email),
+              color: colorForName(myName),
+              photoURL: displayPhotoURL(hrUser, user.photoURL),
+            }}
+          />
 
           <section aria-labelledby="your-messages" className="space-y-3">
             <h2 id="your-messages" className="text-[15px] font-semibold text-slate-900">
@@ -80,10 +127,8 @@ export default async function HrFeedbackPage() {
                       <span className="text-[12px] text-slate-400">
                         {f.createdAt ? formatDate(new Date(f.createdAt)) : ''}
                       </span>
-                      <span className={cn('ml-auto rounded-full px-2 py-0.5 text-[11.5px] font-semibold', STATUS_STYLE[f.status])}>
-                        {SENDER_STATUS_LABEL[f.status]}
-                      </span>
                     </div>
+                    <StatusSteps status={f.status} />
                     <p className="mt-2 whitespace-pre-wrap text-[13.5px] leading-relaxed text-slate-700">{f.message}</p>
                     {f.response && (
                       <div className="mt-3 rounded-lg border border-[#B5D4F4] bg-[#EBF3FE] px-3.5 py-3">

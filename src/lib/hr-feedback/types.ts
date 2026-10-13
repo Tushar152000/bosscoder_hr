@@ -39,13 +39,6 @@ export const STATUS_LABEL: Record<HrFeedbackStatus, string> = {
   resolved: 'Resolved',
 };
 
-/** Labels the sender sees on their own messages. */
-export const SENDER_STATUS_LABEL: Record<HrFeedbackStatus, string> = {
-  new: 'Received',
-  'in-review': 'HR is looking into it',
-  resolved: 'Resolved',
-};
-
 export const MESSAGE_MAX = 3000;
 export const RESPONSE_MAX = 2000;
 

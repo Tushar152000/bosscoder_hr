@@ -12,7 +12,7 @@ import {
   type HrFeedbackCategory,
 } from '@/lib/hr-feedback/types';
 
-export function HrFeedbackSendForm() {
+export function HrFeedbackSendForm({ sender }: { sender: { name: string; initials: string; color: string; photoURL: string | null } }) {
   const [category, setCategory] = useState<HrFeedbackCategory | null>(null);
   const [message, setMessage] = useState('');
   const [anonymous, setAnonymous] = useState(false);
@@ -133,8 +133,30 @@ export function HrFeedbackSendForm() {
       {error && <p className="text-[13px] font-medium text-red-600" role="alert">{error}</p>}
 
       <div className="flex items-center justify-between gap-3">
-        <p className="text-[12px] text-slate-400">
-          {anonymous ? 'Sending without your name' : 'Sending as you'}
+        <p className="flex items-center gap-2 text-[12.5px] text-slate-500">
+          {anonymous ? (
+            <>
+              <span className="grid h-6 w-6 place-items-center rounded-full bg-slate-100 text-slate-500">
+                <EyeOff className="h-3.5 w-3.5" />
+              </span>
+              Sending without your name
+            </>
+          ) : (
+            <>
+              {sender.photoURL ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={sender.photoURL} alt="" referrerPolicy="no-referrer" className="h-6 w-6 rounded-full object-cover" />
+              ) : (
+                <span
+                  className="grid h-6 w-6 place-items-center rounded-full text-[9.5px] font-semibold text-white"
+                  style={{ backgroundColor: sender.color }}
+                >
+                  {sender.initials}
+                </span>
+              )}
+              Sending as {sender.name}
+            </>
+          )}
         </p>
         <button
           type="submit"
