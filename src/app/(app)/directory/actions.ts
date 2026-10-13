@@ -18,6 +18,7 @@ import { defaultPermissionsForRoles } from '@/lib/auth/roles';
 import { writeAuditLog } from '@/lib/audit';
 import type { EmployeeInput } from '@/types/employee';
 import { isValidMobile } from '@/lib/phone';
+import { recountCyclesForSubject } from '@/lib/firestore/review-submissions';
 
 /**
  * If an employee has no reporting manager → promote them to `manager` role.
@@ -202,6 +203,8 @@ export async function deleteEmployeeAction(employeeId: string): Promise<ActionRe
 
   try {
     await deleteEmployee(employeeId);
+    // Their review forms stay for the record but stop counting — refresh cycle totals.
+    await recountCyclesForSubject(employeeId).catch(() => {});
     await writeAuditLog({
       actorUid: user.uid,
       actorEmail: user.email,

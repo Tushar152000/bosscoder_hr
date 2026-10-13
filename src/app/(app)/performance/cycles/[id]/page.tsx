@@ -11,7 +11,7 @@ import { requireUser } from '@/lib/auth/guard';
 import { canManageCycles } from '@/lib/auth/review-access';
 import { getEmployeeByUserUid } from '@/lib/firestore/employees';
 import { getCycle, listCycles } from '@/lib/firestore/review-cycles';
-import { listSubmissionsForCycle } from '@/lib/firestore/review-submissions';
+import { countCycleSubmissions, listSubmissionsForCycle } from '@/lib/firestore/review-submissions';
 import { TeamMemberCard, type TeamPair } from '@/components/performance/team-member-card';
 import { YourSelfEvalCard } from '@/components/performance/your-self-eval-card';
 import { SlotTabs } from '@/components/performance/slot-tabs';
@@ -102,13 +102,15 @@ export default async function CycleDetailPage({ params }: Props) {
     ? (await listCycles()).map((c) => ({ cycleId: c.cycleId, name: c.name }))
     : [];
 
+  // Live from current employees' forms (stored totals can lag behind deletions).
+  const counts = countCycleSubmissions(allSubs);
   const selfPct =
-    cycle.selfCount > 0
-      ? Math.round((cycle.selfSubmittedCount / cycle.selfCount) * 100)
+    counts.selfCount > 0
+      ? Math.round((counts.selfSubmittedCount / counts.selfCount) * 100)
       : 0;
   const mgrPct =
-    cycle.managerCount > 0
-      ? Math.round((cycle.managerSubmittedCount / cycle.managerCount) * 100)
+    counts.managerCount > 0
+      ? Math.round((counts.managerSubmittedCount / counts.managerCount) * 100)
       : 0;
 
   return (
@@ -170,7 +172,7 @@ export default async function CycleDetailPage({ params }: Props) {
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <StatCard
             label="Self-evals"
-            value={`${cycle.selfSubmittedCount} / ${cycle.selfCount}`}
+            value={`${counts.selfSubmittedCount} / ${counts.selfCount}`}
             hint="Submitted / total"
             iconBg="bg-[#EBF3FE]"
             iconColor="text-[#0C447C]"
@@ -180,7 +182,7 @@ export default async function CycleDetailPage({ params }: Props) {
           />
           <StatCard
             label="Manager-evals"
-            value={`${cycle.managerSubmittedCount} / ${cycle.managerCount}`}
+            value={`${counts.managerSubmittedCount} / ${counts.managerCount}`}
             hint="Submitted / total"
             iconBg="bg-[#E1F5EE]"
             iconColor="text-[#0F6E56]"

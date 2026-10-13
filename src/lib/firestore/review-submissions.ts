@@ -1,4 +1,5 @@
 import 'server-only';
+import { cache } from 'react';
 import { adminDb, FieldValue } from '@/lib/firebase/admin';
 import { HR } from '@/lib/firebase/collections';
 import { decryptOptional, encryptOptional } from '@/lib/crypto/encrypt';
@@ -202,6 +203,21 @@ export async function generateSubmissionsForCycle(args: {
   return { selfCreated, managerCreated, selfTotal, managerTotal, newSubmissions };
 }
 
+/**
+ * IDs of employees that still exist. Forms whose subject was deleted from the
+ * directory are kept in the database (submitted reviews aren't lost) but are left
+ * out of listings and counts. Cached per request.
+ */
+const currentEmployeeIds = cache(async (): Promise<Set<string>> => {
+  const snap = await adminDb.collection(HR.employees).select('employeeId').get();
+  return new Set(snap.docs.map((d) => d.get('employeeId') as string));
+});
+
+async function withoutDeletedSubjects(subs: ReviewSubmission[]): Promise<ReviewSubmission[]> {
+  const ids = await currentEmployeeIds();
+  return subs.filter((s) => ids.has(s.subjectEmployeeId));
+}
+
 export async function listSubmissionsForCycle(cycleId: string): Promise<ReviewSubmission[]> {
   const snap = await adminDb
     .collection(COL)
@@ -210,9 +226,50 @@ export async function listSubmissionsForCycle(cycleId: string): Promise<ReviewSu
     .orderBy('subjectName')
     .get();
   // Notes are not decrypted in bulk listings; only the detail page decrypts when authorized.
-  return snap.docs.map((d) =>
-    toSubmission(d.data() as ReviewSubmissionStored, { decryptNotes: false })
+  return withoutDeletedSubjects(
+    snap.docs.map((d) => toSubmission(d.data() as ReviewSubmissionStored, { decryptNotes: false })),
   );
+}
+
+export interface CycleCounts {
+  selfCount: number;
+  selfSubmittedCount: number;
+  managerCount: number;
+  managerSubmittedCount: number;
+}
+
+/** Totals for a cycle's (current-employee) forms — what the progress cards show. */
+export function countCycleSubmissions(subs: ReviewSubmission[]): CycleCounts {
+  const done = (s: ReviewSubmission) => s.status === 'submitted' || s.status === 'locked';
+  const self = subs.filter((s) => s.kind === 'self');
+  const manager = subs.filter((s) => s.kind === 'manager');
+  return {
+    selfCount: self.length,
+    selfSubmittedCount: self.filter(done).length,
+    managerCount: manager.length,
+    managerSubmittedCount: manager.filter(done).length,
+  };
+}
+
+/**
+ * Rewrite a cycle's stored counters from its current forms. The stored totals are
+ * only incremented elsewhere, so they go stale when employees are deleted; the
+ * cycles list reads them, so recount after deletions and syncs.
+ */
+export async function recountCycleCounters(cycleId: string): Promise<CycleCounts> {
+  const counts = countCycleSubmissions(await listSubmissionsForCycle(cycleId));
+  await adminDb
+    .collection(HR.reviewCycles)
+    .doc(cycleId)
+    .update({ ...counts, updatedAt: FieldValue.serverTimestamp() });
+  return counts;
+}
+
+/** Recount every cycle that has a form about this employee (after they're deleted). */
+export async function recountCyclesForSubject(employeeId: string): Promise<void> {
+  const snap = await adminDb.collection(COL).where('subjectEmployeeId', '==', employeeId).select('cycleId').get();
+  const cycleIds = new Set(snap.docs.map((d) => d.get('cycleId') as string));
+  await Promise.all([...cycleIds].map((id) => recountCycleCounters(id)));
 }
 
 export async function listSubmissionsForReviewer(
@@ -227,8 +284,8 @@ export async function listSubmissionsForReviewer(
     .where('reviewerEmail', '==', reviewerEmail.toLowerCase());
   if (opts.onlyOpen) q = q.where('status', 'in', ['not-started', 'in-progress']);
   const snap = await q.orderBy('cycleName', 'desc').orderBy('subjectName').get();
-  return snap.docs.map((d) =>
-    toSubmission(d.data() as ReviewSubmissionStored, { decryptNotes: false })
+  return withoutDeletedSubjects(
+    snap.docs.map((d) => toSubmission(d.data() as ReviewSubmissionStored, { decryptNotes: false })),
   );
 }
 

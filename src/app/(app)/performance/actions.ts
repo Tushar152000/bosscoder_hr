@@ -35,7 +35,7 @@ import {
   type CycleOpenRecipient,
 } from '@/lib/email/cycle-open';
 import { writeNotificationsForReviewers } from '@/lib/firestore/notifications';
-import { listSubmissionsForCycle } from '@/lib/firestore/review-submissions';
+import { listSubmissionsForCycle, recountCycleCounters } from '@/lib/firestore/review-submissions';
 import {
   groupSelfEvalsByDept,
   toEvalExportRows,
@@ -255,10 +255,8 @@ export async function syncCycleEmployeesAction(cycleId: string): Promise<ActionR
       employees,
       employeesById: byId,
     });
-    await setCycleStatus(cycle.cycleId, 'open', {
-      selfCount: result.selfTotal,
-      managerCount: result.managerTotal,
-    });
+    // Totals from current employees' forms (the generator's totals include deleted people).
+    await recountCycleCounters(cycle.cycleId);
     // Notify ONLY the people whose forms are brand new (existing reviewers
     // were already emailed when the cycle first opened).
     await dispatchCycleOpenEmails(cycle, result.newSubmissions);
