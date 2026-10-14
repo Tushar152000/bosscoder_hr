@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Mail, Rocket } from 'lucide-react';
+import { Cake, Mail, Rocket } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DepartmentSelector } from './department-selector';
 import { BroadcastComposer } from './broadcast-composer';
 import { FeatureLaunchComposer } from './feature-launch-composer';
+import { CelebrationsComposer } from './celebrations-composer';
 
 interface Department { name: string; count: number }
 
@@ -13,12 +14,14 @@ interface Props {
   departments: Department[];
   employeesByDept: Record<string, { email: string; displayName: string }[]>;
   senderName: string;
+  celebrations: React.ComponentProps<typeof CelebrationsComposer>;
+  initialTab?: Tab;
 }
 
-type Tab = 'broadcast' | 'feature';
+export type Tab = 'broadcast' | 'feature' | 'celebrations';
 
-export function CommunicationsComposer({ departments, employeesByDept, senderName }: Props) {
-  const [tab, setTab] = useState<Tab>('broadcast');
+export function CommunicationsComposer({ departments, employeesByDept, senderName, celebrations, initialTab = 'broadcast' }: Props) {
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [selectedDepts, setSelectedDepts] = useState<Set<string>>(new Set());
 
   const recipients = useMemo(() => {
@@ -51,10 +54,37 @@ export function CommunicationsComposer({ departments, employeesByDept, senderNam
   const TABS: { key: Tab; label: string; icon: typeof Mail }[] = [
     { key: 'broadcast', label: 'Broadcast', icon: Mail },
     { key: 'feature', label: 'Feature launch', icon: Rocket },
+    { key: 'celebrations', label: 'Celebrations', icon: Cake },
   ];
 
+  const tabs = (
+    <div className="inline-flex max-w-full self-start overflow-x-auto rounded-lg border border-[#E2E8F0] bg-white p-0.5 shadow-sm">
+      {TABS.map(({ key, label, icon: Icon }) => (
+        <button
+          key={key}
+          type="button"
+          onClick={() => setTab(key)}
+          className={cn(
+            'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md px-3 py-1.5 text-[13px] font-medium transition sm:px-3.5',
+            tab === key ? 'bg-[#0C447C] text-white shadow-sm' : 'text-slate-500 hover:text-slate-800',
+          )}
+        >
+          <Icon className="h-3.5 w-3.5" />
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+
+  // Both layouts stay mounted so switching tabs never loses a draft.
+  // Slack posts aren't sent per department, so Celebrations uses the full width.
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[300px_1fr] pb-6">
+    <>
+    <div className={cn('flex-col gap-3', tab === 'celebrations' ? 'flex' : 'hidden')}>
+      {tabs}
+      <CelebrationsComposer {...celebrations} />
+    </div>
+    <div className={cn('grid-cols-1 gap-4 lg:grid-cols-[300px_1fr] pb-6', tab === 'celebrations' ? 'hidden' : 'grid')}>
       <DepartmentSelector
         departments={departments}
         selectedDepts={selectedDepts}
@@ -64,23 +94,7 @@ export function CommunicationsComposer({ departments, employeesByDept, senderNam
       />
 
       <div className="flex flex-col gap-3">
-        {/* Tab toggle */}
-        <div className="inline-flex self-start rounded-lg border border-[#E2E8F0] bg-white p-0.5 shadow-sm">
-          {TABS.map(({ key, label, icon: Icon }) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setTab(key)}
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-[13px] font-medium transition',
-                tab === key ? 'bg-[#0C447C] text-white shadow-sm' : 'text-slate-500 hover:text-slate-800',
-              )}
-            >
-              <Icon className="h-3.5 w-3.5" />
-              {label}
-            </button>
-          ))}
-        </div>
+        {tabs}
 
         {tab === 'broadcast' ? (
           <BroadcastComposer
@@ -99,5 +113,6 @@ export function CommunicationsComposer({ departments, employeesByDept, senderNam
         )}
       </div>
     </div>
+    </>
   );
 }

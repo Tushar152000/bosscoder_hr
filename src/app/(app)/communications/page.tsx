@@ -2,16 +2,24 @@ import { redirect } from 'next/navigation';
 import { requireUser } from '@/lib/auth/guard';
 import { isPrivileged } from '@/lib/auth/roles';
 import { listEmployees } from '@/lib/firestore/employees';
+import { listCelebrationPeople, todayIST } from '@/lib/celebrations/people';
+import { celebrationChannels } from '@/lib/slack';
 import { CommunicationsComposer } from '@/components/communications/communications-composer';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 
 export const metadata = { title: 'Communications · Bosscoder HR' };
 
-export default async function CommunicationsPage() {
+export default async function CommunicationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const { tab } = await searchParams;
   const user = await requireUser();
   if (!isPrivileged(user.roles)) redirect('/directory');
 
   const employees = await listEmployees({ status: 'active', limit: 500 });
+  const [people, channels] = await Promise.all([listCelebrationPeople(employees), celebrationChannels()]);
 
   const deptMap = new Map<string, { email: string; displayName: string }[]>();
   for (const emp of employees) {
@@ -41,13 +49,19 @@ export default async function CommunicationsPage() {
         <Breadcrumbs items={[{ label: 'Communications' }]} className="mb-1.5" />
         <h1 className="text-[24px] font-semibold text-dark-blue">Communications</h1>
         <p className="mt-0.5 text-[15px] text-slate-500">
-          Send broadcast emails or announce a feature launch — to employees by department.
+          Send broadcast emails, announce a feature launch, or post birthday and anniversary wishes to Slack.
         </p>
       </div>
       <CommunicationsComposer
         departments={departments}
         employeesByDept={employeesByDept}
         senderName={user.displayName ?? 'HR Team'}
+        initialTab={tab === 'celebrations' || tab === 'feature' ? tab : 'broadcast'}
+        celebrations={{
+          people,
+          todayISO: todayIST(),
+          channels: channels.map((c) => ({ target: c.target, name: c.name })),
+        }}
       />
     </div>
   );
