@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+import { Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { BalanceKey, LeaveBalance, LeaveType } from '@/types/attendance';
 import { BALANCE_CASCADE, BALANCE_LABELS, LEAVE_DEDUCTION, LEAVE_TO_BALANCE } from '@/types/attendance';
@@ -16,6 +18,58 @@ const SHORT: Record<BalanceKey, string> = {
 };
 
 const fmt = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+
+/** What each kind of leave is, in terms of how the portal counts it. */
+function leaveInfo(pool: BalanceKey, total: number): string {
+  const yearly = `${fmt(total)} days each financial year (April–March).`;
+  switch (pool) {
+    case 'casual':
+      return `For short or unplanned time off. ${yearly} When it runs out, extra days come from Privilege leave, then unpaid.`;
+    case 'privilege':
+      return `For planned time off, like a holiday. ${yearly} It also covers Casual leave once that runs out; beyond it, days are unpaid.`;
+    case 'marriage':
+      return `For your wedding. ${yearly} Extra days beyond it are unpaid.`;
+    case 'medical':
+      return `Long-term medical leave, for a longer illness or recovery. ${yearly} You can attach a doctor's note to the request.`;
+    case 'unpaid':
+      return 'Time off beyond your paid leave. No limit, but pay is deducted for these days.';
+    case 'wfh':
+      return 'Working from home instead of the office. No limit; the count is just a record.';
+  }
+}
+
+/**
+ * Small ⓘ that explains a leave type — on hover, keyboard focus, or tap. The bubble
+ * spans the nearest `relative` row, so it never runs off the panel or the screen.
+ */
+function InfoTip({ text, label }: { text: string; label: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="group inline-flex align-middle" onMouseLeave={() => setOpen(false)}>
+      <button
+        type="button"
+        aria-label={`What is ${label}?`}
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+        onBlur={() => setOpen(false)}
+        className="grid h-4 w-4 place-items-center rounded-full text-zinc-400 transition hover:text-[#0C447C] focus-visible:text-[#0C447C] focus-visible:outline-none"
+      >
+        <Info className="h-3.5 w-3.5" />
+      </button>
+      <span
+        role="tooltip"
+        className={cn(
+          'pointer-events-none absolute inset-x-0 top-full z-30 mt-1 rounded-lg bg-zinc-900 px-3 py-2 text-left text-[11px] font-normal normal-case leading-relaxed tracking-normal text-white shadow-lg transition',
+          'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
+          open && 'opacity-100',
+        )}
+      >
+        <span className="mb-0.5 block font-semibold">{label}</span>
+        {text}
+      </span>
+    </span>
+  );
+}
 
 /**
  * Same spill the server applies on approval (approveLeave): take from the leave's
@@ -55,7 +109,10 @@ export function LeaveBalancePreview({ balance, leaveType, days }: Props) {
   return (
     <div className="rounded-xl border border-zinc-200 bg-[#FAFBFD] p-4">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">Your balance</p>
-      <p className="mt-0.5 text-[13px] font-medium text-zinc-700">{BALANCE_LABELS[pool]}</p>
+      <p className="relative mt-0.5 flex items-center gap-1 text-[13px] font-medium text-zinc-700">
+        {BALANCE_LABELS[pool]}
+        <InfoTip label={BALANCE_LABELS[pool]} text={leaveInfo(pool, total)} />
+      </p>
 
       {pool === 'wfh' ? (
         <>
@@ -100,8 +157,11 @@ export function LeaveBalancePreview({ balance, leaveType, days }: Props) {
               <p className="font-medium">Goes over by {fmt(amount - fromOwn)} — the extra is taken from:</p>
               <ul className="mt-1 space-y-0.5">
                 {spills.map((p) => (
-                  <li key={p.pool} className="flex justify-between gap-2">
-                    <span>{p.pool === 'unpaid' ? 'Unpaid (pay deducted)' : `${SHORT[p.pool]} leave`}</span>
+                  <li key={p.pool} className="relative flex justify-between gap-2">
+                    <span className="flex items-center gap-1">
+                      {p.pool === 'unpaid' ? 'Unpaid (pay deducted)' : `${SHORT[p.pool]} leave`}
+                      <InfoTip label={BALANCE_LABELS[p.pool]} text={leaveInfo(p.pool, balance[p.pool].total)} />
+                    </span>
                     <span className="font-semibold tabular-nums">{fmt(p.take)}</span>
                   </li>
                 ))}
@@ -120,8 +180,11 @@ export function LeaveBalancePreview({ balance, leaveType, days }: Props) {
               // Days this request spills into that pool (e.g. casual running out → privilege).
               const spill = spills.find((p) => p.pool === k)?.take ?? 0;
               return (
-                <li key={k} className={cn('flex justify-between gap-2', spill ? 'font-medium text-[#854F0B]' : 'text-zinc-600')}>
-                  <span>{SHORT[k]}</span>
+                <li key={k} className={cn('relative flex justify-between gap-2', spill ? 'font-medium text-[#854F0B]' : 'text-zinc-600')}>
+                  <span className="flex items-center gap-1">
+                    {SHORT[k]}
+                    <InfoTip label={BALANCE_LABELS[k]} text={leaveInfo(k, balance[k].total)} />
+                  </span>
                   <span className="tabular-nums text-zinc-500">
                     {spill > 0 && <span className="mr-1 text-zinc-400 line-through">{fmt(now)}</span>}
                     {spill > 0 && <span className="mr-1 text-[#854F0B]">→</span>}
