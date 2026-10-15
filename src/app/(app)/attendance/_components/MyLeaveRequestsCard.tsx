@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ChevronDown, ChevronUp, User } from 'lucide-react';
 import type { LeaveRequest, LeaveRequestStatus } from '@/types/attendance';
 import { LEAVE_LABELS } from '@/types/attendance';
+import { leaveDayCount, formatLeaveDates } from '@/lib/leave-days';
 
 interface Props {
   requests: LeaveRequest[];
@@ -17,21 +18,8 @@ const STATUS_BADGE: Record<LeaveRequestStatus, { bg: string; text: string; label
   rejected: { bg: 'bg-red-50',    text: 'text-red-600',   label: 'Rejected' },
 };
 
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-function formatDate(dateStr: string): string {
-  const [, m, d] = dateStr.split('-');
-  return `${parseInt(d)} ${MONTHS[parseInt(m) - 1]}`;
-}
 
-function dayCount(from: string, to: string): number {
-  return (
-    Math.round(
-      (new Date(to + 'T00:00:00').getTime() - new Date(from + 'T00:00:00').getTime()) /
-        86_400_000,
-    ) + 1
-  );
-}
 
 const SHOW_LIMIT = 5;
 
@@ -63,7 +51,7 @@ export function MyLeaveRequestsCard({
           <div className="space-y-2">
             {visible.map((req) => {
               const badge = STATUS_BADGE[req.status];
-              const days = dayCount(req.fromDate, req.toDate);
+              const days = leaveDayCount(req);
               return (
                 <div
                   key={req.id ?? req.createdAt}
@@ -82,8 +70,7 @@ export function MyLeaveRequestsCard({
                       {LEAVE_LABELS[req.leaveType]}
                     </p>
                     <p className="mt-0.5 text-[11px] text-zinc-400">
-                      {formatDate(req.fromDate)}
-                      {req.fromDate !== req.toDate && ` – ${formatDate(req.toDate)}`}
+                      {formatLeaveDates(req)}
                       {' · '}
                       {days}d
                     </p>

@@ -10,6 +10,7 @@ import { writeNotificationsForReviewers } from '@/lib/firestore/notifications';
 import { listHrUsers } from '@/lib/firestore/users';
 import { isPrivileged } from '@/lib/auth/roles';
 import { sendLeaveRequestEmail } from '@/lib/email/leave-request';
+import { formatLeaveDates, isSundayISO, isValidISODate, leaveDates } from '@/lib/leave-days';
 import type {
   AttendanceRecord,
   AttendanceStatus,
@@ -257,9 +258,13 @@ export async function uploadLeaveDocument(
   }
 }
 
+const MAX_LEAVE_DAYS = 60;
+
 export async function applyLeave(data: {
   employeeId: string;
   employeeName: string;
+  /** The exact leave days. Older callers send only fromDate/toDate. */
+  dates?: string[];
   fromDate: string;
   toDate: string;
   leaveType: LeaveType;
@@ -269,10 +274,24 @@ export async function applyLeave(data: {
 }): Promise<ActionResult> {
   await requireUser();
 
+  // Normalise to a sorted, de-duplicated list of working days (Sunday is off).
+  const raw = data.dates?.length ? data.dates : leaveDates({ fromDate: data.fromDate, toDate: data.toDate });
+  if (raw.some((d) => !isValidISODate(d))) return { ok: false, error: 'Invalid date.' };
+  if (raw.some(isSundayISO)) return { ok: false, error: 'Sunday is already a day off — remove it from the leave.' };
+  const dates = [...new Set(raw)].sort();
+  if (dates.length === 0) return { ok: false, error: 'Pick at least one working day.' };
+  if (dates.length > MAX_LEAVE_DAYS) return { ok: false, error: `At most ${MAX_LEAVE_DAYS} days in one request.` };
+  if (HALF_DAY_LEAVE_TYPES.has(data.leaveType) && dates.length !== 1) {
+    return { ok: false, error: 'A half-day leave is for a single day.' };
+  }
+
   try {
     const { attachmentUrl, attachmentName, ...rest } = data;
     await adminDb.collection(LEAVE_REQUESTS).add({
       ...rest,
+      dates,
+      fromDate: dates[0],
+      toDate: dates[dates.length - 1],
       ...(attachmentUrl  ? { attachmentUrl }  : {}),
       ...(attachmentName ? { attachmentName } : {}),
       status: 'pending',
@@ -282,7 +301,7 @@ export async function applyLeave(data: {
     });
 
     // Notify the reporting manager — best-effort, never blocks the submission.
-    await notifyManagerOfLeave(data).catch((e) => {
+    await notifyManagerOfLeave({ ...data, dates, fromDate: dates[0]!, toDate: dates[dates.length - 1]! }).catch((e) => {
       console.error('[applyLeave] manager notification failed:', e);
     });
 
@@ -303,6 +322,7 @@ export async function applyLeave(data: {
 async function notifyManagerOfLeave(data: {
   employeeId: string;
   employeeName: string;
+  dates: string[];
   fromDate: string;
   toDate: string;
   leaveType: LeaveType;
@@ -329,7 +349,8 @@ async function notifyManagerOfLeave(data: {
   if (recipients.length === 0) return;
 
   const leaveTypeLabel = LEAVE_LABELS[data.leaveType];
-  const range = data.fromDate === data.toDate ? data.fromDate : `${data.fromDate}–${data.toDate}`;
+  const days = data.dates.length;
+  const range = `${formatLeaveDates(data)} · ${days} day${days === 1 ? '' : 's'}`;
 
   // In-app notifications (keyed by each reviewer's auth uid).
   await writeNotificationsForReviewers(
@@ -355,6 +376,7 @@ async function notifyManagerOfLeave(data: {
           leaveTypeLabel,
           fromDate: data.fromDate,
           toDate: data.toDate,
+          datesLabel: range,
           reason: data.reason,
         }),
       ),
@@ -370,6 +392,7 @@ function docToLeaveRequest(id: string, data: FirebaseFirestore.DocumentData): Le
     employeeName: data.employeeName ?? '',
     fromDate: data.fromDate,
     toDate: data.toDate,
+    ...(Array.isArray(data.dates) ? { dates: data.dates as string[] } : {}),
     leaveType: data.leaveType,
     reason: data.reason ?? '',
     status: data.status,
@@ -395,17 +418,6 @@ export async function getMyLeaveRequests(employeeId: string): Promise<LeaveReque
 }
 
 // ─── Manager actions ──────────────────────────────────────────────────────────
-
-function getDatesInRange(fromDate: string, toDate: string): string[] {
-  const dates: string[] = [];
-  const current = new Date(fromDate + 'T00:00:00');
-  const end = new Date(toDate + 'T00:00:00');
-  while (current <= end) {
-    dates.push(current.toISOString().split('T')[0]);
-    current.setDate(current.getDate() + 1);
-  }
-  return dates;
-}
 
 export async function getTeamMembers(managerId: string): Promise<TeamMember[]> {
   await requireUser();
@@ -491,7 +503,8 @@ export async function approveLeave(leaveId: string): Promise<ActionResult> {
     leaveType: LeaveType;
     reason: string;
   };
-  const dates = getDatesInRange(fromDate, toDate);
+  // Sundays are never leave days — not marked, not deducted.
+  const dates = leaveDates(leave as { fromDate: string; toDate: string; dates?: string[] });
   const daysCount = dates.length;
   const batch = adminDb.batch();
 

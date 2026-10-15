@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, ChevronDown, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AttendanceRecord, AttendanceStatus, LeaveRequest } from '@/types/attendance';
 import { STATUS_DISPLAY, LEAVE_LABELS } from '@/types/attendance';
+import { formatLeaveDates, leaveDates } from '@/lib/leave-days';
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -72,13 +73,7 @@ export function AttendanceCalendar({
 
   const pendingLeaveByDate = new Map<string, LeaveRequest>();
   for (const req of leaveRequests.filter((r) => r.status === 'pending')) {
-    const cur = new Date(req.fromDate + 'T00:00:00');
-    const end = new Date(req.toDate + 'T00:00:00');
-    while (cur <= end) {
-      const d = cur.toISOString().split('T')[0];
-      if (!pendingLeaveByDate.has(d)) pendingLeaveByDate.set(d, req);
-      cur.setDate(cur.getDate() + 1);
-    }
+    for (const d of leaveDates(req)) if (!pendingLeaveByDate.has(d)) pendingLeaveByDate.set(d, req);
   }
 
   const daysInMonth = new Date(year, month, 0).getDate();
@@ -395,9 +390,7 @@ export function AttendanceCalendar({
             <div>
               <span className="text-amber-600/80">Date range: </span>
               <span className="text-amber-800">
-                {formatDisplayDate(selectedPendingLeave.fromDate)}
-                {selectedPendingLeave.fromDate !== selectedPendingLeave.toDate &&
-                  ` – ${formatDisplayDate(selectedPendingLeave.toDate)}`}
+                {formatLeaveDates(selectedPendingLeave)}
               </span>
             </div>
             {selectedPendingLeave.reason && (

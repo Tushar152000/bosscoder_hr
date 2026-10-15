@@ -10,6 +10,7 @@ import { MyLeaveRequestsCard } from './MyLeaveRequestsCard';
 import { getMonthAttendance } from '../actions';
 import type { AttendanceRecord, LeaveBalance, LeaveRequest, LeaveRequestStatus } from '@/types/attendance';
 import { LEAVE_LABELS } from '@/types/attendance';
+import { formatLeaveDates } from '@/lib/leave-days';
 
 interface Props {
   employeeId: string;
@@ -32,12 +33,7 @@ const STATUS_BADGE: Record<LeaveRequestStatus, { bg: string; text: string; label
   rejected: { bg: 'bg-red-50',    text: 'text-red-600',   label: 'Rejected' },
 };
 
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-function fmtDate(dateStr: string): string {
-  const [, m, d] = dateStr.split('-');
-  return `${parseInt(d)} ${MONTHS[parseInt(m) - 1]}`;
-}
 
 export function EmployeeView({
   employeeId,
@@ -181,8 +177,7 @@ export function EmployeeView({
                           {LEAVE_LABELS[req.leaveType]}
                         </p>
                         <p className="text-[11px] text-zinc-400">
-                          {fmtDate(req.fromDate)}
-                          {req.fromDate !== req.toDate && ` – ${fmtDate(req.toDate)}`}
+                          {formatLeaveDates(req)}
                         </p>
                       </div>
                       <span
@@ -232,6 +227,7 @@ export function EmployeeView({
         employeeId={employeeId}
         employeeName={employeeName}
         balance={balance}
+        existingRequests={leaveRequests}
         onApplied={handleLeaveApplied}
       />
     </div>

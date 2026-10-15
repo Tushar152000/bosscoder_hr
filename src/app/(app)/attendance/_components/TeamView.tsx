@@ -7,6 +7,7 @@ import type { AttendanceRecord, LeaveRequest } from '@/types/attendance';
 import { LEAVE_LABELS } from '@/types/attendance';
 import type { TeamMember } from '../actions';
 import { AllMembersSection } from './AllMembersSection';
+import { leaveDayCount, formatLeaveDates } from '@/lib/leave-days';
 
 const AVATAR_COLORS = [
   { bg: '#E6F1FB', text: '#0C447C' },
@@ -28,19 +29,7 @@ function getInitials(name: string): string {
   return (first + last).toUpperCase();
 }
 
-function formatDate(dateStr: string): string {
-  const [, m, d] = dateStr.split('-');
-  return `${parseInt(d)} ${MONTHS[parseInt(m) - 1]}`;
-}
 
-function dayCount(from: string, to: string): number {
-  return (
-    Math.round(
-      (new Date(to + 'T00:00:00').getTime() - new Date(from + 'T00:00:00').getTime()) /
-        86_400_000,
-    ) + 1
-  );
-}
 
 interface Props {
   teamMembers: TeamMember[];
@@ -235,7 +224,7 @@ export function TeamView({
             const member     = teamMembers.find((m) => m.employeeId === req.employeeId);
             const colorIdx   = member ? (teamMembers.indexOf(member) % 4) : 0;
             const color      = AVATAR_COLORS[colorIdx];
-            const days       = dayCount(req.fromDate, req.toDate);
+            const days       = leaveDayCount(req);
             const isThisReject = rejectingId === req.id;
             const isBusy     = processing === req.id;
 
@@ -254,8 +243,7 @@ export function TeamView({
                       {member?.displayName ?? req.employeeId}
                     </p>
                     <p className="text-[11px] text-zinc-400">
-                      {LEAVE_LABELS[req.leaveType]} · {formatDate(req.fromDate)}
-                      {req.fromDate !== req.toDate && ` – ${formatDate(req.toDate)}`}
+                      {LEAVE_LABELS[req.leaveType]} · {formatLeaveDates(req)}
                       {' · '}{days} day{days !== 1 ? 's' : ''}
                     </p>
                     {req.reason && (
@@ -395,7 +383,7 @@ export function TeamView({
                       </p>
                     ) : (
                       history.map((req) => {
-                        const days     = dayCount(req.fromDate, req.toDate);
+                        const days     = leaveDayCount(req);
                         const approved = req.status === 'approved';
                         return (
                           <div
@@ -411,8 +399,7 @@ export function TeamView({
                                 {LEAVE_LABELS[req.leaveType]}
                               </p>
                               <p className="mt-0.5 text-[11px] text-zinc-400">
-                                {formatDate(req.fromDate)}
-                                {req.fromDate !== req.toDate && ` – ${formatDate(req.toDate)}`}
+                                {formatLeaveDates(req)}
                                 {' · '}{days} day{days !== 1 ? 's' : ''}
                               </p>
                               {req.reason && (

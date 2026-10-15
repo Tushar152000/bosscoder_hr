@@ -44,8 +44,11 @@ export interface LeaveRequest {
   id?: string;
   employeeId: string;
   employeeName: string;
-  fromDate: string; // YYYY-MM-DD
-  toDate: string;
+  fromDate: string; // YYYY-MM-DD — first leave day
+  toDate: string;   // last leave day
+  /** Exact leave days (sorted, never a Sunday). Missing on older requests ⇒ the
+   *  working days from fromDate to toDate. Read via leaveDates() in lib/leave-days. */
+  dates?: string[];
   leaveType: LeaveType;
   reason: string;
   status: LeaveRequestStatus;

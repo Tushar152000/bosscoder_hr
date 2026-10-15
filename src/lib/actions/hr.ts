@@ -52,6 +52,7 @@ function docToLeaveRequest(id: string, data: FirebaseFirestore.DocumentData): Le
     employeeName: data.employeeName ?? '',
     fromDate: data.fromDate,
     toDate: data.toDate,
+    ...(Array.isArray(data.dates) ? { dates: data.dates as string[] } : {}),
     leaveType: data.leaveType,
     reason: data.reason ?? '',
     status: data.status,

@@ -9,12 +9,14 @@ function buildLeaveRequestEmail(args: {
   leaveTypeLabel: string;
   fromDate: string;
   toDate: string;
+  /** Readable days, e.g. "20 Oct – 23 Oct, 27 Oct · 5 days". */
+  datesLabel?: string;
   reason: string;
 }): { html: string; text: string } {
   const { managerName, employeeName, leaveTypeLabel, fromDate, toDate, reason } = args;
   const firstName = managerName.split(' ')[0];
   const href = `${PORTAL_URL}/attendance`;
-  const range = fromDate === toDate ? fromDate : `${fromDate} → ${toDate}`;
+  const range = args.datesLabel ?? (fromDate === toDate ? fromDate : `${fromDate} → ${toDate}`);
 
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -108,10 +110,11 @@ export async function sendLeaveRequestEmail(args: {
   leaveTypeLabel: string;
   fromDate: string;
   toDate: string;
+  datesLabel?: string;
   reason: string;
 }): Promise<{ ok: boolean; error?: string }> {
   const { html, text } = buildLeaveRequestEmail(args);
-  const range = args.fromDate === args.toDate ? args.fromDate : `${args.fromDate}–${args.toDate}`;
+  const range = args.datesLabel ?? (args.fromDate === args.toDate ? args.fromDate : `${args.fromDate}–${args.toDate}`);
   return sendMail({
     to: args.to,
     subject: `Leave request from ${args.employeeName} (${range})`,

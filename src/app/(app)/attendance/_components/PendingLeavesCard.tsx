@@ -6,23 +6,14 @@ import { toast } from 'sonner';
 import { approveLeave, rejectLeave } from '../actions';
 import type { LeaveRequest } from '@/types/attendance';
 import { LEAVE_LABELS } from '@/types/attendance';
+import { leaveDayCount, formatLeaveDates } from '@/lib/leave-days';
 
 interface Props {
   initialLeaves: LeaveRequest[];
   showEmployeeName?: boolean;
 }
 
-function formatDate(dateStr: string): string {
-  const [, m, d] = dateStr.split('-');
-  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-  return `${parseInt(d)} ${months[parseInt(m) - 1]}`;
-}
 
-function dayCount(from: string, to: string): number {
-  return Math.round(
-    (new Date(to + 'T00:00:00').getTime() - new Date(from + 'T00:00:00').getTime()) / 86_400_000,
-  ) + 1;
-}
 
 export function PendingLeavesCard({ initialLeaves, showEmployeeName = true }: Props) {
   const [leaves, setLeaves] = useState(initialLeaves);
@@ -77,7 +68,7 @@ export function PendingLeavesCard({ initialLeaves, showEmployeeName = true }: Pr
   return (
     <div className="rounded-2xl border border-slate-200/80 bg-white overflow-hidden shadow-sm">
       {leaves.map((leave, i) => {
-        const days = dayCount(leave.fromDate, leave.toDate);
+        const days = leaveDayCount(leave);
         const busy = processing === leave.id;
         const isRejecting = rejectingId === leave.id;
 
@@ -109,8 +100,7 @@ export function PendingLeavesCard({ initialLeaves, showEmployeeName = true }: Pr
                   </span>
                 </p>
                 <p className="text-[11px] text-slate-500 mt-0.5">
-                  {formatDate(leave.fromDate)}
-                  {leave.fromDate !== leave.toDate && ` — ${formatDate(leave.toDate)}`}
+                  {formatLeaveDates(leave)}
                 </p>
                 {leave.reason && (
                   <p className="mt-1 text-[11px] text-slate-400 line-clamp-2">{leave.reason}</p>

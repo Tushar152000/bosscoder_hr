@@ -11,6 +11,7 @@ import {
 import type { LeaveRequest } from '@/types/attendance';
 import { LEAVE_LABELS, ALL_LEAVE_TYPES } from '@/types/attendance';
 import type { EmployeeAttendanceToday, EmployeeLeaveBalance } from '@/lib/actions/hr';
+import { leaveDayCount, formatLeaveDates } from '@/lib/leave-days';
 
 const AVATAR_COLORS = [
   { bg: '#E6F1FB', text: '#0C447C' },
@@ -19,7 +20,6 @@ const AVATAR_COLORS = [
   { bg: '#EEEDFE', text: '#3C3489' },
 ];
 
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 const POOLS = [
   { key: 'casual'    as const, label: 'Casual',    short: 'C'  },
@@ -47,16 +47,7 @@ function avatarColor(str: string) {
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }
 
-function formatDate(dateStr: string) {
-  const [, m, d] = dateStr.split('-');
-  return `${parseInt(d)} ${MONTHS[parseInt(m) - 1]}`;
-}
 
-function dayCount(from: string, to: string) {
-  return Math.round(
-    (new Date(to + 'T00:00:00').getTime() - new Date(from + 'T00:00:00').getTime()) / 86_400_000,
-  ) + 1;
-}
 
 function intVal(s: string) { return Math.max(0, parseInt(s) || 0); }
 
@@ -443,7 +434,7 @@ export function HRView({ currentUserEmail, initialAttendanceToday, initialLeaveB
               ) : (
                 <div className="space-y-2">
                   {historyItems.map((req) => {
-                    const days     = dayCount(req.fromDate, req.toDate);
+                    const days     = leaveDayCount(req);
                     const approved = req.status === 'approved';
                     const pending  = req.status === 'pending';
                     const dot      = approved ? 'bg-green-500' : pending ? 'bg-amber-500' : 'bg-red-500';
@@ -471,8 +462,7 @@ export function HRView({ currentUserEmail, initialAttendanceToday, initialLeaveB
                             <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" />
                           </svg>
                           <span>
-                            {formatDate(req.fromDate)}
-                            {req.fromDate !== req.toDate && ` – ${formatDate(req.toDate)}`}
+                            {formatLeaveDates(req)}
                           </span>
                           <span className="text-zinc-300">·</span>
                           <span className="font-medium text-zinc-600">{days} day{days !== 1 ? 's' : ''}</span>
@@ -771,7 +761,7 @@ export function HRView({ currentUserEmail, initialAttendanceToday, initialLeaveB
               <table className="w-full min-w-[640px]">
                 <thead>
                   <tr className="border-b border-zinc-100">
-                    {['Employee', 'Department', 'Type', 'From', 'To', 'Days', 'Actions'].map((h) => (
+                    {['Employee', 'Department', 'Type', 'Dates', 'Days', 'Actions'].map((h) => (
                       <th key={h} className="px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-zinc-400">{h}</th>
                     ))}
                   </tr>
@@ -779,7 +769,7 @@ export function HRView({ currentUserEmail, initialAttendanceToday, initialLeaveB
                 <tbody className="divide-y divide-zinc-50">
                   {filteredPending.map((req) => {
                     const color    = avatarColor(req.employeeName);
-                    const days     = dayCount(req.fromDate, req.toDate);
+                    const days     = leaveDayCount(req);
                     const isBusy   = processing === req.id;
                     const isReject = rejectingId === req.id;
                     const dept     = empDeptMap.get(req.employeeId) ?? '—';
@@ -813,8 +803,7 @@ export function HRView({ currentUserEmail, initialAttendanceToday, initialLeaveB
                               {LEAVE_LABELS[req.leaveType]}
                             </span>
                           </td>
-                          <td className="whitespace-nowrap px-4 py-2.5 text-[12px] text-zinc-600">{formatDate(req.fromDate)}</td>
-                          <td className="whitespace-nowrap px-4 py-2.5 text-[12px] text-zinc-600">{formatDate(req.toDate)}</td>
+                          <td className="max-w-[220px] px-4 py-2.5 text-[12px] text-zinc-600">{formatLeaveDates(req)}</td>
                           <td className="px-4 py-2.5 text-[12px] font-medium text-zinc-800">{days}d</td>
                           <td className="px-4 py-2.5">
                             <div className="flex items-center gap-1.5">
@@ -831,7 +820,7 @@ export function HRView({ currentUserEmail, initialAttendanceToday, initialLeaveB
                         </tr>
                         {isReject && (
                           <tr className="bg-red-50/40">
-                            <td colSpan={7} className="px-4 py-2.5">
+                            <td colSpan={6} className="px-4 py-2.5">
                               {rejectForm(req.id!, isBusy)}
                             </td>
                           </tr>
@@ -849,7 +838,7 @@ export function HRView({ currentUserEmail, initialAttendanceToday, initialLeaveB
             <div className="divide-y divide-zinc-100 md:hidden">
               {filteredPending.map((req) => {
                 const color    = avatarColor(req.employeeName);
-                const days     = dayCount(req.fromDate, req.toDate);
+                const days     = leaveDayCount(req);
                 const isBusy   = processing === req.id;
                 const isReject = rejectingId === req.id;
                 const dept     = empDeptMap.get(req.employeeId) ?? '—';
@@ -870,8 +859,7 @@ export function HRView({ currentUserEmail, initialAttendanceToday, initialLeaveB
                     </div>
 
                     <p className="text-[12px] text-zinc-600">
-                      {formatDate(req.fromDate)}
-                      {req.fromDate !== req.toDate && ` – ${formatDate(req.toDate)}`}
+                      {formatLeaveDates(req)}
                       <span className="text-zinc-300"> · </span>
                       <span className="font-medium text-zinc-800">{days} day{days !== 1 ? 's' : ''}</span>
                     </p>
