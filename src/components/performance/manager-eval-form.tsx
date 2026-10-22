@@ -1,16 +1,17 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Check, Clock, Lock, Pencil, Send } from 'lucide-react';
+import { Check, Clock, Lock, MessageSquareText, Pencil, Send } from 'lucide-react';
 import { useDialog } from '@/components/ui/modal';
 import { RatingInput } from '@/components/performance/rating-input';
-import { saveManagerEvalAction } from '@/app/(app)/performance/actions';
+import { saveManagerAnswersAction, saveManagerEvalAction } from '@/app/(app)/performance/actions';
 import { formatDate } from '@/lib/format';
 import { cycleNameWithMonths } from '@/lib/performance/cycle-period';
 import { cn } from '@/lib/utils';
 import {
   computeManagerOverall,
+  MANAGER_QUESTIONS,
   MANAGER_RATING_KEYS,
   MANAGER_RATING_LABELS,
   type ManagerEvalInput,
@@ -27,8 +28,17 @@ interface Props {
   status: SubmissionStatus;
   submittedAt: Date | null;
   canEdit: boolean;
+  /** Submitted before the written questions existed — the reviewer may add the answers now. */
+  canAnswerQuestions?: boolean;
   selfEvalSubmitted: boolean;
 }
+
+type QuestionKey = keyof typeof MANAGER_QUESTIONS;
+const QUESTION_KEYS: QuestionKey[] = ['contributions', 'improvements'];
+const QUESTION_PLACEHOLDERS: Record<QuestionKey, string> = {
+  contributions: 'Projects shipped, problems solved, impact on the team — with examples…',
+  improvements: 'Skills, habits or areas to work on next quarter, and how you’ll support them…',
+};
 
 export function ManagerEvalForm({
   submissionId,
@@ -39,17 +49,57 @@ export function ManagerEvalForm({
   status,
   submittedAt,
   canEdit,
+  canAnswerQuestions = false,
   selfEvalSubmitted,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [form, setForm] = useState<ManagerEvalInput>(initial);
   const [error, setError] = useState<string | null>(null);
+  const [missing, setMissing] = useState<Set<QuestionKey>>(new Set());
+  const questionRefs = useRef<Partial<Record<QuestionKey, HTMLTextAreaElement | null>>>({});
   const { confirm, alert, dialog } = useDialog();
 
   const isFinal = status === 'submitted' || status === 'locked';
   const blockedBySelfEval = !selfEvalSubmitted && !isFinal;
   const readOnly = isFinal || !canEdit || blockedBySelfEval;
+  // Ratings follow readOnly; the two questions are also open on a submitted review
+  // that predates them.
+  const questionsReadOnly = readOnly && !canAnswerQuestions;
+  const firstName = subjectName.split(' ')[0] || subjectName;
+
+  /** Both questions answered? If not, flag them and jump to the first gap. */
+  function checkAnswers(): boolean {
+    const gaps = new Set(QUESTION_KEYS.filter((k) => !form[k]?.trim()));
+    setMissing(gaps);
+    const first = QUESTION_KEYS.find((k) => gaps.has(k));
+    if (first) {
+      questionRefs.current[first]?.focus();
+      setError('Answer both questions before submitting.');
+      return false;
+    }
+    return true;
+  }
+
+  function saveAnswers() {
+    if (!checkAnswers()) return;
+    setError(null);
+    startTransition(async () => {
+      const res = await saveManagerAnswersAction({
+        submissionId,
+        contributions: form.contributions ?? '',
+        improvements: form.improvements ?? '',
+      });
+      if (!res.ok) { setError(res.error); return; }
+      await alert({
+        title: 'Answers added',
+        body: `Your answers are saved to ${subjectName}'s evaluation.`,
+        okLabel: 'Back to Performance',
+        intent: 'success',
+      });
+      router.push('/performance');
+    });
+  }
 
   const overall = useMemo(() => computeManagerOverall(form.ratings), [form.ratings]);
 
@@ -83,7 +133,7 @@ export function ManagerEvalForm({
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        if (!readOnly) save(true);
+        if (!readOnly && checkAnswers()) save(true);
       }}
       className="space-y-4"
     >
@@ -114,7 +164,16 @@ export function ManagerEvalForm({
           {error}
         </div>
       )}
-      {status === 'submitted' && (
+      {status === 'submitted' && canAnswerQuestions && (
+        <div className="rounded-xl border border-[#FAC775] bg-[#FAEEDA] px-4 py-3 flex items-start gap-2 text-[12px] text-[#854F0B]">
+          <MessageSquareText size={14} className="mt-0.5 shrink-0" />
+          <span>
+            <span className="font-semibold">Two questions were added after you submitted.</span>{' '}
+            Your ratings stay exactly as submitted — please answer the two questions below.
+          </span>
+        </div>
+      )}
+      {status === 'submitted' && !canAnswerQuestions && (
         <div className="rounded-xl border border-[#A4DFC4] bg-[#E1F5EE] px-4 py-3 flex items-center gap-2 text-[12px] text-[#0F6E56]">
           <Check size={14} className="shrink-0" />
           This evaluation is submitted and final — it cannot be edited again.
@@ -186,23 +245,82 @@ export function ManagerEvalForm({
         </div>
       </div>
 
-      {/* Notes card */}
+      {/* Written questions */}
       <div className="rounded-xl border border-[#E2E8F0] bg-white shadow-card overflow-hidden">
         <div className="px-5 py-4 border-b border-[#E2E8F0]">
-          <p className="text-[13px] font-semibold text-slate-700">Notes <span className="font-normal text-slate-400">(optional)</span></p>
-          <p className="text-[12px] text-slate-400 mt-0.5">Encrypted at rest. Visible to admins and you.</p>
+          <p className="text-[13px] font-semibold text-slate-700">Feedback</p>
+          <p className="text-[12px] text-slate-400 mt-0.5">
+            Both answers are required. Encrypted — HR and {firstName} can read them once submitted.
+          </p>
         </div>
-        <div className="px-5 py-4">
-          <textarea
-            rows={4}
-            value={form.notes ?? ''}
-            onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value || null }))}
-            placeholder="Specific examples, growth areas, or context for the rating…"
-            disabled={readOnly}
-            className="w-full rounded-lg border border-[#E2E8F0] bg-white px-3.5 py-2.5 text-[13px] text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0C447C]/20 focus:border-[#0C447C] resize-y disabled:opacity-50 disabled:cursor-not-allowed"
-          />
+        <div className="px-5 py-4 space-y-5">
+          {QUESTION_KEYS.map((key, i) => {
+            const bad = missing.has(key);
+            return (
+              <div key={key} className="flex flex-col gap-1.5">
+                <label htmlFor={`mq-${key}`} className="text-[12px] font-medium text-slate-700">
+                  <span className="text-slate-400">{i + 1}.</span> {MANAGER_QUESTIONS[key]}{' '}
+                  <span className="text-[#C2410C]">*</span>
+                </label>
+                {questionsReadOnly ? (
+                  <p className="whitespace-pre-wrap rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2.5 text-[13px] text-slate-700">
+                    {form[key]?.trim() || <span className="text-slate-400">Not answered</span>}
+                  </p>
+                ) : (
+                  <>
+                    <textarea
+                      id={`mq-${key}`}
+                      ref={(el) => { questionRefs.current[key] = el; }}
+                      rows={4}
+                      value={form[key] ?? ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setForm((f) => ({ ...f, [key]: v || null }));
+                        if (v.trim() && bad) setMissing((m) => { const n = new Set(m); n.delete(key); return n; });
+                      }}
+                      placeholder={QUESTION_PLACEHOLDERS[key]}
+                      aria-invalid={bad}
+                      className={cn(
+                        'w-full rounded-lg border bg-white px-3.5 py-2.5 text-[13px] text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 resize-y',
+                        bad
+                          ? 'border-[#E9A5A2] focus:ring-[#C2410C]/15 focus:border-[#C2410C]'
+                          : 'border-[#E2E8F0] focus:ring-[#0C447C]/20 focus:border-[#0C447C]',
+                      )}
+                    />
+                    {bad && <p className="text-[11px] text-[#993C1D]">This answer is required.</p>}
+                  </>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Older reviews used a free-text notes box — keep showing what was written. */}
+          {initial.notes?.trim() && (
+            <div className="flex flex-col gap-1.5">
+              <p className="text-[12px] font-medium text-slate-500">Earlier notes</p>
+              <p className="whitespace-pre-wrap rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3.5 py-2.5 text-[13px] text-slate-600">
+                {initial.notes}
+              </p>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Footer for a submitted review that only needs the two answers */}
+      {canAnswerQuestions && (
+        <div className="sticky bottom-0 rounded-xl border border-[#E2E8F0] bg-white shadow-[0_-2px_12px_rgba(0,0,0,0.06)] px-5 py-3 flex items-center justify-between gap-3">
+          <p className="text-[11px] text-slate-400">Only the two answers are saved — ratings don&apos;t change.</p>
+          <button
+            type="button"
+            onClick={saveAnswers}
+            disabled={pending}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-[#0C447C] px-3.5 py-2 text-[12px] font-medium text-white hover:bg-[#0a3a6a] transition disabled:opacity-50"
+          >
+            <Send size={13} />
+            {pending ? 'Saving…' : 'Submit answers'}
+          </button>
+        </div>
+      )}
 
       {/* Footer action bar */}
       {!readOnly && (
@@ -222,6 +340,7 @@ export function ManagerEvalForm({
             <button
               type="button"
               onClick={async () => {
+                if (!checkAnswers()) return;
                 const ok = await confirm({
                   title: 'Submit this evaluation?',
                   body: `Once submitted, you cannot make further changes to ${subjectName}'s rating.`,

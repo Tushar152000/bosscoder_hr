@@ -26,6 +26,8 @@ export const ENCRYPTED_EMPLOYEE_FIELDS = [
 
 export const ENCRYPTED_REVIEW_FIELDS = [
   'managerNotes',
+  'managerContributions',
+  'managerImprovements',
   'privateHrNotes',
   'disciplinaryNotes',
   'compensationDelta',

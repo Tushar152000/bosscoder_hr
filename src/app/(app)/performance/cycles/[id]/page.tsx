@@ -17,6 +17,7 @@ import { YourSelfEvalCard } from '@/components/performance/your-self-eval-card';
 import { SlotTabs } from '@/components/performance/slot-tabs';
 import { DeptEvalBrowser } from '@/components/performance/dept-eval-browser';
 import {
+  AskManagerQuestionsButton,
   CloseCycleButton,
   EditCycleDueDateButton,
   OpenCycleButton,
@@ -27,7 +28,7 @@ import {
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { formatDate } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import type { ReviewSubmission } from '@/types/review';
+import { needsManagerAnswers, type ReviewSubmission } from '@/types/review';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -148,7 +149,7 @@ export default async function CycleDetailPage({ params }: Props) {
         {/* Cycle lifecycle actions are HR / cycle-manager only. Founders are
             observers here (same as the hidden "New cycle" button on /performance). */}
         {isAdmin && !isFounder && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {cycle.status !== 'closed' && (
               <EditCycleDueDateButton
                 cycleId={cycle.cycleId}
@@ -160,6 +161,11 @@ export default async function CycleDetailPage({ params }: Props) {
               <>
                 <SendTestCycleEmailButton cycleId={cycle.cycleId} />
                 <ResendCycleEmailsButton cycleId={cycle.cycleId} cycleName={cycle.name} />
+                <AskManagerQuestionsButton
+                  cycleId={cycle.cycleId}
+                  cycleName={cycle.name}
+                  unanswered={allSubs.filter((s) => needsManagerAnswers(s)).length}
+                />
                 <SyncEmployeesButton cycleId={cycle.cycleId} />
                 <CloseCycleButton cycleId={cycle.cycleId} />
               </>

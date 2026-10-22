@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ManagerQuestionsBanner } from '@/components/performance/manager-questions-banner';
 import { Plus } from 'lucide-react';
 import { requireUser } from '@/lib/auth/guard';
 import { canManageCycles } from '@/lib/auth/review-access';
@@ -27,7 +28,7 @@ import {
   parseStatusFilter,
 } from '@/lib/performance/cycle-period';
 import type { EmployeePublic } from '@/types/employee';
-import type { ReviewCycle, ReviewSubmission } from '@/types/review';
+import { needsManagerAnswers, type ReviewCycle, type ReviewSubmission } from '@/types/review';
 import { PerformanceComingSoonPopup } from '@/components/performance/coming-soon-popup';
 
 export const metadata = { title: 'Performance evaluation' };
@@ -439,6 +440,7 @@ export default async function PerformancePage({ searchParams }: Props) {
         )}
       </div>
 
+      <ManagerQuestionsBanner subs={mySubs.filter((s) => needsManagerAnswers(s))} />
 
       {isAdmin && adminView.kind === 'tiles' && (() => {
         // Landing page: one toggle —

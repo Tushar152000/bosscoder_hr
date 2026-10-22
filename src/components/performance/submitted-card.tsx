@@ -60,9 +60,9 @@ export function SubmittedCard({ self: selfSub, mgrEval, prevRating }: Props) {
 
   const rating = mgrEval?.managerOverallRating ?? null;
   const delta = rating != null && prevRating != null ? rating - prevRating : null;
-  const snippet = mgrEval?.managerNotes
-    ? mgrEval.managerNotes.slice(0, 110) + (mgrEval.managerNotes.length > 110 ? '…' : '')
-    : null;
+  // Preview of the manager's feedback: their contributions answer, or older notes.
+  const feedback = mgrEval?.managerContributions ?? mgrEval?.managerNotes ?? null;
+  const snippet = feedback ? feedback.slice(0, 110) + (feedback.length > 110 ? '…' : '') : null;
 
   return (
     <div

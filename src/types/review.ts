@@ -146,7 +146,14 @@ export interface ReviewSubmissionStored {
 
   managerRatings: ManagerEvalRatings | null;
   managerOverallRating: number | null;
+  /** Legacy free-text notes (the form no longer asks for them). */
   managerNotes: EncryptedField | null;
+  /** Answers to MANAGER_QUESTIONS — encrypted like notes. Missing on older reviews. */
+  managerContributions?: EncryptedField | null;
+  managerImprovements?: EncryptedField | null;
+  /** Both questions answered. Plain flag so lists can find unanswered reviews
+   *  without decrypting anything. */
+  managerAnswered?: boolean;
 
   submittedAt: FirebaseFirestore.Timestamp | null;
   lockedAt: FirebaseFirestore.Timestamp | null;
@@ -179,6 +186,10 @@ export interface ReviewSubmission {
   managerOverallRating: number | null;
   /** Plaintext (already decrypted by the read helper, when authorized). */
   managerNotes: string | null;
+  managerContributions: string | null;
+  managerImprovements: string | null;
+  /** Both MANAGER_QUESTIONS answered (readable without decryption). */
+  managerAnswered: boolean;
 
   submittedAt: Date | null;
   lockedAt: Date | null;
@@ -193,7 +204,22 @@ export interface SelfEvalInput {
 
 export interface ManagerEvalInput {
   ratings: ManagerEvalRatings;
+  /** Answers to MANAGER_QUESTIONS. Both are required to submit. */
+  contributions: string | null;
+  improvements: string | null;
+  /** Legacy notes — kept as-is on older reviews, no longer asked for. */
   notes: string | null;
+}
+
+/** The two written questions every manager evaluation asks. */
+export const MANAGER_QUESTIONS = {
+  contributions: 'What were the employee’s key contributions and achievements during the previous quarter?',
+  improvements: 'What areas should the employee focus on improving in the upcoming quarter?',
+} as const;
+
+/** A submitted (not yet locked) manager evaluation whose two questions still need answers. */
+export function needsManagerAnswers(sub: Pick<ReviewSubmission, 'kind' | 'status' | 'managerAnswered'>): boolean {
+  return sub.kind === 'manager' && sub.status === 'submitted' && !sub.managerAnswered;
 }
 
 export function emptySelfEvalInput(): SelfEvalInput {
@@ -217,6 +243,8 @@ export function emptyManagerEvalInput(): ManagerEvalInput {
       takingFeedback: 3,
       reliability: 3,
     },
+    contributions: null,
+    improvements: null,
     notes: null,
   };
 }

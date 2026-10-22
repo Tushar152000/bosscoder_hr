@@ -6,7 +6,7 @@ import {
   getEmployeeByUserUid,
   listEmployees,
 } from '@/lib/firestore/employees';
-import type { ReviewSubmission } from '@/types/review';
+import { needsManagerAnswers, type ReviewSubmission } from '@/types/review';
 
 /** Founders / HR with the right perm — can see + manage every cycle. */
 export function canManageCycles(user: CurrentUser): boolean {
@@ -117,6 +117,15 @@ export async function canViewSubmission(
  * `not-started` or `in-progress`. Submitted forms are immutable — even
  * founders cannot reopen them. Locked (cycle-closed) forms are read-only.
  */
+/**
+ * Can the user add the two written answers to a manager-eval they already
+ * submitted (before the questions existed)? Only its reviewer, only while the
+ * cycle is open and the answers are still missing. Ratings stay read-only.
+ */
+export function canAnswerManagerQuestions(user: CurrentUser, sub: ReviewSubmission): boolean {
+  return needsManagerAnswers(sub) && isReviewer(user, sub);
+}
+
 export async function canEditSubmission(
   _user: CurrentUser,
   sub: ReviewSubmission

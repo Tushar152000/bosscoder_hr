@@ -2,10 +2,11 @@
 
 import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { CalendarDays, Lock, Pencil, RefreshCw, Send, X } from 'lucide-react';
+import { CalendarDays, Lock, MessageSquareText, Pencil, RefreshCw, Send, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDialog } from '@/components/ui/modal';
 import {
+  askManagersForAnswersAction,
   closeCycleAction,
   openCycleAction,
   resendCycleOpenEmailsAction,
@@ -270,6 +271,62 @@ export function ResendCycleEmailsButton({
       >
         {!isPending && <Send className="h-3.5 w-3.5" />}
         {isPending ? 'Sending…' : 'Resend emails'}
+      </Button>
+    </>
+  );
+}
+
+/** Notify managers about the two written questions (and who still has to answer them). */
+export function AskManagerQuestionsButton({
+  cycleId,
+  cycleName,
+  unanswered,
+}: {
+  cycleId: string;
+  cycleName: string;
+  /** Submitted manager reviews in this cycle still missing the answers. */
+  unanswered: number;
+}) {
+  const [isPending, start] = useTransition();
+  const { confirm, alert, dialog } = useDialog();
+  return (
+    <>
+      {dialog}
+      <Button
+        variant="secondary"
+        size="sm"
+        disabled={isPending}
+        onClick={async () => {
+          const ok = await confirm({
+            title: 'Ask managers for the 2 written answers?',
+            body: (
+              <span>
+                Managers with {cycleName} reviews get a bell notification and an email.
+                {unanswered > 0 && (
+                  <> {unanswered} already-submitted {unanswered === 1 ? 'review needs' : 'reviews need'} the answers added — their ratings won&apos;t change.</>
+                )}{' '}
+                Managers still filling their forms are told the questions are now part of them.
+              </span>
+            ),
+            confirmLabel: 'Notify managers',
+          });
+          if (!ok) return;
+          start(async () => {
+            const r = await askManagersForAnswersAction(cycleId);
+            if (!r.ok) {
+              await alert({ title: 'Nothing sent', body: r.error });
+              return;
+            }
+            await alert({
+              title: 'Managers notified',
+              body: `${r.data.managers} ${r.data.managers === 1 ? 'manager' : 'managers'} notified (${r.data.emailed} emailed). ${r.data.toAnswer} submitted ${r.data.toAnswer === 1 ? 'review needs' : 'reviews need'} answers.`,
+              intent: 'success',
+            });
+          });
+        }}
+      >
+        {!isPending && <MessageSquareText className="h-3.5 w-3.5" />}
+        {isPending ? 'Notifying…' : unanswered > 0 ? `Ask for answers (${unanswered})` : 'Ask for answers'}
       </Button>
     </>
   );

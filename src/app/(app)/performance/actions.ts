@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { requireUser } from '@/lib/auth/guard';
 import {
+  canAnswerManagerQuestions,
   canEditSubmission,
   canManageCycles,
 } from '@/lib/auth/review-access';
@@ -21,10 +22,12 @@ import {
   generateSubmissionsForCycle,
   getSubmission,
   lockAllForCycle,
+  saveManagerAnswers,
   saveManagerEval,
   saveSelfEval,
   type NewSubmissionInfo,
 } from '@/lib/firestore/review-submissions';
+import { sendManagerQuestionsEmails, type ManagerQuestionsRecipient } from '@/lib/email/manager-questions';
 import {
   getAllEmployeesForTree,
   getEmployeeById,
@@ -309,6 +312,8 @@ const managerInputSchema = z.object({
     takingFeedback: managerRatingSchema,
     reliability: managerRatingSchema,
   }),
+  contributions: z.string().max(8000).nullable(),
+  improvements: z.string().max(8000).nullable(),
   notes: z.string().max(8000).nullable(),
 });
 
@@ -417,6 +422,9 @@ export async function saveManagerEvalAction(args: {
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalid input' };
   }
+  if (args.submit && (!parsed.data.contributions?.trim() || !parsed.data.improvements?.trim())) {
+    return { ok: false, error: 'Answer both questions before submitting.' };
+  }
 
   try {
     await saveManagerEval({
@@ -439,6 +447,106 @@ export async function saveManagerEvalAction(args: {
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Save failed' };
+  }
+}
+
+/**
+ * Add the two written answers to a manager-eval its reviewer submitted before the
+ * questions existed. Ratings are untouched.
+ */
+export async function saveManagerAnswersAction(args: {
+  submissionId: string;
+  contributions: string;
+  improvements: string;
+}): Promise<ActionResult> {
+  const user = await requireUser();
+  const sub = await getSubmission(args.submissionId, { decryptNotes: false });
+  if (!sub) return { ok: false, error: 'Submission not found' };
+  if (!canAnswerManagerQuestions(user, sub)) return { ok: false, error: 'Forbidden' };
+
+  const parsed = z
+    .object({
+      contributions: z.string().trim().min(1, 'Answer both questions.').max(8000),
+      improvements: z.string().trim().min(1, 'Answer both questions.').max(8000),
+    })
+    .safeParse(args);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalid input' };
+
+  try {
+    await saveManagerAnswers({ submissionId: args.submissionId, ...parsed.data });
+    await writeAuditLog({
+      actorUid: user.uid,
+      actorEmail: user.email,
+      action: 'review.submit',
+      resource: { type: 'review_submission', id: args.submissionId },
+      metadata: { kind: 'manager', op: 'answers', cycleId: sub.cycleId, subject: sub.subjectEmployeeId },
+    });
+    revalidatePath(`/performance/submissions/${args.submissionId}`);
+    revalidatePath('/performance');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Save failed' };
+  }
+}
+
+/**
+ * Tell every manager with reviews in an open cycle about the two written
+ * questions: those with submitted-but-unanswered reviews are asked to add the
+ * answers, those still filling forms are told the questions are now part of
+ * them. Bell notification + email, one per manager.
+ */
+export async function askManagersForAnswersAction(
+  cycleId: string,
+): Promise<ActionResult<{ managers: number; toAnswer: number; emailed: number }>> {
+  const user = await requireUser();
+  if (!canManageCycles(user)) return { ok: false, error: 'Forbidden' };
+  const cycle = await getCycle(cycleId);
+  if (!cycle) return { ok: false, error: 'Cycle not found' };
+  if (cycle.status !== 'open') return { ok: false, error: 'Cycle is not open' };
+
+  try {
+    const subs = (await listSubmissionsForCycle(cycleId)).filter((s) => s.kind === 'manager');
+    const byReviewer = new Map<string, ManagerQuestionsRecipient & { uid: string | null }>();
+    for (const s of subs) {
+      const unanswered = s.status === 'submitted' && !s.managerAnswered;
+      const pending = s.status === 'not-started' || s.status === 'in-progress';
+      if (!unanswered && !pending) continue;
+      const key = s.reviewerEmail.toLowerCase();
+      if (!key) continue;
+      const r = byReviewer.get(key) ?? { email: s.reviewerEmail, name: s.reviewerName, uid: s.reviewerUid, toAnswer: [], pendingCount: 0 };
+      if (unanswered) r.toAnswer.push({ subjectName: s.subjectName, submissionId: s.submissionId });
+      else r.pendingCount++;
+      r.uid ??= s.reviewerUid;
+      byReviewer.set(key, r);
+    }
+    const recipients = [...byReviewer.values()];
+    if (recipients.length === 0) return { ok: false, error: 'Every manager review in this cycle already has its answers.' };
+
+    await writeNotificationsForReviewers(
+      recipients
+        .filter((r) => r.uid)
+        .map((r) => ({
+          uid: r.uid!,
+          title: r.toAnswer.length
+            ? `Please answer 2 new questions in ${r.toAnswer.length === 1 ? `your ${cycle.name} review of ${r.toAnswer[0]!.subjectName}` : `${r.toAnswer.length} of your ${cycle.name} reviews`}`
+            : `Your ${cycle.name} reviews now include 2 written questions`,
+          href: r.toAnswer.length === 1 ? `/performance/submissions/${r.toAnswer[0]!.submissionId}` : '/performance',
+          tone: 'warning' as const,
+        })),
+    ).catch(() => {});
+    const mail = await sendManagerQuestionsEmails(cycle.name, recipients);
+
+    const toAnswer = recipients.reduce((n, r) => n + r.toAnswer.length, 0);
+    await writeAuditLog({
+      actorUid: user.uid,
+      actorEmail: user.email,
+      action: 'review_cycle.nudge',
+      resource: { type: 'review_cycle', id: cycleId },
+      metadata: { op: 'manager_questions', cycleName: cycle.name, managers: recipients.length, toAnswer, emailed: mail.sent },
+    });
+    return { ok: true, data: { managers: recipients.length, toAnswer, emailed: mail.sent } };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Could not notify managers' };
   }
 }
 

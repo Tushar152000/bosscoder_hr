@@ -43,6 +43,9 @@ function toSubmission(
     managerRatings: stored.managerRatings,
     managerOverallRating: stored.managerOverallRating,
     managerNotes: opts.decryptNotes ? decryptOptional(stored.managerNotes) : null,
+    managerContributions: opts.decryptNotes ? decryptOptional(stored.managerContributions ?? null) : null,
+    managerImprovements: opts.decryptNotes ? decryptOptional(stored.managerImprovements ?? null) : null,
+    managerAnswered: stored.managerAnswered === true,
     submittedAt: tsToDate(stored.submittedAt),
     lockedAt: tsToDate(stored.lockedAt),
     createdAt: tsToDate(stored.createdAt as FirebaseFirestore.Timestamp),
@@ -467,11 +470,19 @@ export async function saveManagerEval(args: {
   ensureMutable(prev);
 
   const overall = computeManagerOverall(input.ratings);
+  const contributions = input.contributions?.trim() || null;
+  const improvements = input.improvements?.trim() || null;
+  if (submit && (!contributions || !improvements)) {
+    throw new Error('Answer both questions before submitting.');
+  }
 
   const update: Record<string, unknown> = {
     managerRatings: input.ratings,
     managerOverallRating: overall,
     managerNotes: encryptOptional(input.notes),
+    managerContributions: encryptOptional(contributions),
+    managerImprovements: encryptOptional(improvements),
+    managerAnswered: !!contributions && !!improvements,
     status: submit ? 'submitted' : 'in-progress',
     updatedAt: FieldValue.serverTimestamp(),
   };
@@ -481,6 +492,37 @@ export async function saveManagerEval(args: {
 
   if (submit) await adjustCycleSubmittedCount(prev.cycleId, 'manager', 1);
   return { status: submit ? 'submitted' : 'in-progress', overall };
+}
+
+/**
+ * Add the two written answers to a manager-eval that was submitted before the
+ * questions existed. Only the answers change — ratings and status stay as
+ * submitted. Allowed once, while the cycle is still open (not locked).
+ */
+export async function saveManagerAnswers(args: {
+  submissionId: string;
+  contributions: string;
+  improvements: string;
+}): Promise<void> {
+  const ref = adminDb.collection(COL).doc(args.submissionId);
+  const snap = await ref.get();
+  if (!snap.exists) throw new Error('Submission not found');
+  const prev = snap.data() as ReviewSubmissionStored;
+  if (prev.kind !== 'manager') throw new Error('Wrong submission kind for manager-eval');
+  if (prev.status === 'locked') throw new Error('This cycle is closed. Form is read-only.');
+  if (prev.status !== 'submitted') throw new Error('Fill the answers in the form and submit it.');
+  if (prev.managerAnswered) throw new Error('These questions are already answered.');
+  const contributions = args.contributions.trim();
+  const improvements = args.improvements.trim();
+  if (!contributions || !improvements) throw new Error('Answer both questions.');
+
+  await ref.update({
+    managerContributions: encryptOptional(contributions),
+    managerImprovements: encryptOptional(improvements),
+    managerAnswered: true,
+    managerAnsweredAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+  });
 }
 
 /**

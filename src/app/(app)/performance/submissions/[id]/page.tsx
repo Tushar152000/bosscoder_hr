@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { requireUser } from '@/lib/auth/guard';
 import {
+  canAnswerManagerQuestions,
   canEditSubmission,
   canViewSubmission,
 } from '@/lib/auth/review-access';
@@ -43,7 +44,7 @@ export default async function SubmissionPage({ params, searchParams }: Props) {
   }
   const editable = await canEditSubmission(user, sub);
 
-  if (sub.kind === 'manager' && sub.managerNotes) {
+  if (sub.kind === 'manager' && (sub.managerNotes || sub.managerContributions || sub.managerImprovements)) {
     await writeAuditLog({
       actorUid: user.uid,
       actorEmail: user.email,
@@ -76,6 +77,8 @@ export default async function SubmissionPage({ params, searchParams }: Props) {
   const initial: ManagerEvalInput = sub.managerRatings
     ? {
         ratings: sub.managerRatings,
+        contributions: sub.managerContributions,
+        improvements: sub.managerImprovements,
         notes: sub.managerNotes,
       }
     : emptyManagerEvalInput();
@@ -108,6 +111,7 @@ export default async function SubmissionPage({ params, searchParams }: Props) {
         status={sub.status}
         submittedAt={sub.submittedAt}
         canEdit={editable}
+        canAnswerQuestions={canAnswerManagerQuestions(user, sub)}
         selfEvalSubmitted={selfEvalSubmitted}
       />
     </div>
