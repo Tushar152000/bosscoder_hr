@@ -1,5 +1,6 @@
 import 'server-only';
 import { sendMail } from '@/lib/email/mailer';
+import { appBaseUrl } from '@/lib/app-url';
 
 export interface CycleOpenRecipient {
   email: string;
@@ -10,9 +11,6 @@ export interface CycleOpenRecipient {
   managerEvalSubjects: string[];
 }
 
-function appBaseUrl(): string {
-  return (process.env.APP_BASE_URL || 'http://localhost:3100').replace(/\/$/, '');
-}
 
 function escapeHtml(s: string): string {
   return s
@@ -35,10 +33,12 @@ interface CycleOpenEmailArgs {
   cycleName: string;
   cadence: 'monthly' | 'quarterly';
   recipient: CycleOpenRecipient;
+  /** Shown above the message when resending, e.g. to explain a corrected link. */
+  notice?: string;
 }
 
 function buildEmail(args: CycleOpenEmailArgs): { subject: string; text: string; html: string } {
-  const { cycleId, cycleName, cadence, recipient } = args;
+  const { cycleId, cycleName, cadence, recipient, notice } = args;
   const link = `${appBaseUrl()}/performance/cycles/${cycleId}`;
   const greetingName = firstName(recipient.name, 'there');
 
@@ -48,9 +48,12 @@ function buildEmail(args: CycleOpenEmailArgs): { subject: string; text: string; 
     formsLines.push(`Evaluate ${subj}`);
   }
 
-  const subject = `[Bosscoder Workspace] ${cycleName} performance cycle is open — your forms are ready`;
+  const subject = notice
+    ? `[Bosscoder Workspace] Corrected link: ${cycleName} performance cycle is open`
+    : `[Bosscoder Workspace] ${cycleName} performance cycle is open — your forms are ready`;
 
   const text =
+    (notice ? `${notice}\n\n` : '') +
     `Hi ${greetingName},\n\n` +
     `The ${cycleName} performance cycle (${cadence}) is now open in Bosscoder Workspace.\n\n` +
     `Your forms in this cycle:\n` +
@@ -72,6 +75,7 @@ function buildEmail(args: CycleOpenEmailArgs): { subject: string; text: string; 
       Bosscoder Workspace · Performance
     </div>
     <div style="padding:22px;">
+      ${notice ? `<p style="margin:0 0 16px;padding:10px 12px;border-radius:8px;background:#FEF3C7;color:#92400E;font-size:13px;line-height:1.5;">${escapeHtml(notice)}</p>` : ''}
       <h1 style="margin:0 0 6px;font-size:18px;">Hi ${escapeHtml(greetingName)},</h1>
       <p style="margin:0 0 14px;font-size:14px;line-height:1.55;color:#374151;">
         The <strong>${escapeHtml(cycleName)}</strong> performance cycle
@@ -114,11 +118,12 @@ export async function sendCycleOpenEmails(args: {
   cycleName: string;
   cadence: 'monthly' | 'quarterly';
   recipients: CycleOpenRecipient[];
+  notice?: string;
 }): Promise<CycleOpenSendResult> {
-  const { cycleId, cycleName, cadence, recipients } = args;
+  const { cycleId, cycleName, cadence, recipients, notice } = args;
   const results = await Promise.allSettled(
     recipients.map(async (r) => {
-      const { subject, text, html } = buildEmail({ cycleId, cycleName, cadence, recipient: r });
+      const { subject, text, html } = buildEmail({ cycleId, cycleName, cadence, recipient: r, notice });
       const res = await sendMail({ to: r.email, subject, text, html });
       if (!res.ok) throw new Error(res.error || 'Unknown send error');
       return r.email;

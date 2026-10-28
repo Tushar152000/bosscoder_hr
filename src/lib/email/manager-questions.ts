@@ -1,5 +1,6 @@
 import 'server-only';
 import { sendMail } from '@/lib/email/mailer';
+import { appBaseUrl } from '@/lib/app-url';
 import { MANAGER_QUESTIONS } from '@/types/review';
 
 /**
@@ -7,9 +8,6 @@ import { MANAGER_QUESTIONS } from '@/types/review';
  * page when the questions were added after some reviews were already submitted.
  */
 
-function appBaseUrl(): string {
-  return (process.env.APP_BASE_URL || 'http://localhost:3100').replace(/\/$/, '');
-}
 
 function escapeHtml(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');

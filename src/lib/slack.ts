@@ -1,4 +1,5 @@
 import 'server-only';
+import { appBaseUrl } from '@/lib/app-url';
 
 /**
  * Slack integration.
@@ -60,7 +61,7 @@ export async function postFeedbackToSlack(entry: {
   try {
     const slackId = await slackUserIdForEmail(entry.email);
     const who = slackId ? `<@${slackId}>` : `*${esc(entry.name)}* (${esc(entry.email)})`;
-    const inboxUrl = `${(process.env.APP_BASE_URL ?? '').replace(/\/$/, '')}/feedback`;
+    const inboxUrl = `${appBaseUrl()}/feedback`;
 
     const res = await fetchWithTimeout(webhook, {
       method: 'POST',
