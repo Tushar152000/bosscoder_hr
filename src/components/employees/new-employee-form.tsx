@@ -6,8 +6,6 @@ import Link from 'next/link';
 import {
   User,
   Briefcase,
-  Banknote,
-  CreditCard,
   ClipboardCheck,
   ShieldCheck,
   Lock,
@@ -17,6 +15,8 @@ import {
 import { cn } from '@/lib/utils';
 import { DEPARTMENTS } from '@/lib/constants/departments';
 import { createEmployeeAction } from '@/app/(app)/directory/actions';
+import { sendOnboardingAction } from '@/app/(app)/onboarding/actions';
+import { toast } from 'sonner';
 import { Field, INPUT_CLASS } from '@/components/forms/field';
 import { PhoneField } from '@/components/forms/phone-field';
 import { formatPhone, isValidMobile } from '@/lib/phone';
@@ -36,6 +36,8 @@ interface Props {
   initial: EmployeeInput;
   managers: ManagerOption[];
   canEditSensitive: boolean;
+  /** Opened from the Onboarding page — go back there after creating. */
+  fromOnboarding?: boolean;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -43,8 +45,7 @@ interface Props {
 const SECTIONS: SectionItem[] = [
   { id: 'basic', label: 'Basic info' },
   { id: 'employment', label: 'Employment' },
-  { id: 'compensation', label: 'Compensation', locked: true },
-  { id: 'bank', label: 'Bank & identity', locked: true },
+  { id: 'personal', label: 'Identity & address (optional)', locked: true },
   { id: 'review', label: 'Review' },
 ];
 
@@ -65,7 +66,7 @@ function validateSection(id: string, form: EmployeeInput): string | null {
   return null;
 }
 
-export function NewEmployeeForm({ initial, managers, canEditSensitive }: Props) {
+export function NewEmployeeForm({ initial, managers, canEditSensitive, fromOnboarding = false }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [form, setFormState] = useState<EmployeeInput>(initial);
@@ -74,6 +75,10 @@ export function NewEmployeeForm({ initial, managers, canEditSensitive }: Props) 
   const [sectionError, setSectionError] = useState<string | null>(null);
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  // Permanent address = current address unless HR unticks this.
+  const [permanentSame, setPermanentSame] = useState(true);
+  // Email the joiner their onboarding form once they're created.
+  const [sendOnboarding, setSendOnboarding] = useState(true);
 
   // Debounced auto-save indicator
   useEffect(() => {
@@ -88,7 +93,7 @@ export function NewEmployeeForm({ initial, managers, canEditSensitive }: Props) 
   }
 
   function setNestedField(
-    group: 'compensation' | 'bank' | 'identity' | 'address' | 'emergencyContact',
+    group: 'identity' | 'address' | 'permanentAddress' | 'emergencyContact',
     key: string,
     value: string | null,
   ) {
@@ -125,9 +130,17 @@ export function NewEmployeeForm({ initial, managers, canEditSensitive }: Props) 
   function doSubmit() {
     setGlobalError(null);
     startTransition(async () => {
-      const result = await createEmployeeAction(form);
+      const result = await createEmployeeAction(
+        permanentSame ? { ...form, permanentAddress: { ...form.address } } : form,
+      );
       if (!result.ok) { setGlobalError(result.error); return; }
-      router.push(`/directory/${result.employeeId}`);
+      if (sendOnboarding) {
+        const to = form.personalEmail || form.email;
+        const sent = await sendOnboardingAction(result.employeeId, { to, email: true });
+        if (sent.ok && sent.emailed) toast.success(`Onboarding form emailed to ${to}`);
+        else toast.error("Employee created, but the onboarding email didn't go out — send it from their profile.");
+      }
+      router.push(fromOnboarding ? '/onboarding' : `/directory/${result.employeeId}`);
       router.refresh();
     });
   }
@@ -137,14 +150,12 @@ export function NewEmployeeForm({ initial, managers, canEditSensitive }: Props) 
 
   // ── Nested callbacks ──────────────────────────────────────────────────────────
 
-  const onComp = (key: keyof EmployeeInput['compensation'], v: string | null) =>
-    setNestedField('compensation', key, v);
-  const onBank = (key: keyof EmployeeInput['bank'], v: string | null) =>
-    setNestedField('bank', key, v);
   const onIdentity = (key: keyof EmployeeInput['identity'], v: string | null) =>
     setNestedField('identity', key, v);
   const onAddress = (key: keyof EmployeeInput['address'], v: string | null) =>
     setNestedField('address', key, v);
+  const onPermanentAddress = (key: keyof EmployeeInput['permanentAddress'], v: string | null) =>
+    setNestedField('permanentAddress', key, v);
   const onEmergency = (key: keyof EmployeeInput['emergencyContact'], v: string | null) =>
     setNestedField('emergencyContact', key, v);
 
@@ -179,7 +190,7 @@ export function NewEmployeeForm({ initial, managers, canEditSensitive }: Props) 
               Sensitive fields are encrypted at rest
             </p>
             <p className="text-[12px] text-[#185FA5] leading-relaxed mt-0.5">
-              Compensation, bank, identity and address are encrypted before storage. Only HR and
+              Identity, addresses and emergency contact are encrypted before storage. Only HR and
               founders with the right permissions can read them back.
             </p>
           </div>
@@ -242,25 +253,20 @@ export function NewEmployeeForm({ initial, managers, canEditSensitive }: Props) 
           {activeSection === 'employment' && (
             <EmploymentSection form={form} set={set} />
           )}
-          {activeSection === 'compensation' && (
+          {activeSection === 'personal' && (
             canEditSensitive ? (
-              <CompensationSection form={form} onComp={onComp} />
-            ) : (
-              <NoPermissionCard noun="compensation" />
-            )
-          )}
-          {activeSection === 'bank' && (
-            canEditSensitive ? (
-              <BankSection
+              <PersonalSection
                 form={form}
                 set={set}
-                onBank={onBank}
                 onIdentity={onIdentity}
                 onAddress={onAddress}
+                onPermanentAddress={onPermanentAddress}
+                permanentSame={permanentSame}
+                setPermanentSame={setPermanentSame}
                 onEmergency={onEmergency}
               />
             ) : (
-              <NoPermissionCard noun="bank & identity" />
+              <NoPermissionCard noun="identity & address" />
             )
           )}
           {activeSection === 'review' && (
@@ -270,6 +276,8 @@ export function NewEmployeeForm({ initial, managers, canEditSensitive }: Props) 
               onEditSection={handleSectionClick}
               onSubmit={doSubmit}
               pending={pending}
+              sendOnboarding={sendOnboarding}
+              setSendOnboarding={setSendOnboarding}
             />
           )}
         </div>
@@ -478,141 +486,120 @@ function EmploymentSection({
   );
 }
 
-function CompensationSection({
-  form,
-  onComp,
-}: {
-  form: EmployeeInput;
-  onComp: (key: keyof EmployeeInput['compensation'], v: string | null) => void;
-}) {
+/** Common answers for the emergency contact's relation (free text is fine too). */
+const RELATIONS = ['Father', 'Mother', 'Spouse', 'Brother', 'Sister', 'Son', 'Daughter', 'Guardian', 'Friend'];
+
+function AddressInputs({ value, onChange }: { value: EmployeeInput['address']; onChange: (k: keyof EmployeeInput['address'], v: string | null) => void }) {
   return (
-    <div className="bg-white border border-slate-200/70 rounded-xl p-5">
-      <SectionHeader
-        icon={Banknote}
-        iconBg="#FAEEDA"
-        iconColor="#854F0B"
-        title="Compensation"
-        description="Stored encrypted — visible only to HR & founders"
-      />
-      <EncryptionNotice />
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-        <Field label="Annual CTC" optional>
-          <div className="relative">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[12px] text-slate-400 pointer-events-none">₹</span>
-            <input
-              type="text"
-              className={cn(INPUT_CLASS, 'pl-6')}
-              value={form.compensation.ctc ?? ''}
-              onChange={(e) => onComp('ctc', e.target.value)}
-              placeholder="2400000"
-            />
-          </div>
-        </Field>
-        <Field label="Fixed salary" optional>
-          <div className="relative">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[12px] text-slate-400 pointer-events-none">₹</span>
-            <input
-              type="text"
-              className={cn(INPUT_CLASS, 'pl-6')}
-              value={form.compensation.salary ?? ''}
-              onChange={(e) => onComp('salary', e.target.value)}
-            />
-          </div>
-        </Field>
-        <Field label="Variable / Bonus" optional>
-          <div className="relative">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[12px] text-slate-400 pointer-events-none">₹</span>
-            <input
-              type="text"
-              className={cn(INPUT_CLASS, 'pl-6')}
-              value={form.compensation.bonus ?? ''}
-              onChange={(e) => onComp('bonus', e.target.value)}
-            />
-          </div>
-        </Field>
-      </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+      <Field label="Line 1" optional className="md:col-span-2">
+        <input type="text" className={INPUT_CLASS} value={value.line1 ?? ''} onChange={(e) => onChange('line1', e.target.value)} />
+      </Field>
+      <Field label="Line 2" optional className="md:col-span-2">
+        <input type="text" className={INPUT_CLASS} value={value.line2 ?? ''} onChange={(e) => onChange('line2', e.target.value)} />
+      </Field>
+      <Field label="City" optional>
+        <input type="text" className={INPUT_CLASS} value={value.city ?? ''} onChange={(e) => onChange('city', e.target.value)} />
+      </Field>
+      <Field label="State" optional>
+        <input type="text" className={INPUT_CLASS} value={value.state ?? ''} onChange={(e) => onChange('state', e.target.value)} />
+      </Field>
+      <Field label="Pincode" optional>
+        <input type="text" className={INPUT_CLASS} value={value.pincode ?? ''} onChange={(e) => onChange('pincode', e.target.value)} />
+      </Field>
     </div>
   );
 }
 
-
-function BankSection({
+function PersonalSection({
   form,
   set,
-  onBank,
   onIdentity,
   onAddress,
+  onPermanentAddress,
+  permanentSame,
+  setPermanentSame,
   onEmergency,
 }: {
   form: EmployeeInput;
   set: <K extends keyof EmployeeInput>(k: K, v: EmployeeInput[K]) => void;
-  onBank: (k: keyof EmployeeInput['bank'], v: string | null) => void;
   onIdentity: (k: keyof EmployeeInput['identity'], v: string | null) => void;
   onAddress: (k: keyof EmployeeInput['address'], v: string | null) => void;
+  onPermanentAddress: (k: keyof EmployeeInput['permanentAddress'], v: string | null) => void;
+  permanentSame: boolean;
+  setPermanentSame: (v: boolean) => void;
   onEmergency: (k: keyof EmployeeInput['emergencyContact'], v: string | null) => void;
 }) {
   return (
     <div className="space-y-3">
       <div className="bg-white border border-slate-200/70 rounded-xl p-5">
         <SectionHeader
-          icon={CreditCard}
-          iconBg="#EEEDFE"
-          iconColor="#534AB7"
-          title="Bank & identity"
-          description="Account details and government IDs — encrypted at rest"
+          icon={ShieldCheck}
+          iconBg="#FAEEDA"
+          iconColor="#854F0B"
+          title="Identity"
+          description="Government IDs and date of birth — encrypted at rest"
         />
         <EncryptionNotice />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-          <Field label="Account number" optional>
-            <input type="text" className={INPUT_CLASS} value={form.bank.accountNumber ?? ''} onChange={(e) => onBank('accountNumber', e.target.value)} placeholder="•••••••••••••••" />
-          </Field>
-          <Field label="IFSC" optional>
-            <input type="text" className={INPUT_CLASS} value={form.bank.ifsc ?? ''} onChange={(e) => onBank('ifsc', e.target.value)} placeholder="SBIN0001234" />
-          </Field>
-          <Field label="Beneficiary name" optional>
-            <input type="text" className={INPUT_CLASS} value={form.bank.beneficiaryName ?? ''} onChange={(e) => onBank('beneficiaryName', e.target.value)} />
-          </Field>
           <Field label="PAN" optional>
             <input type="text" className={INPUT_CLASS} value={form.identity.pan ?? ''} onChange={(e) => onIdentity('pan', e.target.value)} placeholder="ABCDE1234F" maxLength={10} />
           </Field>
-          <Field label="Aadhaar (last 4 digits)" optional>
-            <input type="text" className={INPUT_CLASS} value={form.identity.aadhaar ?? ''} onChange={(e) => onIdentity('aadhaar', e.target.value)} placeholder="XXXX" maxLength={4} />
+          <Field label="Aadhaar" optional>
+            <input type="text" inputMode="numeric" className={INPUT_CLASS} value={form.identity.aadhaar ?? ''} onChange={(e) => onIdentity('aadhaar', e.target.value)} placeholder="12 digits" maxLength={14} />
           </Field>
           <Field label="Date of birth" optional>
             <input type="date" className={INPUT_CLASS} value={form.dob ?? ''} onChange={(e) => set('dob', e.target.value || null)} />
           </Field>
         </div>
+        <p className="mt-3 text-[11px] text-slate-400">
+          You can skip this step — the joiner fills these in on their onboarding form (sent from the Review step).
+        </p>
       </div>
 
       <div className="bg-white border border-slate-200/70 rounded-xl p-5">
-        <p className="text-[13px] font-medium text-slate-900 mb-4">Address</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-          <Field label="Line 1" optional className="md:col-span-2">
-            <input type="text" className={INPUT_CLASS} value={form.address.line1 ?? ''} onChange={(e) => onAddress('line1', e.target.value)} />
-          </Field>
-          <Field label="Line 2" optional className="md:col-span-2">
-            <input type="text" className={INPUT_CLASS} value={form.address.line2 ?? ''} onChange={(e) => onAddress('line2', e.target.value)} />
-          </Field>
-          <Field label="City" optional>
-            <input type="text" className={INPUT_CLASS} value={form.address.city ?? ''} onChange={(e) => onAddress('city', e.target.value)} />
-          </Field>
-          <Field label="State" optional>
-            <input type="text" className={INPUT_CLASS} value={form.address.state ?? ''} onChange={(e) => onAddress('state', e.target.value)} />
-          </Field>
-          <Field label="Pincode" optional>
-            <input type="text" className={INPUT_CLASS} value={form.address.pincode ?? ''} onChange={(e) => onAddress('pincode', e.target.value)} />
-          </Field>
+        <p className="text-[13px] font-medium text-slate-900 mb-4">Current address</p>
+        <AddressInputs value={form.address} onChange={onAddress} />
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-[13px] font-medium text-slate-900">Permanent address</p>
+          <label className="inline-flex cursor-pointer items-center gap-2 text-[12px] text-slate-600">
+            <input
+              type="checkbox"
+              checked={permanentSame}
+              onChange={(e) => setPermanentSame(e.target.checked)}
+              className="h-3.5 w-3.5 rounded border-slate-300 accent-[#0C447C]"
+            />
+            Same as current address
+          </label>
         </div>
+        {!permanentSame && (
+          <div className="mt-3">
+            <AddressInputs value={form.permanentAddress} onChange={onPermanentAddress} />
+          </div>
+        )}
       </div>
 
       <div className="bg-white border border-slate-200/70 rounded-xl p-5">
         <p className="text-[13px] font-medium text-slate-900 mb-4">Emergency contact</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
           <Field label="Contact name" optional>
             <input type="text" className={INPUT_CLASS} value={form.emergencyContact.name ?? ''} onChange={(e) => onEmergency('name', e.target.value)} />
           </Field>
           <Field label="Contact phone" optional>
             <input type="text" className={INPUT_CLASS} value={form.emergencyContact.phone ?? ''} onChange={(e) => onEmergency('phone', e.target.value)} />
+          </Field>
+          <Field label="Relation" optional>
+            <input
+              type="text"
+              list="new-emergency-relations"
+              className={INPUT_CLASS}
+              value={form.emergencyContact.relation ?? ''}
+              onChange={(e) => onEmergency('relation', e.target.value)}
+              placeholder="e.g. Father, Spouse"
+            />
+            <datalist id="new-emergency-relations">
+              {RELATIONS.map((r) => <option key={r} value={r} />)}
+            </datalist>
           </Field>
         </div>
       </div>
@@ -626,12 +613,16 @@ function ReviewSection({
   onEditSection,
   onSubmit,
   pending,
+  sendOnboarding,
+  setSendOnboarding,
 }: {
   form: EmployeeInput;
   managers: ManagerOption[];
   onEditSection: (id: string) => void;
   onSubmit: () => void;
   pending: boolean;
+  sendOnboarding: boolean;
+  setSendOnboarding: (v: boolean) => void;
 }) {
   const managerName = managers.find((m) => m.employeeId === form.managerId)?.displayName ?? '—';
 
@@ -671,6 +662,28 @@ function ReviewSection({
           ]}
         />
       </div>
+
+      <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-slate-200/70 bg-white p-4">
+        <input
+          type="checkbox"
+          checked={sendOnboarding}
+          onChange={(e) => setSendOnboarding(e.target.checked)}
+          className="mt-0.5 h-4 w-4 rounded border-slate-300 accent-[#0C447C]"
+        />
+        <span>
+          <span className="block text-[13px] font-medium text-slate-900">Email them the onboarding form</span>
+          <span className="block text-[11px] text-slate-500">
+            Sent to {form.personalEmail || form.email || 'their email'}. They fill in their personal details, family, address, PAN /
+            Aadhaar / UAN with card photos, and previous job — no sign-in needed. You can also copy the link from their profile.
+          </span>
+          {sendOnboarding && !form.personalEmail && (
+            <span className="mt-2 block rounded-md bg-amber-50 px-2.5 py-1.5 text-[11px] font-medium text-amber-800">
+              No personal email added — it will go to their work email. If their work inbox isn&apos;t set up yet, add a personal
+              email under Basic info so they actually receive it.
+            </span>
+          )}
+        </span>
+      </label>
 
       <button
         type="button"

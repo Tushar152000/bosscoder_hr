@@ -5,13 +5,12 @@ import { useRouter } from 'next/navigation';
 import {
   User,
   Briefcase,
-  Banknote,
-  CreditCard,
   ShieldCheck,
   MapPin,
   Phone,
   Lock,
   AlertCircle,
+  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Field, INPUT_CLASS } from '@/components/forms/field';
@@ -21,9 +20,18 @@ import { DEPARTMENTS } from '@/lib/constants/departments';
 import { createEmployeeAction, updateEmployeeAction } from '@/app/(app)/directory/actions';
 import {
   EMPLOYEE_STATUSES,
+  type AddressFields,
   type EmployeeInput,
   type EmployeePublic,
 } from '@/types/employee';
+import { IdentityDocuments, type IdDocument } from '@/components/employees/identity-documents';
+
+/** Common answers for the emergency contact's relation (free text is fine too). */
+const RELATIONS = ['Father', 'Mother', 'Spouse', 'Brother', 'Sister', 'Son', 'Daughter', 'Guardian', 'Friend'];
+
+const sameAddress = (a: AddressFields, b: AddressFields) =>
+  a.line1 === b.line1 && a.line2 === b.line2 && a.city === b.city && a.state === b.state && a.pincode === b.pincode;
+const isBlank = (a: AddressFields) => !a.line1 && !a.line2 && !a.city && !a.state && !a.pincode;
 
 interface Props {
   mode: 'create' | 'edit';
@@ -31,19 +39,28 @@ interface Props {
   employeeId?: string;
   managers: { employeeId: string; displayName: string; designation: string }[];
   canEditSensitive: boolean;
+  /** Edit mode: Aadhaar / PAN pictures. */
+  idDocs?: IdDocument[];
 }
 
-export function EmployeeForm({ mode, initial, employeeId, managers, canEditSensitive }: Props) {
+const EMPTY_FAMILY = { fatherName: null, fatherPhone: null, motherName: null, motherPhone: null };
+const EMPTY_PREVIOUS = { company: null, managerName: null, managerPhone: null, managerEmail: null };
+
+export function EmployeeForm({ mode, initial, employeeId, managers, canEditSensitive, idDocs = [] }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [form, setForm] = useState<EmployeeInput>(initial);
   const [error, setError] = useState<string | null>(null);
+  // Permanent = current until HR says otherwise (or they already differ).
+  const [permanentSame, setPermanentSame] = useState(
+    () => isBlank(initial.permanentAddress) || sameAddress(initial.address, initial.permanentAddress),
+  );
 
   function set<K extends keyof EmployeeInput>(key: K, value: EmployeeInput[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
-  function setNested<G extends 'compensation' | 'bank' | 'identity' | 'address' | 'emergencyContact'>(
+  function setNested<G extends 'identity' | 'address' | 'permanentAddress' | 'emergencyContact'>(
     group: G,
     key: keyof EmployeeInput[G],
     value: string | null
@@ -51,14 +68,23 @@ export function EmployeeForm({ mode, initial, employeeId, managers, canEditSensi
     setForm((f) => ({ ...f, [group]: { ...f[group], [key]: value || null } }));
   }
 
+  function setFamily(key: keyof NonNullable<EmployeeInput['family']>, value: string) {
+    setForm((f) => ({ ...f, family: { ...(f.family ?? EMPTY_FAMILY), [key]: value || null } }));
+  }
+
+  function setPrevious(key: keyof NonNullable<EmployeeInput['previousEmployment']>, value: string) {
+    setForm((f) => ({ ...f, previousEmployment: { ...(f.previousEmployment ?? EMPTY_PREVIOUS), [key]: value || null } }));
+  }
+
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    const payload = permanentSame ? { ...form, permanentAddress: { ...form.address } } : form;
     startTransition(async () => {
       const result =
         mode === 'create'
-          ? await createEmployeeAction(form)
-          : await updateEmployeeAction(employeeId!, form);
+          ? await createEmployeeAction(payload)
+          : await updateEmployeeAction(employeeId!, payload);
       if (!result.ok) {
         setError(result.error);
         return;
@@ -263,71 +289,6 @@ export function EmployeeForm({ mode, initial, employeeId, managers, canEditSensi
       {/* Sensitive sections */}
       {canEditSensitive ? (
         <>
-          {/* Compensation */}
-          <div className="bg-white border border-slate-200/70 rounded-xl p-5">
-            <div className="flex items-start justify-between gap-3 pb-3.5 border-b border-slate-200/70 mb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center shrink-0" style={{ backgroundColor: '#FAEEDA' }}>
-                  <Banknote size={15} color="#854F0B" />
-                </div>
-                <div>
-                  <p className="text-[14px] font-medium text-slate-900">Compensation</p>
-                  <p className="text-[11px] text-slate-500">Stored encrypted — visible only to HR &amp; founders</p>
-                </div>
-              </div>
-              <EncryptedBadge />
-            </div>
-            <EncryptionNotice />
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <Field label="Annual CTC" optional>
-                <div className="relative">
-                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[12px] text-slate-400 pointer-events-none">₹</span>
-                  <input className={cn(INPUT_CLASS, 'pl-6')} value={form.compensation.ctc ?? ''} onChange={(e) => setNested('compensation', 'ctc', e.target.value)} placeholder="2400000" />
-                </div>
-              </Field>
-              <Field label="Fixed salary" optional>
-                <div className="relative">
-                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[12px] text-slate-400 pointer-events-none">₹</span>
-                  <input className={cn(INPUT_CLASS, 'pl-6')} value={form.compensation.salary ?? ''} onChange={(e) => setNested('compensation', 'salary', e.target.value)} />
-                </div>
-              </Field>
-              <Field label="Variable / Bonus" optional>
-                <div className="relative">
-                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[12px] text-slate-400 pointer-events-none">₹</span>
-                  <input className={cn(INPUT_CLASS, 'pl-6')} value={form.compensation.bonus ?? ''} onChange={(e) => setNested('compensation', 'bonus', e.target.value)} />
-                </div>
-              </Field>
-            </div>
-          </div>
-
-          {/* Bank details */}
-          <div className="bg-white border border-slate-200/70 rounded-xl p-5">
-            <div className="flex items-start justify-between gap-3 pb-3.5 border-b border-slate-200/70 mb-4">
-              <div className="flex items-center gap-2.5">
-                <div className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center shrink-0" style={{ backgroundColor: '#EEEDFE' }}>
-                  <CreditCard size={15} color="#534AB7" />
-                </div>
-                <div>
-                  <p className="text-[14px] font-medium text-slate-900">Bank details</p>
-                  <p className="text-[11px] text-slate-500">Account details for payroll — encrypted at rest</p>
-                </div>
-              </div>
-              <EncryptedBadge />
-            </div>
-            <EncryptionNotice />
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <Field label="Account number" optional>
-                <input className={INPUT_CLASS} value={form.bank.accountNumber ?? ''} onChange={(e) => setNested('bank', 'accountNumber', e.target.value)} placeholder="•••••••••••••••" />
-              </Field>
-              <Field label="IFSC" optional>
-                <input className={INPUT_CLASS} value={form.bank.ifsc ?? ''} onChange={(e) => setNested('bank', 'ifsc', e.target.value)} placeholder="SBIN0001234" />
-              </Field>
-              <Field label="Beneficiary name" optional>
-                <input className={INPUT_CLASS} value={form.bank.beneficiaryName ?? ''} onChange={(e) => setNested('bank', 'beneficiaryName', e.target.value)} />
-              </Field>
-            </div>
-          </div>
-
           {/* Identity */}
           <div className="bg-white border border-slate-200/70 rounded-xl p-5">
             <div className="flex items-start justify-between gap-3 pb-3.5 border-b border-slate-200/70 mb-4">
@@ -347,13 +308,26 @@ export function EmployeeForm({ mode, initial, employeeId, managers, canEditSensi
               <Field label="PAN" optional>
                 <input className={INPUT_CLASS} value={form.identity.pan ?? ''} onChange={(e) => setNested('identity', 'pan', e.target.value)} placeholder="ABCDE1234F" maxLength={10} />
               </Field>
-              <Field label="Aadhaar (last 4 digits)" optional>
-                <input className={INPUT_CLASS} value={form.identity.aadhaar ?? ''} onChange={(e) => setNested('identity', 'aadhaar', e.target.value)} placeholder="XXXX" maxLength={4} />
+              <Field label="Aadhaar" optional>
+                <input className={INPUT_CLASS} inputMode="numeric" value={form.identity.aadhaar ?? ''} onChange={(e) => setNested('identity', 'aadhaar', e.target.value)} placeholder="12 digits" maxLength={14} />
+              </Field>
+              <Field label="UAN" optional>
+                <input className={INPUT_CLASS} inputMode="numeric" value={form.uan ?? ''} onChange={(e) => set('uan', e.target.value || null)} placeholder="12-digit PF number" maxLength={14} />
               </Field>
               <Field label="Date of birth" optional>
                 <input type="date" className={INPUT_CLASS} value={form.dob ?? ''} onChange={(e) => set('dob', e.target.value || null)} />
               </Field>
             </div>
+            {mode === 'edit' && employeeId && (
+              <div className="mt-5">
+                <p className="mb-2 text-[12px] font-medium text-slate-700">Aadhaar &amp; PAN pictures</p>
+                <IdentityDocuments
+                  employeeId={employeeId}
+                  docs={idDocs}
+                  canUpload
+                />
+              </div>
+            )}
           </div>
 
           {/* Address */}
@@ -365,29 +339,32 @@ export function EmployeeForm({ mode, initial, employeeId, managers, canEditSensi
                 </div>
                 <div>
                   <p className="text-[14px] font-medium text-slate-900">Address</p>
-                  <p className="text-[11px] text-slate-500">Residential address — encrypted at rest</p>
+                  <p className="text-[11px] text-slate-500">Current and permanent address — encrypted at rest</p>
                 </div>
               </div>
               <EncryptedBadge />
             </div>
             <EncryptionNotice />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Line 1" optional className="sm:col-span-2">
-                <input className={INPUT_CLASS} value={form.address.line1 ?? ''} onChange={(e) => setNested('address', 'line1', e.target.value)} />
-              </Field>
-              <Field label="Line 2" optional className="sm:col-span-2">
-                <input className={INPUT_CLASS} value={form.address.line2 ?? ''} onChange={(e) => setNested('address', 'line2', e.target.value)} />
-              </Field>
-              <Field label="City" optional>
-                <input className={INPUT_CLASS} value={form.address.city ?? ''} onChange={(e) => setNested('address', 'city', e.target.value)} />
-              </Field>
-              <Field label="State" optional>
-                <input className={INPUT_CLASS} value={form.address.state ?? ''} onChange={(e) => setNested('address', 'state', e.target.value)} />
-              </Field>
-              <Field label="Pincode" optional>
-                <input className={INPUT_CLASS} value={form.address.pincode ?? ''} onChange={(e) => setNested('address', 'pincode', e.target.value)} />
-              </Field>
+            <p className="mb-3 text-[12px] font-medium text-slate-700">Current address</p>
+            <AddressFieldsInput value={form.address} onChange={(k, v) => setNested('address', k, v)} />
+
+            <div className="mt-6 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-[12px] font-medium text-slate-700">Permanent address</p>
+              <label className="inline-flex cursor-pointer items-center gap-2 text-[12px] text-slate-600">
+                <input
+                  type="checkbox"
+                  checked={permanentSame}
+                  onChange={(e) => setPermanentSame(e.target.checked)}
+                  className="h-3.5 w-3.5 rounded border-slate-300 accent-[#0C447C]"
+                />
+                Same as current address
+              </label>
             </div>
+            {!permanentSame && (
+              <div className="mt-3">
+                <AddressFieldsInput value={form.permanentAddress} onChange={(k, v) => setNested('permanentAddress', k, v)} />
+              </div>
+            )}
           </div>
 
           {/* Emergency contact */}
@@ -405,15 +382,74 @@ export function EmployeeForm({ mode, initial, employeeId, managers, canEditSensi
               <EncryptedBadge />
             </div>
             <EncryptionNotice />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <Field label="Contact name" optional>
                 <input className={INPUT_CLASS} value={form.emergencyContact.name ?? ''} onChange={(e) => setNested('emergencyContact', 'name', e.target.value)} />
               </Field>
               <Field label="Contact phone" optional>
                 <input className={INPUT_CLASS} value={form.emergencyContact.phone ?? ''} onChange={(e) => setNested('emergencyContact', 'phone', e.target.value)} />
               </Field>
+              <Field label="Relation" optional>
+                <input
+                  className={INPUT_CLASS}
+                  list="emergency-relations"
+                  value={form.emergencyContact.relation ?? ''}
+                  onChange={(e) => setNested('emergencyContact', 'relation', e.target.value)}
+                  placeholder="e.g. Father, Spouse"
+                />
+                <datalist id="emergency-relations">
+                  {RELATIONS.map((r) => <option key={r} value={r} />)}
+                </datalist>
+              </Field>
             </div>
           </div>
+
+          {/* Family & previous employment */}
+          {mode === 'edit' && (
+            <div className="bg-white border border-slate-200/70 rounded-xl p-5">
+              <div className="flex items-start justify-between gap-3 pb-3.5 border-b border-slate-200/70 mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-[30px] h-[30px] rounded-[8px] flex items-center justify-center shrink-0" style={{ backgroundColor: '#FAEEDA' }}>
+                    <Users size={15} color="#854F0B" />
+                  </div>
+                  <div>
+                    <p className="text-[14px] font-medium text-slate-900">Family &amp; previous job</p>
+                    <p className="text-[11px] text-slate-500">Usually filled in by the employee on their onboarding form — encrypted at rest</p>
+                  </div>
+                </div>
+                <EncryptedBadge />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="Father's name" optional>
+                  <input className={INPUT_CLASS} value={form.family?.fatherName ?? ''} onChange={(e) => setFamily('fatherName', e.target.value)} />
+                </Field>
+                <Field label="Father's mobile" optional>
+                  <input className={INPUT_CLASS} value={form.family?.fatherPhone ?? ''} onChange={(e) => setFamily('fatherPhone', e.target.value)} />
+                </Field>
+                <Field label="Mother's name" optional>
+                  <input className={INPUT_CLASS} value={form.family?.motherName ?? ''} onChange={(e) => setFamily('motherName', e.target.value)} />
+                </Field>
+                <Field label="Mother's mobile" optional>
+                  <input className={INPUT_CLASS} value={form.family?.motherPhone ?? ''} onChange={(e) => setFamily('motherPhone', e.target.value)} />
+                </Field>
+              </div>
+              <p className="mt-6 mb-3 text-[12px] font-medium text-slate-700">Previous employment</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="Company" optional className="sm:col-span-2">
+                  <input className={INPUT_CLASS} value={form.previousEmployment?.company ?? ''} onChange={(e) => setPrevious('company', e.target.value)} />
+                </Field>
+                <Field label="Reporting manager" optional>
+                  <input className={INPUT_CLASS} value={form.previousEmployment?.managerName ?? ''} onChange={(e) => setPrevious('managerName', e.target.value)} />
+                </Field>
+                <Field label="Manager's mobile" optional>
+                  <input className={INPUT_CLASS} value={form.previousEmployment?.managerPhone ?? ''} onChange={(e) => setPrevious('managerPhone', e.target.value)} />
+                </Field>
+                <Field label="Manager's email" optional className="sm:col-span-2">
+                  <input type="email" className={INPUT_CLASS} value={form.previousEmployment?.managerEmail ?? ''} onChange={(e) => setPrevious('managerEmail', e.target.value)} />
+                </Field>
+              </div>
+            </div>
+          )}
         </>
       ) : (
         <div className="bg-white border border-slate-200/70 rounded-xl p-6">
@@ -422,7 +458,7 @@ export function EmployeeForm({ mode, initial, employeeId, managers, canEditSensi
             <div>
               <p className="text-[13px] font-medium text-slate-700">Sensitive fields are hidden</p>
               <p className="text-[11px] text-slate-400 mt-0.5">
-                Compensation, bank, identity, address and emergency contact are visible to HR &amp; founders only.
+                Identity, address and emergency contact are visible to HR &amp; founders only.
               </p>
             </div>
           </div>
@@ -483,3 +519,30 @@ function EncryptionNotice() {
 }
 
 export type ManagerOption = Pick<EmployeePublic, 'employeeId' | 'displayName' | 'designation'>;
+function AddressFieldsInput({
+  value,
+  onChange,
+}: {
+  value: AddressFields;
+  onChange: (key: keyof AddressFields, v: string | null) => void;
+}) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <Field label="Line 1" optional className="sm:col-span-2">
+        <input className={INPUT_CLASS} value={value.line1 ?? ''} onChange={(e) => onChange('line1', e.target.value)} />
+      </Field>
+      <Field label="Line 2" optional className="sm:col-span-2">
+        <input className={INPUT_CLASS} value={value.line2 ?? ''} onChange={(e) => onChange('line2', e.target.value)} />
+      </Field>
+      <Field label="City" optional>
+        <input className={INPUT_CLASS} value={value.city ?? ''} onChange={(e) => onChange('city', e.target.value)} />
+      </Field>
+      <Field label="State" optional>
+        <input className={INPUT_CLASS} value={value.state ?? ''} onChange={(e) => onChange('state', e.target.value)} />
+      </Field>
+      <Field label="Pincode" optional>
+        <input className={INPUT_CLASS} value={value.pincode ?? ''} onChange={(e) => onChange('pincode', e.target.value)} />
+      </Field>
+    </div>
+  );
+}

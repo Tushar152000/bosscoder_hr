@@ -10,6 +10,8 @@ import {
   listEmployees,
 } from '@/lib/firestore/employees';
 import { writeAuditLog } from '@/lib/audit';
+import { getIdDocuments } from '@/lib/firestore/documents';
+import { documentOwnerKey } from '@/lib/documents-config';
 import { EmployeeForm } from '@/components/employees/employee-form';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
 import { initials } from '@/lib/utils';
@@ -65,10 +67,15 @@ export default async function EditEmployeePage({ params }: Props) {
       status: employee.status,
       exitDate: employee.exitDate ? employee.exitDate.toISOString().slice(0, 10) : null,
       userUid: employee.userUid,
+      // Public MM-DD birthday — without it, saving would clear the stored one.
+      dateOfBirth: employee.dateOfBirth ?? null,
     };
   }
 
-  const managers = await listEmployees({ status: 'active', limit: 500 });
+  const [managers, idDocs] = await Promise.all([
+    listEmployees({ status: 'active', limit: 500 }),
+    allowSensitive ? getIdDocuments(documentOwnerKey(employee)) : Promise.resolve([]),
+  ]);
   const avatarColor = colorForName(employee.displayName);
   const userInitials = initials(employee.displayName, employee.email);
 
@@ -113,6 +120,7 @@ export default async function EditEmployeePage({ params }: Props) {
             designation: m.designation,
           }))}
         canEditSensitive={allowSensitive}
+        idDocs={idDocs}
       />
     </div>
   );

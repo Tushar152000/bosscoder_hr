@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { SESSION_COOKIE } from '@/lib/auth/cookie';
 
-const PUBLIC_PATHS = ['/login', '/api/auth/session', '/api/auth/logout', '/_next', '/favicon.ico'];
+// /join and /api/join are a new joiner's onboarding link — no login; the token
+// in the URL is checked by every page, action and route under them.
+const PUBLIC_PATHS = ['/login', '/api/auth/session', '/api/auth/logout', '/join', '/api/join', '/_next', '/favicon.ico'];
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

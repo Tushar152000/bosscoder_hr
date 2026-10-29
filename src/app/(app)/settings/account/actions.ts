@@ -4,6 +4,7 @@ import { requireUser } from '@/lib/auth/guard';
 import { adminDb, adminStorage, adminAuth, FieldValue } from '@/lib/firebase/admin';
 import { HR } from '@/lib/firebase/collections';
 import { docFirestoreId } from '@/lib/firestore/documents';
+import { saveDocument } from '@/lib/documents/files';
 import type { DocumentType } from '@/lib/firestore/documents';
 import { revalidatePath } from 'next/cache';
 
@@ -104,36 +105,7 @@ export async function uploadDocumentAction(formData: FormData): Promise<{ url: s
   const docType = formData.get('docType') as DocumentType | null;
   if (!docType || !ALLOWED_DOC_TYPES.includes(docType)) throw new Error('Invalid document type');
 
-  const file = formData.get('file') as File | null;
-  if (!file || file.size === 0) throw new Error('No file provided');
-  if (file.size > 10 * 1024 * 1024) throw new Error('File too large — max 10 MB');
-
-  const allowed = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
-  if (!allowed.includes(file.type)) throw new Error('Only JPG, PNG, WEBP or PDF files are allowed');
-
-  const ext = (file.name.split('.').pop() ?? 'pdf').toLowerCase();
-  const storagePath = `hr/documents/${user.uid}/${docType}.${ext}`;
-
-  const buffer = Buffer.from(await file.arrayBuffer());
-  const bucket = adminStorage.bucket();
-  const fileRef = bucket.file(storagePath);
-
-  await fileRef.save(buffer, { metadata: { contentType: file.type } });
-  await fileRef.makePublic();
-
-  const url = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
-  const firestoreId = docFirestoreId(user.uid, docType);
-
-  await adminDb.collection(HR.documents).doc(firestoreId).set({
-    uid: user.uid,
-    docType,
-    fileName: file.name,
-    fileUrl: url,
-    contentType: file.type,
-    uploadedAt: FieldValue.serverTimestamp(),
-    updatedAt: FieldValue.serverTimestamp(),
-  });
-
+  const url = await saveDocument({ uid: user.uid, docType, file: formData.get('file') as File });
   revalidatePath('/settings/account');
   return { url };
 }

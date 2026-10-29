@@ -1,6 +1,7 @@
 import 'server-only';
 import { adminAuth, adminDb, FieldValue, Timestamp } from '@/lib/firebase/admin';
 import { HR } from '@/lib/firebase/collections';
+import { adoptPendingDocuments } from '@/lib/documents/files';
 import {
   defaultPermissionsForRoles,
   founderEmails,
@@ -273,6 +274,12 @@ async function linkEmployeeAndBackfillSubmissions(args: {
   }
 
   await Promise.all([flush(), linkWrites]);
+  // Aadhaar / PAN uploaded from the onboarding link before this first sign-in.
+  if (emp.userUid !== uid) {
+    await adoptPendingDocuments(emp.employeeId, uid).catch((e) =>
+      console.error('[claims] moving onboarding documents failed', e),
+    );
+  }
   return emp.employeeId;
 }
 

@@ -22,6 +22,21 @@ export const ENCRYPTED_EMPLOYEE_FIELDS = [
   'dob',
   'emergencyContact.name',
   'emergencyContact.phone',
+  'emergencyContact.relation',
+  'permanentAddress.line1',
+  'permanentAddress.line2',
+  'permanentAddress.city',
+  'permanentAddress.state',
+  'permanentAddress.pincode',
+  'family.fatherName',
+  'family.fatherPhone',
+  'family.motherName',
+  'family.motherPhone',
+  'uan',
+  'previousEmployment.company',
+  'previousEmployment.managerName',
+  'previousEmployment.managerPhone',
+  'previousEmployment.managerEmail',
 ] as const;
 
 export const ENCRYPTED_REVIEW_FIELDS = [

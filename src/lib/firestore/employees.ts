@@ -4,12 +4,16 @@ import { adminDb, FieldValue, Timestamp } from '@/lib/firebase/admin';
 import { HR } from '@/lib/firebase/collections';
 import { encryptOptional, decryptOptional } from '@/lib/crypto/encrypt';
 import type {
+  AddressFields,
   EmployeeFull,
   EmployeeInput,
   EmployeePublic,
   EmployeeSensitive,
   EmployeeStored,
+  FamilyFields,
+  PreviousEmploymentFields,
 } from '@/types/employee';
+import type { OnboardingAnswers } from '@/types/onboarding';
 
 const COL = HR.employees;
 
@@ -70,24 +74,86 @@ function toSensitive(stored: EmployeeStored): EmployeeSensitive {
       pan: decryptOptional(stored.identity?.pan),
       aadhaar: decryptOptional(stored.identity?.aadhaar),
     },
-    address: {
-      line1: decryptOptional(stored.address?.line1),
-      line2: decryptOptional(stored.address?.line2),
-      city: decryptOptional(stored.address?.city),
-      state: decryptOptional(stored.address?.state),
-      pincode: decryptOptional(stored.address?.pincode),
-    },
+    address: decryptAddress(stored.address),
+    permanentAddress: decryptAddress(stored.permanentAddress),
     dob: decryptOptional(stored.dob),
     emergencyContact: {
       name: decryptOptional(stored.emergencyContact?.name),
       phone: decryptOptional(stored.emergencyContact?.phone),
+      relation: decryptOptional(stored.emergencyContact?.relation ?? null),
+    },
+    family: {
+      fatherName: decryptOptional(stored.family?.fatherName),
+      fatherPhone: decryptOptional(stored.family?.fatherPhone),
+      motherName: decryptOptional(stored.family?.motherName),
+      motherPhone: decryptOptional(stored.family?.motherPhone),
+    },
+    uan: decryptOptional(stored.uan ?? null),
+    previousEmployment: {
+      company: decryptOptional(stored.previousEmployment?.company),
+      managerName: decryptOptional(stored.previousEmployment?.managerName),
+      managerPhone: decryptOptional(stored.previousEmployment?.managerPhone),
+      managerEmail: decryptOptional(stored.previousEmployment?.managerEmail),
     },
   };
 }
 
+type StoredAddress = NonNullable<EmployeeStored['permanentAddress']>;
+
+function decryptAddress(a: StoredAddress | null | undefined): AddressFields {
+  return {
+    line1: decryptOptional(a?.line1),
+    line2: decryptOptional(a?.line2),
+    city: decryptOptional(a?.city),
+    state: decryptOptional(a?.state),
+    pincode: decryptOptional(a?.pincode),
+  };
+}
+
+function encryptAddress(a: AddressFields): StoredAddress {
+  return {
+    line1: encryptOptional(a.line1),
+    line2: encryptOptional(a.line2),
+    city: encryptOptional(a.city),
+    state: encryptOptional(a.state),
+    pincode: encryptOptional(a.pincode),
+  };
+}
+
+function encryptFamily(f: FamilyFields): NonNullable<EmployeeStored['family']> {
+  return {
+    fatherName: encryptOptional(f.fatherName),
+    fatherPhone: encryptOptional(f.fatherPhone),
+    motherName: encryptOptional(f.motherName),
+    motherPhone: encryptOptional(f.motherPhone),
+  };
+}
+
+function encryptPreviousEmployment(p: PreviousEmploymentFields): NonNullable<EmployeeStored['previousEmployment']> {
+  return {
+    company: encryptOptional(p.company),
+    managerName: encryptOptional(p.managerName),
+    managerPhone: encryptOptional(p.managerPhone),
+    managerEmail: encryptOptional(p.managerEmail),
+  };
+}
+
+/** "YYYY-MM-DD" → "MM-DD" for the birthday field; null if it isn't a date. */
+function birthdayOf(dob: string | null): string | null {
+  return dob && /^\d{4}-\d{2}-\d{2}$/.test(dob) ? dob.slice(5) : null;
+}
+
+/**
+ * Firestore fields for a create/update.
+ *  - Compensation and bank aren't collected any more: a new record gets empty
+ *    values, an update never touches what's stored.
+ *  - `includeSensitive: false` (an editor who can't see the encrypted fields, so
+ *    the form sent them blank) leaves identity, addresses, DOB and emergency
+ *    contact as stored instead of wiping them.
+ */
 function inputToStored(
   input: EmployeeInput,
-  meta: { employeeId: string; createdBy: string; updatedBy: string; isCreate: boolean }
+  meta: { employeeId: string; createdBy: string; updatedBy: string; isCreate: boolean; includeSensitive: boolean }
 ): Partial<EmployeeStored> {
   const joining = new Date(input.joiningDate);
   const exit = input.exitDate ? new Date(input.exitDate) : null;
@@ -114,35 +180,36 @@ function inputToStored(
       designation: input.designation,
       department: input.department,
     }),
-    compensation: {
-      ctc: encryptOptional(input.compensation.ctc),
-      salary: encryptOptional(input.compensation.salary),
-      bonus: encryptOptional(input.compensation.bonus),
-    },
-    bank: {
-      accountNumber: encryptOptional(input.bank.accountNumber),
-      ifsc: encryptOptional(input.bank.ifsc),
-      beneficiaryName: encryptOptional(input.bank.beneficiaryName),
-    },
-    identity: {
-      pan: encryptOptional(input.identity.pan),
-      aadhaar: encryptOptional(input.identity.aadhaar),
-    },
-    address: {
-      line1: encryptOptional(input.address.line1),
-      line2: encryptOptional(input.address.line2),
-      city: encryptOptional(input.address.city),
-      state: encryptOptional(input.address.state),
-      pincode: encryptOptional(input.address.pincode),
-    },
-    dob: encryptOptional(input.dob),
+    ...(meta.isCreate
+      ? {
+          compensation: { ctc: null, salary: null, bonus: null },
+          bank: { accountNumber: null, ifsc: null, beneficiaryName: null },
+        }
+      : {}),
+    ...(meta.isCreate || meta.includeSensitive
+      ? {
+          identity: {
+            pan: encryptOptional(input.identity.pan),
+            aadhaar: encryptOptional(input.identity.aadhaar),
+          },
+          address: encryptAddress(input.address),
+          permanentAddress: encryptAddress(input.permanentAddress),
+          dob: encryptOptional(input.dob),
+          emergencyContact: {
+            name: encryptOptional(input.emergencyContact.name),
+            phone: encryptOptional(input.emergencyContact.phone),
+            relation: encryptOptional(input.emergencyContact.relation),
+          },
+          ...(input.family ? { family: encryptFamily(input.family) } : {}),
+          ...(input.uan !== undefined ? { uan: encryptOptional(input.uan) } : {}),
+          ...(input.previousEmployment
+            ? { previousEmployment: encryptPreviousEmployment(input.previousEmployment) }
+            : {}),
+        }
+      : {}),
     ...(input.dateOfBirth != null
       ? { dateOfBirth: input.dateOfBirth }
       : meta.isCreate ? {} : { dateOfBirth: FieldValue.delete() as unknown as string }),
-    emergencyContact: {
-      name: encryptOptional(input.emergencyContact.name),
-      phone: encryptOptional(input.emergencyContact.phone),
-    },
     updatedAt: FieldValue.serverTimestamp(),
     updatedBy: meta.updatedBy,
     ...(meta.isCreate
@@ -225,6 +292,7 @@ export async function createEmployee(
     createdBy: actorUid,
     updatedBy: actorUid,
     isCreate: true,
+    includeSensitive: true,
   });
   await ref.set(data);
   const created = await getEmployeeById(employeeId);
@@ -235,7 +303,8 @@ export async function createEmployee(
 export async function updateEmployee(
   employeeId: string,
   input: EmployeeInput,
-  actorUid: string
+  actorUid: string,
+  opts: { includeSensitive: boolean },
 ): Promise<EmployeePublic> {
   const ref = adminDb.collection(COL).doc(employeeId);
   const exists = await ref.get();
@@ -245,11 +314,44 @@ export async function updateEmployee(
     createdBy: actorUid,
     updatedBy: actorUid,
     isCreate: false,
+    includeSensitive: opts.includeSensitive,
   });
   await ref.update(data);
   const updated = await getEmployeeById(employeeId);
   if (!updated) throw new Error('Updated employee not found');
   return updated;
+}
+
+/**
+ * Write what a joiner filled in on their onboarding link onto their record.
+ * Only the fields the form asks for are touched; everything HR set stays.
+ */
+export async function applyOnboardingAnswers(employeeId: string, a: OnboardingAnswers): Promise<void> {
+  const birthday = birthdayOf(a.dob);
+  await adminDb.collection(COL).doc(employeeId).update({
+    personalEmail: a.personalEmail?.trim().toLowerCase() || null,
+    ...(a.phone ? { phone: a.phone.trim() } : {}),
+    dob: encryptOptional(a.dob),
+    ...(birthday ? { dateOfBirth: birthday } : {}),
+    family: encryptFamily(a.family),
+    emergencyContact: {
+      name: encryptOptional(a.emergencyContact.name),
+      phone: encryptOptional(a.emergencyContact.phone),
+      relation: encryptOptional(a.emergencyContact.relation),
+    },
+    address: encryptAddress(a.address),
+    permanentAddress: encryptAddress(a.permanentSame ? a.address : a.permanentAddress),
+    identity: {
+      pan: encryptOptional(a.pan?.toUpperCase() ?? null),
+      aadhaar: encryptOptional(a.aadhaar),
+    },
+    uan: encryptOptional(a.noUan ? null : a.uan),
+    previousEmployment: encryptPreviousEmployment(
+      a.firstJob ? { company: null, managerName: null, managerPhone: null, managerEmail: null } : a.previousEmployment,
+    ),
+    updatedAt: FieldValue.serverTimestamp(),
+    updatedBy: 'onboarding-link',
+  });
 }
 
 export async function deactivateEmployee(employeeId: string, actorUid: string): Promise<void> {
@@ -311,13 +413,12 @@ export function emptyEmployeeInput(): EmployeeInput {
     status: 'active',
     exitDate: null,
     userUid: null,
-    compensation: { ctc: null, salary: null, bonus: null },
-    bank: { accountNumber: null, ifsc: null, beneficiaryName: null },
     identity: { pan: null, aadhaar: null },
     address: { line1: null, line2: null, city: null, state: null, pincode: null },
+    permanentAddress: { line1: null, line2: null, city: null, state: null, pincode: null },
     dob: null,
     dateOfBirth: null,
-    emergencyContact: { name: null, phone: null },
+    emergencyContact: { name: null, phone: null, relation: null },
   };
 }
 
@@ -337,13 +438,15 @@ export function fullToInput(emp: EmployeeFull): EmployeeInput {
     status: emp.status,
     exitDate: emp.exitDate ? emp.exitDate.toISOString().slice(0, 10) : null,
     userUid: emp.userUid,
-    compensation: { ...emp.compensation },
-    bank: { ...emp.bank },
     identity: { ...emp.identity },
     address: { ...emp.address },
+    permanentAddress: { ...emp.permanentAddress },
     dob: emp.dob,
     dateOfBirth: emp.dateOfBirth ?? null,
     emergencyContact: { ...emp.emergencyContact },
+    family: { ...emp.family },
+    uan: emp.uan,
+    previousEmployment: { ...emp.previousEmployment },
   };
 }
 

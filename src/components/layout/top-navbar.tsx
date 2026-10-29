@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Bell, ChevronDown, ClipboardList, FileText,
-  Home, Inbox, LogOut, Menu, Megaphone, MessageCircle, MessageSquareText,
+  Home, Inbox, LogOut, UserPlus, Menu, Megaphone, MessageCircle, MessageSquareText,
   Settings as SettingsIcon, User as UserIcon, Users, X,
 } from "lucide-react";
 import * as Popover from "@radix-ui/react-popover";
@@ -79,6 +79,7 @@ export function TopNavbar({ user, notifications = [] }: Props) {
   const navItems = [
     { href: "/",             label: "Home",           icon: Home },
     { href: "/directory",    label: "Directory",      icon: Users },
+    ...(canManageEmployees    ? [{ href: "/onboarding",     label: "Onboarding",      icon: UserPlus  }] : []),
     { href: "/performance",  label: "Performance",    icon: ClipboardList },
     ...(canManageOfferLetters ? [{ href: "/offers",         label: "Offer Letters",   icon: FileText  }] : []),
     ...(canManageEmployees    ? [{ href: "/communications", label: "Communications",  icon: Megaphone }] : []),

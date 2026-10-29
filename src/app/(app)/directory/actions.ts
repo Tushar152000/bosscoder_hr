@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { requireUser } from '@/lib/auth/guard';
-import { canEditEmployees } from '@/lib/auth/employee-access';
+import { canEditEmployees, canViewSensitiveFor } from '@/lib/auth/employee-access';
 import {
   createEmployee,
   deactivateEmployee,
@@ -19,6 +19,9 @@ import { writeAuditLog } from '@/lib/audit';
 import type { EmployeeInput } from '@/types/employee';
 import { isValidMobile } from '@/lib/phone';
 import { recountCyclesForSubject } from '@/lib/firestore/review-submissions';
+import { saveDocument } from '@/lib/documents/files';
+import { documentOwnerKey } from '@/lib/documents-config';
+import { deleteOnboarding } from '@/lib/firestore/onboarding';
 
 /**
  * If an employee has no reporting manager → promote them to `manager` role.
@@ -57,6 +60,14 @@ async function syncRoleFromManagerId(
 const employmentTypeEnum = z.enum(['full-time', 'intern', 'contractor']);
 const statusEnum = z.enum(['active', 'on-notice', 'left']);
 
+const addressSchema = z.object({
+  line1: z.string().max(200).nullable(),
+  line2: z.string().max(200).nullable(),
+  city: z.string().max(80).nullable(),
+  state: z.string().max(80).nullable(),
+  pincode: z.string().max(12).nullable(),
+});
+
 const employeeInputSchema = z.object({
   displayName: z.string().min(1, 'Name required').max(120),
   email: z.string().email().max(160),
@@ -75,27 +86,12 @@ const employeeInputSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD')
     .nullable(),
   userUid: z.string().nullable(),
-  compensation: z.object({
-    ctc: z.string().nullable(),
-    salary: z.string().nullable(),
-    bonus: z.string().nullable(),
-  }),
-  bank: z.object({
-    accountNumber: z.string().nullable(),
-    ifsc: z.string().nullable(),
-    beneficiaryName: z.string().nullable(),
-  }),
   identity: z.object({
     pan: z.string().nullable(),
     aadhaar: z.string().nullable(),
   }),
-  address: z.object({
-    line1: z.string().nullable(),
-    line2: z.string().nullable(),
-    city: z.string().nullable(),
-    state: z.string().nullable(),
-    pincode: z.string().nullable(),
-  }),
+  address: addressSchema,
+  permanentAddress: addressSchema,
   dob: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD')
@@ -106,9 +102,27 @@ const employeeInputSchema = z.object({
     .nullable()
     .optional(),
   emergencyContact: z.object({
-    name: z.string().nullable(),
-    phone: z.string().nullable(),
+    name: z.string().max(120).nullable(),
+    phone: z.string().max(40).nullable(),
+    relation: z.string().max(60).nullable(),
   }),
+  family: z
+    .object({
+      fatherName: z.string().max(120).nullable(),
+      fatherPhone: z.string().max(40).nullable(),
+      motherName: z.string().max(120).nullable(),
+      motherPhone: z.string().max(40).nullable(),
+    })
+    .optional(),
+  uan: z.string().max(16).nullable().optional(),
+  previousEmployment: z
+    .object({
+      company: z.string().max(160).nullable(),
+      managerName: z.string().max(120).nullable(),
+      managerPhone: z.string().max(40).nullable(),
+      managerEmail: z.string().max(160).nullable(),
+    })
+    .optional(),
 });
 
 export type ActionResult =
@@ -155,7 +169,12 @@ export async function updateEmployeeAction(
   }
 
   try {
-    const updated = await updateEmployee(employeeId, parsed.data, user.uid);
+    const existing = await getEmployeeById(employeeId);
+    if (!existing) return { ok: false, error: 'Employee not found' };
+    // Editors who can't see the encrypted fields got them blank in the form —
+    // don't let their save wipe what's stored.
+    const includeSensitive = await canViewSensitiveFor(user, existing);
+    const updated = await updateEmployee(employeeId, parsed.data, user.uid, { includeSensitive });
     const roleMessage = await syncRoleFromManagerId(updated.userUid, !!parsed.data.managerId, updated.displayName);
     await writeAuditLog({
       actorUid: user.uid,
@@ -203,6 +222,7 @@ export async function deleteEmployeeAction(employeeId: string): Promise<ActionRe
 
   try {
     await deleteEmployee(employeeId);
+    await deleteOnboarding(employeeId).catch(() => {});
     // Their review forms stay for the record but stop counting — refresh cycle totals.
     await recountCyclesForSubject(employeeId).catch(() => {});
     await writeAuditLog({
@@ -228,4 +248,43 @@ export async function createAndRedirect(input: EmployeeInput): Promise<void> {
 export async function deleteAndRedirect(employeeId: string): Promise<void> {
   const res = await deleteEmployeeAction(employeeId);
   if (res.ok) redirect('/directory');
+}
+
+/** ID documents HR can upload for an employee (they can also upload their own). */
+const HR_UPLOADABLE_DOCS = ['aadhaar', 'pan'] as const;
+
+/**
+ * Upload or replace an employee's Aadhaar / PAN picture. Stored against their
+ * portal login, or held for them until their first sign-in.
+ */
+export async function uploadEmployeeIdDocumentAction(
+  formData: FormData,
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  const user = await requireUser();
+  if (!canEditEmployees(user)) return { ok: false, error: 'Forbidden' };
+
+  const employeeId = String(formData.get('employeeId') ?? '');
+  const docType = String(formData.get('docType') ?? '') as (typeof HR_UPLOADABLE_DOCS)[number];
+  if (!HR_UPLOADABLE_DOCS.includes(docType)) return { ok: false, error: 'Invalid document type' };
+
+  const employee = await getEmployeeById(employeeId);
+  if (!employee) return { ok: false, error: 'Employee not found' };
+  if (!(await canViewSensitiveFor(user, employee))) return { ok: false, error: 'Forbidden' };
+
+  try {
+    const url = await saveDocument({ uid: documentOwnerKey(employee), docType, file: formData.get('file') as File });
+    await writeAuditLog({
+      actorUid: user.uid,
+      actorEmail: user.email,
+      action: 'employee.update',
+      resource: { type: 'employee', id: employeeId },
+      metadata: { op: 'upload_document', docType },
+    });
+    revalidatePath(`/directory/${employeeId}`);
+    revalidatePath(`/directory/${employeeId}/edit`);
+    revalidatePath('/settings/employee-documents');
+    return { ok: true, url };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Upload failed' };
+  }
 }

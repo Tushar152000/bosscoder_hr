@@ -1,4 +1,4 @@
-import { Users, TrendingUp, PieChart, Mail, FileText, Megaphone, CalendarCheck } from "lucide-react";
+import { Users, TrendingUp, PieChart, Mail, FileText, Megaphone, CalendarCheck, UserPlus } from "lucide-react";
 import { requireUser } from "@/lib/auth/guard";
 import { isPrivileged } from "@/lib/auth/roles";
 import {
@@ -15,6 +15,7 @@ import { QuickCard } from "@/components/dashboard/quick-card";
 import { QuickAccessGrid, type QuickAccessItem } from "@/components/dashboard/quick-access-grid";
 import { FeedbackWidget } from "@/components/feedback/feedback-widget";
 import { getQuickCardOrder } from "@/lib/firestore/hr-settings";
+import { listOnboarding } from "@/lib/firestore/onboarding";
 import { BirthdayBanner } from "@/components/home/birthday-banner";
 import { DobMissingBanner } from "@/components/home/dob-missing-banner";
 import { AttendanceLiveBanner } from "@/components/home/attendance-live-banner";
@@ -50,6 +51,11 @@ export default async function HomePage({
   // Staged rollout — rollout departments + their reporting managers + HR/founder (see canAccessAttendance).
   const canSeeAttendance = await canAccessAttendance(user.roles, me ?? null);
   const canManageOffers = user.permissions.includes("manage_offer_letters");
+  // HR's onboarding card shows how many submitted forms are waiting to be checked.
+  const canOnboard = isHR && user.permissions.includes("manage_employees");
+  const waitingOnboarding = canOnboard
+    ? (await listOnboarding()).filter((r) => r.status === "submitted").length
+    : 0;
 
   const photoURL = displayPhotoURL(hrUser, user.photoURL);
   const displayName = me?.displayName ?? user.displayName ?? user.email;
@@ -73,6 +79,18 @@ export default async function HomePage({
       node: <QuickCard href="/directory" icon={Users} iconBg="#E6F1FB" iconColor="#0C447C"
         title="Employee directory" description="Browse teams and reporting lines" />,
     },
+    ...(canOnboard
+      ? [{
+          key: "onboarding",
+          node: <QuickCard href="/onboarding" icon={UserPlus} iconBg="#E1F5EE" iconColor="#0F6E56"
+            title="Onboarding"
+            description={
+              waitingOnboarding
+                ? `${waitingOnboarding} form${waitingOnboarding === 1 ? "" : "s"} waiting for your check · send the joining form and track who's filled it`
+                : "Send the joining form to new joiners and track who has filled it in"
+            } />,
+        }]
+      : []),
     {
       key: "performance",
       node: <QuickCard href="/performance" icon={TrendingUp} iconBg="#E1F5EE" iconColor="#0F6E56"

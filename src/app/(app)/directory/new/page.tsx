@@ -7,7 +7,8 @@ import { NewEmployeeForm } from '@/components/employees/new-employee-form';
 
 export const metadata = { title: 'New employee' };
 
-export default async function NewEmployeePage() {
+export default async function NewEmployeePage({ searchParams }: { searchParams: Promise<{ from?: string }> }) {
+  const { from } = await searchParams;
   const user = await requireUser();
   if (!isPrivileged(user.roles)) redirect('/directory');
   if (!canEditEmployees(user)) redirect('/directory');
@@ -23,6 +24,7 @@ export default async function NewEmployeePage() {
         designation: m.designation,
       }))}
       canEditSensitive={canEditEmployees(user)}
+      fromOnboarding={from === 'onboarding'}
     />
   );
 }

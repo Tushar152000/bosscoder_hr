@@ -23,6 +23,8 @@ export const HR = {
   feedback: 'hr_feedback',
   /** Employee feedback addressed to the HR team (separate from portal feedback). */
   hrFeedback: 'hr_feedback_to_hr',
+  /** New-joiner onboarding forms — one per employee, doc id = employeeId. */
+  onboarding: 'hr_onboarding',
 } as const;
 
 export type HrCollection = (typeof HR)[keyof typeof HR];

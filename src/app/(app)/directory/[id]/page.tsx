@@ -6,13 +6,19 @@ import { requireUser } from '@/lib/auth/guard';
 import { canEditEmployees, canViewEmployee, canViewSensitiveFor } from '@/lib/auth/employee-access';
 import { getEmployeeById, getEmployeeFull, listEmployees } from '@/lib/firestore/employees';
 import { getHrUser, listHrUsers } from '@/lib/firestore/users';
+import { getIdDocuments } from '@/lib/firestore/documents';
+import { getOnboarding } from '@/lib/firestore/onboarding';
+import { documentOwnerKey } from '@/lib/documents-config';
+import { OnboardingPanel } from '@/components/onboarding/onboarding-panel';
+import type { OnboardingSummary } from '@/types/onboarding';
+import { IdentityDocuments, type IdDocument } from '@/components/employees/identity-documents';
 import { writeAuditLog } from '@/lib/audit';
 import { initials } from '@/lib/utils';
 import { formatDate } from '@/lib/format';
 import { colorForName } from '@/lib/directory/colors';
 import { DeactivateEmployeeButton, DeleteEmployeeButton } from '@/components/employees/employee-actions';
 import { Breadcrumbs } from '@/components/ui/breadcrumbs';
-import type { EmployeeFull, EmployeeStatus, EmploymentType } from '@/types/employee';
+import type { AddressFields, EmployeeFull, EmployeeStatus, EmploymentType } from '@/types/employee';
 import { formatPhone } from '@/lib/phone';
 
 interface Props {
@@ -48,13 +54,15 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
     }
   }
 
-  const [manager, directReports, hrUser, allHrUsers] = await Promise.all([
+  const canEdit = canEditEmployees(user);
+  const [manager, directReports, hrUser, allHrUsers, idDocs, onboarding] = await Promise.all([
     employee.managerId ? getEmployeeById(employee.managerId) : Promise.resolve(null),
     listEmployees({ managerId: employee.employeeId, status: 'any', limit: 200 }),
     employee.userUid ? getHrUser(employee.userUid) : Promise.resolve(null),
     listHrUsers(),
+    sensitive ? getIdDocuments(documentOwnerKey(employee)) : Promise.resolve([]),
+    canEdit ? getOnboarding(employee.employeeId) : Promise.resolve(null),
   ]);
-  const canEdit = canEditEmployees(user);
   const avatarColor = colorForName(employee.displayName);
   const photoURL = hrUser?.photoURL ?? null;
   const reportPhotoByUid = new Map(
@@ -172,7 +180,14 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
 
           {/* Sensitive section */}
           {sensitive ? (
-            <SensitiveCards sensitive={sensitive} />
+            <SensitiveCards
+              sensitive={sensitive}
+              idDocs={idDocs}
+              employeeId={employee.employeeId}
+              employeeName={employee.displayName}
+              canUpload={canEdit}
+              onboarding={onboarding}
+            />
           ) : (
             <div className="bg-white border border-slate-200/70 rounded-xl p-5">
               <div className="flex items-center gap-3 p-4 bg-[#FAFAF7] border border-slate-200/70 rounded-lg">
@@ -182,7 +197,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
                     Sensitive fields are encrypted
                   </p>
                   <p className="text-[11px] text-slate-400 mt-0.5">
-                    Compensation, bank, identity and address are visible to HR &amp; founders only.
+                    Identity documents, addresses, family and emergency contact are visible to HR &amp; founders only.
                   </p>
                 </div>
               </div>
@@ -192,6 +207,16 @@ export default async function EmployeeDetailPage({ params, searchParams }: Props
 
         {/* Right column */}
         <div className="space-y-4">
+          {canEdit && employee.active && (
+            <OnboardingPanel
+              employeeId={employee.employeeId}
+              employeeName={employee.displayName}
+              defaultEmail={employee.personalEmail ?? employee.email}
+              record={onboarding}
+              canReview={!!sensitive}
+            />
+          )}
+
           {/* Direct reports */}
           <div className="bg-white border border-slate-200/70 rounded-xl p-5">
             <div className="flex items-center justify-between mb-3">
@@ -318,52 +343,45 @@ const DECRYPTED_BADGE = (
   </span>
 );
 
-function SensitiveCards({ sensitive }: { sensitive: EmployeeFull }) {
+function SensitiveCards({
+  sensitive,
+  idDocs,
+  employeeId,
+  employeeName,
+  canUpload,
+  onboarding,
+}: {
+  sensitive: EmployeeFull;
+  idDocs: IdDocument[];
+  employeeId: string;
+  employeeName: string;
+  canUpload: boolean;
+  onboarding: OnboardingSummary | null;
+}) {
+  const prev = sensitive.previousEmployment;
+  const hasPrevious = !!(prev.company || prev.managerName || prev.managerPhone || prev.managerEmail);
+  const phone = (v: string | null) => (v ? formatPhone(v) : '—');
   return (
     <div className="space-y-4">
       <div className="bg-white border border-slate-200/70 rounded-xl p-5">
         <div className="flex items-center justify-between mb-1">
-          <p className="text-[13px] font-medium text-slate-900">Compensation</p>
-          {DECRYPTED_BADGE}
-        </div>
-        <p className="text-[11px] text-slate-400 mb-4">This read was logged to the audit log.</p>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <DataRow
-            label="Annual CTC"
-            value={sensitive.compensation.ctc ? `₹${sensitive.compensation.ctc}` : '—'}
-          />
-          <DataRow
-            label="Fixed salary"
-            value={sensitive.compensation.salary ? `₹${sensitive.compensation.salary}` : '—'}
-          />
-          <DataRow
-            label="Variable / Bonus"
-            value={sensitive.compensation.bonus ? `₹${sensitive.compensation.bonus}` : '—'}
-          />
-        </div>
-      </div>
-
-      <div className="bg-white border border-slate-200/70 rounded-xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <p className="text-[13px] font-medium text-slate-900">Bank details</p>
-          {DECRYPTED_BADGE}
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <DataRow label="Account number" value={sensitive.bank.accountNumber ?? '—'} />
-          <DataRow label="IFSC" value={sensitive.bank.ifsc ?? '—'} />
-          <DataRow label="Beneficiary name" value={sensitive.bank.beneficiaryName ?? '—'} />
-        </div>
-      </div>
-
-      <div className="bg-white border border-slate-200/70 rounded-xl p-5">
-        <div className="flex items-center justify-between mb-4">
           <p className="text-[13px] font-medium text-slate-900">Identity &amp; personal</p>
           {DECRYPTED_BADGE}
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <p className="text-[11px] text-slate-400 mb-4">This read was logged to the audit log.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <DataRow label="PAN" value={sensitive.identity.pan ?? '—'} />
-          <DataRow label="Aadhaar (last 4)" value={sensitive.identity.aadhaar ?? '—'} />
+          <DataRow label="Aadhaar" value={sensitive.identity.aadhaar ?? '—'} />
+          <DataRow label="UAN" value={sensitive.uan ?? (onboarding?.noUan ? "Doesn't have one" : '—')} />
           <DataRow label="Date of birth" value={sensitive.dob ?? '—'} />
+        </div>
+        <div className="mt-5">
+          <IdentityDocuments
+            employeeId={employeeId}
+            employeeName={employeeName}
+            docs={idDocs}
+            canUpload={canUpload}
+          />
         </div>
       </div>
 
@@ -372,14 +390,9 @@ function SensitiveCards({ sensitive }: { sensitive: EmployeeFull }) {
           <p className="text-[13px] font-medium text-slate-900">Address</p>
           {DECRYPTED_BADGE}
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <DataRow label="Line 1" value={sensitive.address.line1 ?? '—'} />
-          {sensitive.address.line2 && (
-            <DataRow label="Line 2" value={sensitive.address.line2} />
-          )}
-          <DataRow label="City" value={sensitive.address.city ?? '—'} />
-          <DataRow label="State" value={sensitive.address.state ?? '—'} />
-          <DataRow label="Pincode" value={sensitive.address.pincode ?? '—'} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          <AddressBlock title="Current address" address={sensitive.address} />
+          <AddressBlock title="Permanent address" address={sensitive.permanentAddress} />
         </div>
       </div>
 
@@ -388,10 +401,55 @@ function SensitiveCards({ sensitive }: { sensitive: EmployeeFull }) {
           <p className="text-[13px] font-medium text-slate-900">Emergency contact</p>
           {DECRYPTED_BADGE}
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <DataRow label="Name" value={sensitive.emergencyContact.name ?? '—'} />
-          <DataRow label="Phone" value={sensitive.emergencyContact.phone ?? '—'} />
+          <DataRow label="Phone" value={phone(sensitive.emergencyContact.phone)} />
+          <DataRow label="Relation" value={sensitive.emergencyContact.relation ?? '—'} />
         </div>
+      </div>
+
+      <div className="bg-white border border-slate-200/70 rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-[13px] font-medium text-slate-900">Family</p>
+          {DECRYPTED_BADGE}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <DataRow label="Father" value={sensitive.family.fatherName ?? '—'} />
+          <DataRow label="Father's mobile" value={phone(sensitive.family.fatherPhone)} />
+          <DataRow label="Mother" value={sensitive.family.motherName ?? '—'} />
+          <DataRow label="Mother's mobile" value={phone(sensitive.family.motherPhone)} />
+        </div>
+      </div>
+
+      <div className="bg-white border border-slate-200/70 rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-[13px] font-medium text-slate-900">Previous employment</p>
+          {DECRYPTED_BADGE}
+        </div>
+        {!hasPrevious && onboarding?.firstJob ? (
+          <p className="text-[13px] text-slate-600">First job — no previous employer.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <DataRow label="Company" value={prev.company ?? '—'} />
+            <DataRow label="Reporting manager" value={prev.managerName ?? '—'} />
+            <DataRow label="Manager's mobile" value={phone(prev.managerPhone)} />
+            <DataRow label="Manager's email" value={prev.managerEmail ?? '—'} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** One address as readable lines; "—" when nothing is saved. */
+function AddressBlock({ title, address }: { title: string; address: AddressFields }) {
+  const cityLine = [address.city, address.state].filter(Boolean).join(', ') + (address.pincode ? ` – ${address.pincode}` : '');
+  const lines = [address.line1, address.line2, cityLine.trim()].filter((l): l is string => !!l && l !== '– ');
+  return (
+    <div>
+      <p className="text-[11px] uppercase tracking-wider text-slate-400">{title}</p>
+      <div className="mt-1 text-[13px] leading-relaxed text-slate-900">
+        {lines.length ? lines.map((l) => <div key={l}>{l}</div>) : '—'}
       </div>
     </div>
   );

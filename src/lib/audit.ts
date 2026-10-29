@@ -26,7 +26,12 @@ export type AuditAction =
   | 'leave_balance.update'
   | 'leave_balance.bulk_update'
   | 'settings.update'
-  | 'slack.celebration_post';
+  | 'slack.celebration_post'
+  | 'onboarding.send'
+  | 'onboarding.save'
+  | 'onboarding.submit'
+  | 'onboarding.verify'
+  | 'onboarding.request_changes';
 
 export interface AuditEntry {
   actorUid: string;
